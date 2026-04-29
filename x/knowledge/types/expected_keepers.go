@@ -21,6 +21,9 @@ type BankKeeper interface {
 	SendCoinsFromModuleToModule(ctx context.Context, senderModule, recipientModule string, amt sdk.Coins) error
 	MintCoins(ctx context.Context, moduleName string, amt sdk.Coins) error
 	GetBalance(ctx context.Context, addr sdk.AccAddress, denom string) sdk.Coin
+	// GetSupply returns the total circulating supply of a denom.
+	// Used by mintWithCap to enforce the MaxSupplyUzrn covenant (P-18b-b).
+	GetSupply(ctx context.Context, denom string) sdk.Coin
 }
 
 // StakingKeeper defines the expected staking keeper interface.

@@ -48,15 +48,22 @@ func (k Keeper) MintToProbeBountyPool(ctx context.Context, params *types.Params)
 		}
 	}
 
-	coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(mintAmt)))
-	if err := k.bankKeeper.MintCoins(ctx, types.ProbeBountyPoolModuleName, coins); err != nil {
+	// Mint through the global supply cap — probe bounty minting is capped at
+	// MaxSupplyUzrn alongside block rewards (P-18b-b).
+	actual, err := k.MintWithCap(ctx, types.ProbeBountyPoolModuleName, mintAmt)
+	if err != nil {
 		k.Logger(ctx).Error("probe bounty pool mint failed", "amount", mintAmt.String(), "err", err)
+		return
+	}
+	if actual.Sign() <= 0 {
+		// Supply cap exhausted — pool stays dry this block; non-fatal.
 		return
 	}
 	sdkCtx := sdk.UnwrapSDKContext(ctx)
 	sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
 		"zerone.knowledge.probe_bounty_minted",
-		sdk.NewAttribute("amount", mintAmt.String()),
+		sdk.NewAttribute("amount", actual.String()),
+		sdk.NewAttribute("requested", mintAmt.String()),
 		sdk.NewAttribute("block", fmt.Sprintf("%d", sdkCtx.BlockHeight())),
 	))
 }

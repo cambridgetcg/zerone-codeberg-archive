@@ -221,8 +221,23 @@ func (m *msgServer) ResolveContributionChallenge(ctx context.Context, msg *types
 		// registry doesn't yet expose — use mint-as-reward until that lands).
 		rewardPortion := payout.Sub(bond)
 		if rewardPortion.IsPositive() {
-			if err := m.keeper.bankKeeper.MintCoins(ctx, types.TrainingFundModuleName, sdk.NewCoins(sdk.NewCoin("uzrn", rewardPortion))); err != nil {
-				return nil, err
+			// Mint through the global supply cap (P-18b-b). If the cap is
+			// exhausted, pay out from bond only — challenger still recovers
+			// their stake, just without the mint-as-reward portion.
+			actualBig, mintErr := m.keeper.MintWithCap(ctx, types.TrainingFundModuleName, rewardPortion.BigInt())
+			if mintErr != nil {
+				return nil, mintErr
+			}
+			if actualBig.Sign() > 0 {
+				minted := sdkmath.NewIntFromBigInt(actualBig)
+				if minted.LT(rewardPortion) {
+					// Partial cap headroom — reduce payout to bond + actual minted.
+					payout = bond.Add(minted)
+				}
+				// If minted == rewardPortion, payout stays as calculated.
+			} else {
+				// Cap exhausted — reward from bond only.
+				payout = bond
 			}
 		}
 		challengerAddr, err := sdk.AccAddressFromBech32(challenge.Challenger)
@@ -332,10 +347,17 @@ func (m *msgServer) ClaimTrainingFundDisbursement(ctx context.Context, msg *type
 		scaled = scaled.Add(extra)
 	}
 
-	// Mint into the training fund, then split 50/50 released/vesting.
-	if err := m.keeper.bankKeeper.MintCoins(ctx, types.TrainingFundModuleName, sdk.NewCoins(sdk.NewCoin("uzrn", scaled))); err != nil {
+	// Mint into the training fund through the global supply cap (P-18b-b).
+	// If the cap is exhausted, minting is suppressed rather than silently
+	// over-issuing — the disbursement fails so callers can retry later.
+	actualBig, err := m.keeper.MintWithCap(ctx, types.TrainingFundModuleName, scaled.BigInt())
+	if err != nil {
 		return nil, fmt.Errorf("mint to training fund failed: %w", err)
 	}
+	if actualBig.Sign() <= 0 {
+		return nil, fmt.Errorf("supply cap exhausted — training fund disbursement suppressed")
+	}
+	scaled = sdkmath.NewIntFromBigInt(actualBig) // use actual minted (may be < requested)
 	released := scaled.Quo(sdkmath.NewInt(2))
 	vesting := scaled.Sub(released)
 

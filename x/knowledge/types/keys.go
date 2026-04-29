@@ -5,6 +5,11 @@ import "encoding/binary"
 const (
 	// ModuleName is the name of the knowledge module.
 	ModuleName = "knowledge"
+
+	// MaxSupplyUzrn is the hard supply cap: 222,222,222 ZRN in uzrn.
+	// Co-owned with x/vesting_rewards — both modules enforce the same covenant.
+	// If this value ever changes, it must change in both places atomically.
+	MaxSupplyUzrn = "222222222000000"
 	// StoreKey is the store key for the knowledge module.
 	StoreKey = ModuleName
 	// MemStoreKey is the in-memory store key.

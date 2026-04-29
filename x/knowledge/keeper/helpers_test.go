@@ -94,6 +94,20 @@ func (bk *trackingBankKeeper) GetBalance(_ context.Context, addr sdk.AccAddress,
 	return sdk.NewInt64Coin(denom, 0)
 }
 
+// GetSupply returns the aggregate supply across all module balances for the given denom.
+// In production this reads the bank module's supply store; here we sum module accounts.
+func (bk *trackingBankKeeper) GetSupply(_ context.Context, denom string) sdk.Coin {
+	total := sdkmath.ZeroInt()
+	for _, coins := range bk.moduleBalances {
+		total = total.Add(coins.AmountOf(denom))
+	}
+	// Also include account balances
+	for _, coins := range bk.balances {
+		total = total.Add(coins.AmountOf(denom))
+	}
+	return sdk.NewCoin(denom, total)
+}
+
 // ─── Mock Staking Keeper ────────────────────────────────────────────────────
 
 type trackingStakingKeeper struct {

@@ -3,6 +3,10 @@ package keeper
 import (
 	"context"
 	"encoding/binary"
+	"fmt"
+	"math/big"
+
+	sdkmath "cosmossdk.io/math"
 
 	"cosmossdk.io/core/store"
 	"cosmossdk.io/log"
@@ -111,6 +115,46 @@ func (k *Keeper) SetPacingKeeper(pk types.PacingKeeper) {
 func (k Keeper) Logger(ctx context.Context) log.Logger {
 	sdkCtx := sdk.UnwrapSDKContext(ctx)
 	return sdkCtx.Logger().With("module", "x/"+types.ModuleName)
+}
+
+// MintWithCap mints ZRN tokens into the target module account, capped at
+// the global MaxSupplyUzrn covenant (222,222,222 ZRN = 222,222,222,000,000 uzrn).
+//
+// This enforces the same supply cap as x/vesting_rewards.MintWithCap, closing
+// the gap identified in P-18b-b: three knowledge-module mint paths (probe bounty
+// pool, training fund disbursement, contribution challenge reward) previously
+// called bankKeeper.MintCoins directly without checking the global cap.
+//
+// Returns the actual amount minted (may be less than requested when cap is near).
+// Returns (0, nil) — not an error — when the cap is already exhausted.
+// The caller decides whether to proceed with partial funding or return an error.
+func (k Keeper) MintWithCap(ctx context.Context, moduleName string, amount *big.Int) (*big.Int, error) {
+	if k.bankKeeper == nil || amount == nil || amount.Sign() <= 0 {
+		return new(big.Int), nil
+	}
+
+	maxSupply := new(big.Int)
+	maxSupply.SetString(types.MaxSupplyUzrn, 10)
+
+	supply := k.bankKeeper.GetSupply(ctx, "uzrn")
+	currentSupply := supply.Amount.BigInt()
+
+	remaining := new(big.Int).Sub(maxSupply, currentSupply)
+	if remaining.Sign() <= 0 {
+		return new(big.Int), nil // supply cap exhausted — not an error, just no new tokens
+	}
+
+	actual := new(big.Int).Set(amount)
+	if actual.Cmp(remaining) > 0 {
+		actual.Set(remaining) // clamp to available headroom
+	}
+
+	mintCoins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(actual)))
+	if err := k.bankKeeper.MintCoins(ctx, moduleName, mintCoins); err != nil {
+		return nil, fmt.Errorf("mintWithCap: mint to %s failed: %w", moduleName, err)
+	}
+
+	return actual, nil
 }
 
 // IncreaseVerificationThreshold temporarily requires more verifiers for a domain.

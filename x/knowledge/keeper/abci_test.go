@@ -53,6 +53,9 @@ func (bk *mockBankKeeper) GetBalance(_ context.Context, _ sdk.AccAddress, _ stri
 func (bk *mockBankKeeper) MintCoins(_ context.Context, _ string, _ sdk.Coins) error {
 	return nil
 }
+func (bk *mockBankKeeper) GetSupply(_ context.Context, denom string) sdk.Coin {
+	return sdk.NewInt64Coin(denom, 0)
+}
 
 type mockStakingKeeper struct {
 	validators map[string]*types.ValidatorInfo
