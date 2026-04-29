@@ -3243,3 +3243,489 @@ func TestEscalateTimedOutDispute(t *testing.T) {
 		t.Fatal("expected error for escalating timed-out dispute")
 	}
 }
+
+// ---------- P-16a: Defender Bond Tests ----------
+
+// TestDefendDispute_HappyPath verifies that the defender can post a bond during
+// the evidence commit phase, the bond is escrowed from the defender's account,
+// and the dispute records the defender bond.
+func TestDefendDispute_HappyPath(t *testing.T) {
+	k, ctx, bk, _, kk := setupKeeper(t)
+	msgSrv := keeper.NewMsgServerImpl(k)
+
+	challenger := testAddr("challenger")
+	defender := testAddr("defender")
+	bk.setBalance(challenger, "uzrn", 10_000_000)
+	bk.setBalance(defender, "uzrn", 5_000_000)
+	kk.addFact("fact-db-1", defender)
+
+	resp, err := msgSrv.InitiateDispute(ctx, &types.MsgInitiateDispute{
+		Challenger: challenger,
+		TargetType: types.DisputeTargetType_DISPUTE_TARGET_TYPE_FACT,
+		TargetId:   "fact-db-1",
+		Reason:     "P-16a test",
+		Bond:       "2000000",
+	})
+	if err != nil {
+		t.Fatalf("InitiateDispute failed: %v", err)
+	}
+
+	defenderBalanceBefore := bk.balances[defender]["uzrn"]
+	moduleBalanceBefore := bk.moduleBalances[types.ModuleName]["uzrn"]
+
+	_, err = msgSrv.DefendDispute(ctx, &types.MsgDefendDispute{
+		Defender:  defender,
+		DisputeId: resp.DisputeId,
+		Bond:      "2000000",
+	})
+	if err != nil {
+		t.Fatalf("DefendDispute failed: %v", err)
+	}
+
+	// Defender bond escrowed from defender account
+	defenderBalanceAfter := bk.balances[defender]["uzrn"]
+	if defenderBalanceAfter != defenderBalanceBefore-2_000_000 {
+		t.Errorf("expected defender balance to decrease by 2000000: before=%d after=%d", defenderBalanceBefore, defenderBalanceAfter)
+	}
+
+	// Module balance increased
+	moduleBalanceAfter := bk.moduleBalances[types.ModuleName]["uzrn"]
+	if moduleBalanceAfter != moduleBalanceBefore+2_000_000 {
+		t.Errorf("expected module balance to increase by 2000000: before=%d after=%d", moduleBalanceBefore, moduleBalanceAfter)
+	}
+
+	// DefenderBond stored on dispute
+	dispute, found := k.GetDispute(ctx, resp.DisputeId)
+	if !found {
+		t.Fatal("dispute not found after DefendDispute")
+	}
+	if dispute.DefenderBond != "2000000" {
+		t.Errorf("expected DefenderBond=2000000, got %q", dispute.DefenderBond)
+	}
+}
+
+// TestDefendDispute_AlreadyBonded verifies that a defender may only post a bond once.
+func TestDefendDispute_AlreadyBonded(t *testing.T) {
+	k, ctx, bk, _, kk := setupKeeper(t)
+	msgSrv := keeper.NewMsgServerImpl(k)
+
+	challenger := testAddr("challenger")
+	defender := testAddr("defender")
+	bk.setBalance(challenger, "uzrn", 10_000_000)
+	bk.setBalance(defender, "uzrn", 10_000_000)
+	kk.addFact("fact-db-1", defender)
+
+	resp, _ := msgSrv.InitiateDispute(ctx, &types.MsgInitiateDispute{
+		Challenger: challenger,
+		TargetType: types.DisputeTargetType_DISPUTE_TARGET_TYPE_FACT,
+		TargetId:   "fact-db-1",
+		Reason:     "P-16a test",
+		Bond:       "2000000",
+	})
+
+	// First bond succeeds
+	_, err := msgSrv.DefendDispute(ctx, &types.MsgDefendDispute{
+		Defender:  defender,
+		DisputeId: resp.DisputeId,
+		Bond:      "2000000",
+	})
+	if err != nil {
+		t.Fatalf("first DefendDispute failed: %v", err)
+	}
+
+	// Second bond rejected
+	_, err = msgSrv.DefendDispute(ctx, &types.MsgDefendDispute{
+		Defender:  defender,
+		DisputeId: resp.DisputeId,
+		Bond:      "1000000",
+	})
+	if err == nil {
+		t.Fatal("expected ErrDefenderAlreadyBonded on second DefendDispute")
+	}
+}
+
+// TestDefendDispute_WrongParty verifies that only the registered defender may post the bond.
+func TestDefendDispute_WrongParty(t *testing.T) {
+	k, ctx, bk, _, kk := setupKeeper(t)
+	msgSrv := keeper.NewMsgServerImpl(k)
+
+	challenger := testAddr("challenger")
+	defender := testAddr("defender")
+	outsider := testAddr("outsider")
+	bk.setBalance(challenger, "uzrn", 10_000_000)
+	bk.setBalance(outsider, "uzrn", 5_000_000)
+	kk.addFact("fact-db-1", defender)
+
+	resp, _ := msgSrv.InitiateDispute(ctx, &types.MsgInitiateDispute{
+		Challenger: challenger,
+		TargetType: types.DisputeTargetType_DISPUTE_TARGET_TYPE_FACT,
+		TargetId:   "fact-db-1",
+		Reason:     "P-16a test",
+		Bond:       "2000000",
+	})
+
+	_, err := msgSrv.DefendDispute(ctx, &types.MsgDefendDispute{
+		Defender:  outsider, // not the dispute's defender
+		DisputeId: resp.DisputeId,
+		Bond:      "2000000",
+	})
+	if err == nil {
+		t.Fatal("expected ErrNotParty when non-defender tries to post defender bond")
+	}
+}
+
+// TestDefendDispute_WrongPhase verifies that DefendDispute is rejected outside EVIDENCE_COMMIT.
+func TestDefendDispute_WrongPhase(t *testing.T) {
+	k, ctx, bk, _, kk := setupKeeper(t)
+	msgSrv := keeper.NewMsgServerImpl(k)
+
+	challenger := testAddr("challenger")
+	defender := testAddr("defender")
+	bk.setBalance(challenger, "uzrn", 10_000_000)
+	bk.setBalance(defender, "uzrn", 5_000_000)
+	kk.addFact("fact-db-1", defender)
+
+	resp, _ := msgSrv.InitiateDispute(ctx, &types.MsgInitiateDispute{
+		Challenger: challenger,
+		TargetType: types.DisputeTargetType_DISPUTE_TARGET_TYPE_FACT,
+		TargetId:   "fact-db-1",
+		Reason:     "P-16a test",
+		Bond:       "2000000",
+	})
+
+	// Advance to arbitration phase
+	dispute, _ := k.GetDispute(ctx, resp.DisputeId)
+	dispute.Phase = types.DisputePhase_DISPUTE_PHASE_ARBITRATION
+	k.SetDispute(ctx, dispute)
+
+	_, err := msgSrv.DefendDispute(ctx, &types.MsgDefendDispute{
+		Defender:  defender,
+		DisputeId: resp.DisputeId,
+		Bond:      "2000000",
+	})
+	if err == nil {
+		t.Fatal("expected ErrWrongPhase when bonding in ARBITRATION phase")
+	}
+}
+
+// TestDefendDispute_DeadlinePassed verifies that DefendDispute is rejected after the evidence deadline.
+func TestDefendDispute_DeadlinePassed(t *testing.T) {
+	k, ctx, bk, _, kk := setupKeeper(t)
+	msgSrv := keeper.NewMsgServerImpl(k)
+
+	challenger := testAddr("challenger")
+	defender := testAddr("defender")
+	bk.setBalance(challenger, "uzrn", 10_000_000)
+	bk.setBalance(defender, "uzrn", 5_000_000)
+	kk.addFact("fact-db-1", defender)
+
+	resp, _ := msgSrv.InitiateDispute(ctx, &types.MsgInitiateDispute{
+		Challenger: challenger,
+		TargetType: types.DisputeTargetType_DISPUTE_TARGET_TYPE_FACT,
+		TargetId:   "fact-db-1",
+		Reason:     "P-16a test",
+		Bond:       "2000000",
+	})
+
+	// Set evidence deadline to the past (block 50, ctx height is 100)
+	dispute, _ := k.GetDispute(ctx, resp.DisputeId)
+	dispute.EvidenceDeadline = 50
+	k.SetDispute(ctx, dispute)
+
+	_, err := msgSrv.DefendDispute(ctx, &types.MsgDefendDispute{
+		Defender:  defender,
+		DisputeId: resp.DisputeId,
+		Bond:      "2000000",
+	})
+	if err == nil {
+		t.Fatal("expected ErrDefenderBondDeadline when bonding after evidence deadline")
+	}
+}
+
+// TestTwoBondSettlement_ChallengerWins verifies two-bond settlement when challenger wins:
+// defender's bond is slashed, challenger's bond is returned plus winner reward.
+//
+// Math (bond=2_000_000 each, SlashRate=50%, WinnerReward=40% of slash, Arbiter=10% of slash):
+//
+//	loserBond(defender)  = 2_000_000
+//	slashAmt             = 1_000_000 (50%)
+//	winnerReward         =   400_000 (40% of slash)
+//	arbiterReward        =   100_000 (10% of slash)
+//	burnAmt→dev_fund     =   500_000
+//	loserRefund→defender = 1_000_000 (unslashed)
+//	winnerTotal→challgr  = 2_400_000 (own bond + reward)
+func TestTwoBondSettlement_ChallengerWins(t *testing.T) {
+	k, ctx, bk, _, kk := setupKeeper(t)
+	msgSrv := keeper.NewMsgServerImpl(k)
+
+	challenger := testAddr("challenger")
+	defender := testAddr("defender")
+	bk.setBalance(challenger, "uzrn", 10_000_000)
+	bk.setBalance(defender, "uzrn", 5_000_000)
+	kk.addFact("fact-db-1", defender)
+
+	resp, _ := msgSrv.InitiateDispute(ctx, &types.MsgInitiateDispute{
+		Challenger: challenger,
+		TargetType: types.DisputeTargetType_DISPUTE_TARGET_TYPE_FACT,
+		TargetId:   "fact-db-1",
+		Reason:     "P-16a test",
+		Bond:       "2000000",
+	})
+
+	_, err := msgSrv.DefendDispute(ctx, &types.MsgDefendDispute{
+		Defender:  defender,
+		DisputeId: resp.DisputeId,
+		Bond:      "2000000",
+	})
+	if err != nil {
+		t.Fatalf("DefendDispute failed: %v", err)
+	}
+
+	// Advance to arbitration
+	dispute, _ := k.GetDispute(ctx, resp.DisputeId)
+	dispute.Phase = types.DisputePhase_DISPUTE_PHASE_ARBITRATION
+	dispute.VotingDeadline = 2000
+	k.SetDispute(ctx, dispute)
+
+	// All arbiters vote challenger
+	for _, arb := range dispute.Arbiters {
+		_, _ = msgSrv.ArbiterVote(ctx, &types.MsgArbiterVote{
+			Arbiter: arb, DisputeId: resp.DisputeId,
+			Vote: types.ArbiterDecision_ARBITER_DECISION_CHALLENGER, Reasoning: "challenger right",
+		})
+	}
+
+	challengerPreSettle := bk.balances[challenger]["uzrn"]
+	defenderPreSettle := bk.balances[defender]["uzrn"]
+
+	_, err = msgSrv.SettleDispute(ctx, &types.MsgSettleDispute{
+		Authority: "zrn1authority",
+		DisputeId: resp.DisputeId,
+	})
+	if err != nil {
+		t.Fatalf("SettleDispute failed: %v", err)
+	}
+
+	challengerPostSettle := bk.balances[challenger]["uzrn"]
+	defenderPostSettle := bk.balances[defender]["uzrn"]
+
+	// Challenger should receive: own bond (2M) + winner reward (400K) = 2.4M
+	const expectedChallengerGain = int64(2_400_000)
+	if challengerPostSettle-challengerPreSettle != expectedChallengerGain {
+		t.Errorf("challenger gain: want=%d got=%d", expectedChallengerGain, challengerPostSettle-challengerPreSettle)
+	}
+
+	// Defender (loser) should receive: unslashed portion = 2M - 1M = 1M
+	const expectedDefenderGain = int64(1_000_000)
+	if defenderPostSettle-defenderPreSettle != expectedDefenderGain {
+		t.Errorf("defender gain: want=%d got=%d", expectedDefenderGain, defenderPostSettle-defenderPreSettle)
+	}
+}
+
+// TestTwoBondSettlement_DefenderWins verifies two-bond settlement when defender wins:
+// challenger's bond is slashed, defender's bond is returned plus winner reward.
+func TestTwoBondSettlement_DefenderWins(t *testing.T) {
+	k, ctx, bk, _, kk := setupKeeper(t)
+	msgSrv := keeper.NewMsgServerImpl(k)
+
+	challenger := testAddr("challenger")
+	defender := testAddr("defender")
+	bk.setBalance(challenger, "uzrn", 10_000_000)
+	bk.setBalance(defender, "uzrn", 5_000_000)
+	kk.addFact("fact-db-1", defender)
+
+	resp, _ := msgSrv.InitiateDispute(ctx, &types.MsgInitiateDispute{
+		Challenger: challenger,
+		TargetType: types.DisputeTargetType_DISPUTE_TARGET_TYPE_FACT,
+		TargetId:   "fact-db-1",
+		Reason:     "P-16a test",
+		Bond:       "2000000",
+	})
+
+	_, err := msgSrv.DefendDispute(ctx, &types.MsgDefendDispute{
+		Defender:  defender,
+		DisputeId: resp.DisputeId,
+		Bond:      "2000000",
+	})
+	if err != nil {
+		t.Fatalf("DefendDispute failed: %v", err)
+	}
+
+	// Advance to arbitration
+	dispute, _ := k.GetDispute(ctx, resp.DisputeId)
+	dispute.Phase = types.DisputePhase_DISPUTE_PHASE_ARBITRATION
+	dispute.VotingDeadline = 2000
+	k.SetDispute(ctx, dispute)
+
+	// All arbiters vote defender
+	for _, arb := range dispute.Arbiters {
+		_, _ = msgSrv.ArbiterVote(ctx, &types.MsgArbiterVote{
+			Arbiter: arb, DisputeId: resp.DisputeId,
+			Vote: types.ArbiterDecision_ARBITER_DECISION_DEFENDER, Reasoning: "defender right",
+		})
+	}
+
+	challengerPreSettle := bk.balances[challenger]["uzrn"]
+	defenderPreSettle := bk.balances[defender]["uzrn"]
+
+	_, err = msgSrv.SettleDispute(ctx, &types.MsgSettleDispute{
+		Authority: "zrn1authority",
+		DisputeId: resp.DisputeId,
+	})
+	if err != nil {
+		t.Fatalf("SettleDispute failed: %v", err)
+	}
+
+	challengerPostSettle := bk.balances[challenger]["uzrn"]
+	defenderPostSettle := bk.balances[defender]["uzrn"]
+
+	// Challenger (loser): gets back unslashed portion = 2M - 1M = 1M
+	const expectedChallengerGain = int64(1_000_000)
+	if challengerPostSettle-challengerPreSettle != expectedChallengerGain {
+		t.Errorf("challenger gain: want=%d got=%d", expectedChallengerGain, challengerPostSettle-challengerPreSettle)
+	}
+
+	// Defender (winner): gets own bond (2M) + winner reward (400K) = 2.4M
+	const expectedDefenderGain = int64(2_400_000)
+	if defenderPostSettle-defenderPreSettle != expectedDefenderGain {
+		t.Errorf("defender gain: want=%d got=%d", expectedDefenderGain, defenderPostSettle-defenderPreSettle)
+	}
+}
+
+// TestTwoBondSettlement_Draw verifies two-bond draw: both parties pay an arbiter fee
+// and receive their bond back minus that fee.
+//
+// Math (bond=2_000_000 each, ArbiterRewardBps=10%):
+//
+//	arbiterFeeChallenger = 200_000
+//	arbiterFeeDefender   = 200_000
+//	challengerRefund     = 1_800_000
+//	defenderRefund       = 1_800_000
+func TestTwoBondSettlement_Draw(t *testing.T) {
+	k, ctx, bk, _, kk := setupKeeper(t)
+	msgSrv := keeper.NewMsgServerImpl(k)
+
+	challenger := testAddr("challenger")
+	defender := testAddr("defender")
+	bk.setBalance(challenger, "uzrn", 10_000_000)
+	bk.setBalance(defender, "uzrn", 5_000_000)
+	kk.addFact("fact-db-1", defender)
+
+	resp, _ := msgSrv.InitiateDispute(ctx, &types.MsgInitiateDispute{
+		Challenger: challenger,
+		TargetType: types.DisputeTargetType_DISPUTE_TARGET_TYPE_FACT,
+		TargetId:   "fact-db-1",
+		Reason:     "P-16a test",
+		Bond:       "2000000",
+	})
+
+	_, err := msgSrv.DefendDispute(ctx, &types.MsgDefendDispute{
+		Defender:  defender,
+		DisputeId: resp.DisputeId,
+		Bond:      "2000000",
+	})
+	if err != nil {
+		t.Fatalf("DefendDispute failed: %v", err)
+	}
+
+	// Advance to arbitration
+	dispute, _ := k.GetDispute(ctx, resp.DisputeId)
+	dispute.Phase = types.DisputePhase_DISPUTE_PHASE_ARBITRATION
+	dispute.VotingDeadline = 2000
+	k.SetDispute(ctx, dispute)
+
+	// Split votes: 1 challenger, 1 defender, 1 abstain → draw
+	_, _ = msgSrv.ArbiterVote(ctx, &types.MsgArbiterVote{
+		Arbiter: dispute.Arbiters[0], DisputeId: resp.DisputeId,
+		Vote: types.ArbiterDecision_ARBITER_DECISION_CHALLENGER, Reasoning: "challenger",
+	})
+	_, _ = msgSrv.ArbiterVote(ctx, &types.MsgArbiterVote{
+		Arbiter: dispute.Arbiters[1], DisputeId: resp.DisputeId,
+		Vote: types.ArbiterDecision_ARBITER_DECISION_DEFENDER, Reasoning: "defender",
+	})
+	_, _ = msgSrv.ArbiterVote(ctx, &types.MsgArbiterVote{
+		Arbiter: dispute.Arbiters[2], DisputeId: resp.DisputeId,
+		Vote: types.ArbiterDecision_ARBITER_DECISION_ABSTAIN, Reasoning: "abstain",
+	})
+
+	challengerPreSettle := bk.balances[challenger]["uzrn"]
+	defenderPreSettle := bk.balances[defender]["uzrn"]
+
+	_, err = msgSrv.SettleDispute(ctx, &types.MsgSettleDispute{
+		Authority: "zrn1authority",
+		DisputeId: resp.DisputeId,
+	})
+	if err != nil {
+		t.Fatalf("SettleDispute (draw) failed: %v", err)
+	}
+
+	challengerPostSettle := bk.balances[challenger]["uzrn"]
+	defenderPostSettle := bk.balances[defender]["uzrn"]
+
+	// Both get back bond minus 10% arbiter fee
+	const expectedChallengerRefund = int64(1_800_000)
+	const expectedDefenderRefund = int64(1_800_000)
+	if challengerPostSettle-challengerPreSettle != expectedChallengerRefund {
+		t.Errorf("challenger draw refund: want=%d got=%d", expectedChallengerRefund, challengerPostSettle-challengerPreSettle)
+	}
+	if defenderPostSettle-defenderPreSettle != expectedDefenderRefund {
+		t.Errorf("defender draw refund: want=%d got=%d", expectedDefenderRefund, defenderPostSettle-defenderPreSettle)
+	}
+}
+
+// TestTwoBondSettlement_Timeout verifies that both bonds are returned in full on timeout.
+func TestTwoBondSettlement_Timeout(t *testing.T) {
+	k, ctx, bk, _, kk := setupKeeper(t)
+	msgSrv := keeper.NewMsgServerImpl(k)
+
+	challenger := testAddr("challenger")
+	defender := testAddr("defender")
+	bk.setBalance(challenger, "uzrn", 10_000_000)
+	bk.setBalance(defender, "uzrn", 5_000_000)
+	kk.addFact("fact-db-1", defender)
+
+	resp, _ := msgSrv.InitiateDispute(ctx, &types.MsgInitiateDispute{
+		Challenger: challenger,
+		TargetType: types.DisputeTargetType_DISPUTE_TARGET_TYPE_FACT,
+		TargetId:   "fact-db-1",
+		Reason:     "P-16a test",
+		Bond:       "2000000",
+	})
+
+	_, err := msgSrv.DefendDispute(ctx, &types.MsgDefendDispute{
+		Defender:  defender,
+		DisputeId: resp.DisputeId,
+		Bond:      "2000000",
+	})
+	if err != nil {
+		t.Fatalf("DefendDispute failed: %v", err)
+	}
+
+	// Advance to arbitration; no votes cast → timeout
+	dispute, _ := k.GetDispute(ctx, resp.DisputeId)
+	dispute.Phase = types.DisputePhase_DISPUTE_PHASE_ARBITRATION
+	dispute.VotingDeadline = 2000
+	k.SetDispute(ctx, dispute)
+
+	challengerPreSettle := bk.balances[challenger]["uzrn"]
+	defenderPreSettle := bk.balances[defender]["uzrn"]
+
+	_, err = msgSrv.SettleDispute(ctx, &types.MsgSettleDispute{
+		Authority: "zrn1authority",
+		DisputeId: resp.DisputeId,
+	})
+	if err != nil {
+		t.Fatalf("SettleDispute (timeout) failed: %v", err)
+	}
+
+	challengerPostSettle := bk.balances[challenger]["uzrn"]
+	defenderPostSettle := bk.balances[defender]["uzrn"]
+
+	// Both get full bonds back on timeout
+	if challengerPostSettle-challengerPreSettle != int64(2_000_000) {
+		t.Errorf("challenger timeout refund: want=2000000 got=%d", challengerPostSettle-challengerPreSettle)
+	}
+	if defenderPostSettle-defenderPreSettle != int64(2_000_000) {
+		t.Errorf("defender timeout refund: want=2000000 got=%d", defenderPostSettle-defenderPreSettle)
+	}
+}

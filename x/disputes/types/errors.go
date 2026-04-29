@@ -23,5 +23,7 @@ var (
 	ErrEscalationTooEarly   = errors.Register(ModuleName, 19, "escalation delay not elapsed")
 	ErrNoQuorum             = errors.Register(ModuleName, 20, "quorum not reached")
 	ErrUnauthorized         = errors.Register(ModuleName, 21, "unauthorized")
-	ErrInsufficientArbiters = errors.Register(ModuleName, 22, "insufficient qualified arbiters")
+	ErrInsufficientArbiters  = errors.Register(ModuleName, 22, "insufficient qualified arbiters")
+	ErrDefenderAlreadyBonded = errors.Register(ModuleName, 23, "defender has already posted a bond")
+	ErrDefenderBondDeadline  = errors.Register(ModuleName, 24, "defender bond deadline has passed")
 )

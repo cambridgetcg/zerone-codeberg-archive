@@ -502,24 +502,50 @@ func (k Keeper) TallyVotes(ctx context.Context, dispute *types.Dispute) types.Di
 }
 
 // DistributeSettlement distributes bonds based on dispute outcome.
+// When the defender has posted a bond (DefenderBond != ""), two-bond math applies:
+// the loser's bond is slashed and the winner's bond is returned whole.
+// When only the challenger has bonded, single-bond math applies (backward compatible).
 func (k Keeper) DistributeSettlement(ctx context.Context, dispute *types.Dispute) error {
 	params := k.GetParams(ctx)
 
-	bond := new(big.Int)
-	bond.SetString(dispute.Bond, 10)
-	if bond.Sign() <= 0 {
+	challengerBond := new(big.Int)
+	if _, ok := challengerBond.SetString(dispute.Bond, 10); !ok {
+		challengerBond.SetInt64(0)
+	}
+	if challengerBond.Sign() <= 0 {
 		return nil // no bond to distribute
+	}
+
+	// Determine if defender also posted a bond
+	defenderBond := new(big.Int)
+	hasTwoBonds := false
+	if dispute.DefenderBond != "" && dispute.DefenderBond != "0" {
+		if _, ok := defenderBond.SetString(dispute.DefenderBond, 10); ok && defenderBond.Sign() > 0 {
+			hasTwoBonds = true
+		}
 	}
 
 	switch dispute.Outcome {
 	case types.DisputeOutcome_DISPUTE_OUTCOME_CHALLENGER_WINS:
-		return k.distributeWin(ctx, dispute, params, dispute.Challenger, bond)
+		if hasTwoBonds {
+			return k.distributeWinTwoBonds(ctx, dispute, params, dispute.Challenger, challengerBond, defenderBond)
+		}
+		return k.distributeWin(ctx, dispute, params, dispute.Challenger, challengerBond)
 	case types.DisputeOutcome_DISPUTE_OUTCOME_DEFENDER_WINS:
-		return k.distributeWin(ctx, dispute, params, dispute.Defender, bond)
+		if hasTwoBonds {
+			return k.distributeWinTwoBonds(ctx, dispute, params, dispute.Defender, challengerBond, defenderBond)
+		}
+		return k.distributeWin(ctx, dispute, params, dispute.Defender, challengerBond)
 	case types.DisputeOutcome_DISPUTE_OUTCOME_DRAW:
-		return k.distributeDraw(ctx, dispute, params, bond)
+		if hasTwoBonds {
+			return k.distributeDrawTwoBonds(ctx, dispute, params, challengerBond, defenderBond)
+		}
+		return k.distributeDraw(ctx, dispute, params, challengerBond)
 	case types.DisputeOutcome_DISPUTE_OUTCOME_TIMED_OUT:
-		return k.distributeTimeout(ctx, dispute, bond)
+		if hasTwoBonds {
+			return k.distributeTimeoutTwoBonds(ctx, dispute, challengerBond, defenderBond)
+		}
+		return k.distributeTimeout(ctx, dispute, challengerBond)
 	}
 	return nil
 }
@@ -659,6 +685,197 @@ func (k Keeper) distributeTimeout(ctx context.Context, dispute *types.Dispute, b
 	}
 	coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(bond)))
 	return k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, challengerAddr, coins)
+}
+
+// ---------- Two-Bond Settlement (P-16a: Defender Bond) ----------
+
+// distributeWinTwoBonds handles settlement when both parties have posted bonds.
+// The loser's bond is slashed; the winner's bond is returned whole plus the winner reward.
+// Fund conservation: challengerBond + defenderBond flows out in full.
+func (k Keeper) distributeWinTwoBonds(ctx context.Context, dispute *types.Dispute, params *types.Params, winner string, challengerBond, defenderBond *big.Int) error {
+	scale := new(big.Int).SetUint64(1000000)
+
+	// Identify loser and winner
+	var loserBond, winnerBond *big.Int
+	var loserAddr, winnerAddr string
+	if winner == dispute.Challenger {
+		loserBond = new(big.Int).Set(defenderBond)
+		loserAddr = dispute.Defender
+		winnerBond = new(big.Int).Set(challengerBond)
+		winnerAddr = dispute.Challenger
+	} else {
+		loserBond = new(big.Int).Set(challengerBond)
+		loserAddr = dispute.Challenger
+		winnerBond = new(big.Int).Set(defenderBond)
+		winnerAddr = dispute.Defender
+	}
+
+	// Slash loser's bond
+	slashAmt := new(big.Int).Mul(loserBond, new(big.Int).SetUint64(params.SlashRateLoserBps))
+	slashAmt.Div(slashAmt, scale)
+
+	// Winner reward from loser's slash pool
+	winnerReward := new(big.Int).Mul(slashAmt, new(big.Int).SetUint64(params.RewardRateWinnerBps))
+	winnerReward.Div(winnerReward, scale)
+
+	// Arbiter reward from loser's slash pool
+	arbiterReward := new(big.Int).Mul(slashAmt, new(big.Int).SetUint64(params.ArbiterRewardBps))
+	arbiterReward.Div(arbiterReward, scale)
+
+	// Burn loser's slash remainder
+	burnAmt := new(big.Int).Sub(slashAmt, winnerReward)
+	burnAmt.Sub(burnAmt, arbiterReward)
+
+	// Loser gets back unslashed portion
+	loserRefund := new(big.Int).Sub(loserBond, slashAmt)
+
+	// Return winner's full bond + their reward
+	wAddr, err := sdk.AccAddressFromBech32(winnerAddr)
+	if err != nil {
+		return err
+	}
+	winnerTotal := new(big.Int).Add(winnerBond, winnerReward)
+	if winnerTotal.Sign() > 0 {
+		coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(winnerTotal)))
+		if err := k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, wAddr, coins); err != nil {
+			return err
+		}
+	}
+
+	// Return loser's unslashed portion
+	if loserRefund.Sign() > 0 {
+		lAddr, err := sdk.AccAddressFromBech32(loserAddr)
+		if err != nil {
+			return err
+		}
+		coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(loserRefund)))
+		if err := k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, lAddr, coins); err != nil {
+			return err
+		}
+	}
+
+	// Distribute arbiter rewards to correct voters
+	if arbiterReward.Sign() > 0 && len(dispute.Arbiters) > 0 {
+		votes := k.GetVotesByDispute(ctx, dispute.Id)
+		var correctVoters []string
+		for _, v := range votes {
+			if (dispute.Outcome == types.DisputeOutcome_DISPUTE_OUTCOME_CHALLENGER_WINS && v.Vote == types.ArbiterDecision_ARBITER_DECISION_CHALLENGER) ||
+				(dispute.Outcome == types.DisputeOutcome_DISPUTE_OUTCOME_DEFENDER_WINS && v.Vote == types.ArbiterDecision_ARBITER_DECISION_DEFENDER) {
+				correctVoters = append(correctVoters, v.Arbiter)
+			}
+		}
+		if len(correctVoters) > 0 {
+			perArbiter := new(big.Int).Div(arbiterReward, big.NewInt(int64(len(correctVoters))))
+			for _, arb := range correctVoters {
+				arbAddr, err := sdk.AccAddressFromBech32(arb)
+				if err != nil {
+					continue
+				}
+				coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(perArbiter)))
+				if err := k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, arbAddr, coins); err != nil {
+					k.Logger(ctx).Error("failed to distribute arbiter reward (two-bond)", "arbiter", arb, "error", err)
+				}
+			}
+		}
+	}
+
+	// Route loser's slash remainder to development fund (same as single-bond path;
+	// P-18b-a will migrate all paths to BurnCoins once merged).
+	if burnAmt.Sign() > 0 {
+		coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(burnAmt)))
+		if err := k.bankKeeper.SendCoinsFromModuleToModule(ctx, types.ModuleName, "development_fund", coins); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// distributeDrawTwoBonds handles draw when both parties have posted bonds.
+// Each party pays an equal arbiter fee; the remainder is returned to each.
+func (k Keeper) distributeDrawTwoBonds(ctx context.Context, dispute *types.Dispute, params *types.Params, challengerBond, defenderBond *big.Int) error {
+	scale := new(big.Int).SetUint64(1000000)
+
+	// Arbiter fee taken from each party's bond proportionally (same rate)
+	arbiterFeeChallenger := new(big.Int).Mul(challengerBond, new(big.Int).SetUint64(params.ArbiterRewardBps))
+	arbiterFeeChallenger.Div(arbiterFeeChallenger, scale)
+
+	arbiterFeeDefender := new(big.Int).Mul(defenderBond, new(big.Int).SetUint64(params.ArbiterRewardBps))
+	arbiterFeeDefender.Div(arbiterFeeDefender, scale)
+
+	// Return challenger net
+	challengerRefund := new(big.Int).Sub(challengerBond, arbiterFeeChallenger)
+	if challengerRefund.Sign() > 0 {
+		cAddr, err := sdk.AccAddressFromBech32(dispute.Challenger)
+		if err != nil {
+			return err
+		}
+		coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(challengerRefund)))
+		if err := k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, cAddr, coins); err != nil {
+			return err
+		}
+	}
+
+	// Return defender net
+	defenderRefund := new(big.Int).Sub(defenderBond, arbiterFeeDefender)
+	if defenderRefund.Sign() > 0 {
+		dAddr, err := sdk.AccAddressFromBech32(dispute.Defender)
+		if err != nil {
+			return err
+		}
+		coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(defenderRefund)))
+		if err := k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, dAddr, coins); err != nil {
+			return err
+		}
+	}
+
+	// Distribute combined arbiter fee to all voters equally
+	totalArbiterFee := new(big.Int).Add(arbiterFeeChallenger, arbiterFeeDefender)
+	if totalArbiterFee.Sign() > 0 {
+		votes := k.GetVotesByDispute(ctx, dispute.Id)
+		if len(votes) > 0 {
+			perArbiter := new(big.Int).Div(totalArbiterFee, big.NewInt(int64(len(votes))))
+			for _, v := range votes {
+				arbAddr, err := sdk.AccAddressFromBech32(v.Arbiter)
+				if err != nil {
+					continue
+				}
+				coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(perArbiter)))
+				_ = k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, arbAddr, coins)
+			}
+		}
+	}
+
+	return nil
+}
+
+// distributeTimeoutTwoBonds returns both bonds in full on timeout.
+func (k Keeper) distributeTimeoutTwoBonds(ctx context.Context, dispute *types.Dispute, challengerBond, defenderBond *big.Int) error {
+	// Return challenger bond
+	if challengerBond.Sign() > 0 {
+		cAddr, err := sdk.AccAddressFromBech32(dispute.Challenger)
+		if err != nil {
+			return err
+		}
+		coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(challengerBond)))
+		if err := k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, cAddr, coins); err != nil {
+			return err
+		}
+	}
+
+	// Return defender bond
+	if defenderBond.Sign() > 0 {
+		dAddr, err := sdk.AccAddressFromBech32(dispute.Defender)
+		if err != nil {
+			return err
+		}
+		coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(defenderBond)))
+		if err := k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, dAddr, coins); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // ---------- BeginBlocker Logic ----------

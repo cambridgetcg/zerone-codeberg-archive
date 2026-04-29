@@ -15,6 +15,7 @@ service Msg {
   rpc ArbiterVote(MsgArbiterVote) returns (MsgArbiterVoteResponse);
   rpc EscalateDispute(MsgEscalateDispute) returns (MsgEscalateDisputeResponse);
   rpc SettleDispute(MsgSettleDispute) returns (MsgSettleDisputeResponse);
+  rpc DefendDispute(MsgDefendDispute) returns (MsgDefendDisputeResponse);
   rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
 }
 
@@ -68,6 +69,14 @@ message MsgSettleDispute {
   string dispute_id = 2;
 }
 message MsgSettleDisputeResponse { DisputeOutcome outcome = 1; }
+
+message MsgDefendDispute {
+  option (cosmos.msg.v1.signer) = "defender";
+  string defender = 1;
+  string dispute_id = 2;
+  string bond = 3;
+}
+message MsgDefendDisputeResponse {}
 
 message MsgUpdateParams {
   option (cosmos.msg.v1.signer) = "authority";

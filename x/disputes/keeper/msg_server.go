@@ -435,6 +435,70 @@ func (m msgServer) SettleDispute(goCtx context.Context, msg *types.MsgSettleDisp
 	return &types.MsgSettleDisputeResponse{Outcome: outcome}, nil
 }
 
+// DefendDispute allows the defender to post a bond during the evidence commit phase,
+// establishing symmetric skin-in-the-game with the challenger.
+func (m msgServer) DefendDispute(goCtx context.Context, msg *types.MsgDefendDispute) (*types.MsgDefendDisputeResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+
+	dispute, found := m.GetDispute(ctx, msg.DisputeId)
+	if !found {
+		return nil, fmt.Errorf("%w: %s", types.ErrDisputeNotFound, msg.DisputeId)
+	}
+
+	// Only the registered defender may post the defender bond
+	if msg.Defender != dispute.Defender {
+		return nil, fmt.Errorf("%w: expected %s, got %s", types.ErrNotParty, dispute.Defender, msg.Defender)
+	}
+
+	// Defender may bond only during the evidence commit phase
+	if dispute.Phase != types.DisputePhase_DISPUTE_PHASE_EVIDENCE_COMMIT {
+		return nil, fmt.Errorf("%w: expected EVIDENCE_COMMIT, got %s", types.ErrWrongPhase, dispute.Phase.String())
+	}
+
+	// Must bond before the evidence deadline
+	currentBlock := uint64(ctx.BlockHeight())
+	if currentBlock > dispute.EvidenceDeadline {
+		return nil, fmt.Errorf("%w: evidence deadline was block %d, current block is %d", types.ErrDefenderBondDeadline, dispute.EvidenceDeadline, currentBlock)
+	}
+
+	// Idempotency guard — defender may only bond once
+	if dispute.DefenderBond != "" && dispute.DefenderBond != "0" {
+		return nil, types.ErrDefenderAlreadyBonded
+	}
+
+	// Validate bond amount
+	bond := new(big.Int)
+	if _, ok := bond.SetString(msg.Bond, 10); !ok || bond.Sign() <= 0 {
+		return nil, fmt.Errorf("%w: %s", types.ErrInvalidBond, msg.Bond)
+	}
+
+	defenderAddr, err := sdk.AccAddressFromBech32(msg.Defender)
+	if err != nil {
+		return nil, fmt.Errorf("invalid defender address: %w", err)
+	}
+
+	// Escrow bond from defender
+	coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(bond)))
+	if err := m.bankKeeper.SendCoinsFromAccountToModule(ctx, defenderAddr, types.ModuleName, coins); err != nil {
+		return nil, fmt.Errorf("failed to escrow defender bond: %w", err)
+	}
+
+	// Record the bond
+	dispute.DefenderBond = msg.Bond
+	m.SetDispute(ctx, dispute)
+
+	ctx.EventManager().EmitEvent(
+		sdk.NewEvent(
+			"zerone.disputes.defender_bonded",
+			sdk.NewAttribute("dispute_id", msg.DisputeId),
+			sdk.NewAttribute("defender", msg.Defender),
+			sdk.NewAttribute("bond", msg.Bond),
+		),
+	)
+
+	return &types.MsgDefendDisputeResponse{}, nil
+}
+
 // UpdateParams handles MsgUpdateParams — governance-gated parameter update.
 func (m msgServer) UpdateParams(goCtx context.Context, msg *types.MsgUpdateParams) (*types.MsgUpdateParamsResponse, error) {
 	if m.GetAuthority() != msg.Authority {
