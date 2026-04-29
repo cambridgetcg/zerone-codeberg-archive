@@ -357,6 +357,44 @@ func (k Keeper) SetParams(ctx context.Context, params *types.Params) {
 	}
 }
 
+// --- Circuit Breaker State ---
+
+// GetCircuitSlashCount returns the number of slashes recorded in the current window.
+func (k Keeper) GetCircuitSlashCount(ctx context.Context) uint64 {
+	store := k.storeService.OpenKVStore(ctx)
+	bz, err := store.Get(types.CircuitSlashCountKey)
+	if err != nil || bz == nil {
+		return 0
+	}
+	return binary.BigEndian.Uint64(bz)
+}
+
+// SetCircuitSlashCount stores the slash count for the current window.
+func (k Keeper) SetCircuitSlashCount(ctx context.Context, count uint64) {
+	store := k.storeService.OpenKVStore(ctx)
+	bz := make([]byte, 8)
+	binary.BigEndian.PutUint64(bz, count)
+	_ = store.Set(types.CircuitSlashCountKey, bz)
+}
+
+// GetCircuitSlashWindowStart returns the block height at which the current window started.
+func (k Keeper) GetCircuitSlashWindowStart(ctx context.Context) uint64 {
+	store := k.storeService.OpenKVStore(ctx)
+	bz, err := store.Get(types.CircuitSlashWindowStartKey)
+	if err != nil || bz == nil {
+		return 0
+	}
+	return binary.BigEndian.Uint64(bz)
+}
+
+// SetCircuitSlashWindowStart stores the window start block.
+func (k Keeper) SetCircuitSlashWindowStart(ctx context.Context, block uint64) {
+	store := k.storeService.OpenKVStore(ctx)
+	bz := make([]byte, 8)
+	binary.BigEndian.PutUint64(bz, block)
+	_ = store.Set(types.CircuitSlashWindowStartKey, bz)
+}
+
 // sdkContext is a helper to get sdk.Context from context.Context for event emission.
 func sdkContext(ctx context.Context) sdk.Context {
 	return sdk.UnwrapSDKContext(ctx)

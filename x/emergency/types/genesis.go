@@ -63,6 +63,15 @@ func DefaultParams() Params {
 		CouncilExpiryBlock:             0,
 		CouncilVirtualStake:            "11111000000", // 11,111 ZRN
 		MaxHaltDurationBlocks:          34272,         // ~1 day auto-resume — halts cannot DoS forever
+
+		// Circuit breakers are disabled by default — governance must explicitly
+		// enable them once the chain has enough validator diversity to make the
+		// threshold meaningful. Default thresholds are conservative: 10 slashes
+		// in a 100-block window (~4 minutes at 2521ms). This is a coordinated
+		// attack posture, not normal validator misbehaviour.
+		CircuitBreakersEnabled:         false,
+		CircuitSlashRateWindowBlocks:   100,  // ~4 minutes: tight enough to catch coordinated attacks
+		CircuitSlashRateThreshold:      10,   // 10 slashes in 4 minutes = something is very wrong
 	}
 }
 
@@ -108,6 +117,15 @@ func (p *Params) Validate() error {
 	}
 	if p.MaxHaltDurationBlocks == 0 {
 		return fmt.Errorf("max_halt_duration_blocks must be > 0")
+	}
+	// Circuit breaker validation: if enabled, both threshold params must be set.
+	if p.CircuitBreakersEnabled {
+		if p.CircuitSlashRateWindowBlocks == 0 {
+			return fmt.Errorf("circuit_slash_rate_window_blocks must be > 0 when circuit breakers are enabled")
+		}
+		if p.CircuitSlashRateThreshold == 0 {
+			return fmt.Errorf("circuit_slash_rate_threshold must be > 0 when circuit breakers are enabled")
+		}
 	}
 	return nil
 }

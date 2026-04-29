@@ -34,3 +34,11 @@ type AutopoiesisKeeper interface {
 // ZeroneAuthKeeper defines the expected Zerone auth module keeper.
 // Reserved for future use.
 type ZeroneAuthKeeper interface{}
+
+// EmergencyKeeper defines the staking module's interface to the emergency module.
+// Set via post-init setter (SetEmergencyKeeper) to break the circular dependency
+// between staking and emergency. The staking module calls RecordSlash on every
+// confirmed slash so that the emergency module can monitor the slash rate.
+type EmergencyKeeper interface {
+	RecordSlash(ctx context.Context)
+}

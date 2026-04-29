@@ -22,6 +22,10 @@ var (
 	RevertTargetHeightKey       = []byte{0x0A}
 	RevertTargetHashKey         = []byte{0x0B}
 	RevertCeremonyIdKey         = []byte{0x0C}
+
+	// Circuit breaker state.
+	CircuitSlashCountKey       = []byte{0x0D} // uint64: slashes recorded in current window
+	CircuitSlashWindowStartKey = []byte{0x0E} // uint64: block height where current window started
 )
 
 // CeremonyKey returns the store key for a ceremony by ID.

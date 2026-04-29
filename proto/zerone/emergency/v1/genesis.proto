@@ -51,4 +51,12 @@ message Params {
 
   // Auto-resume: max halt duration before automatic resume.
   uint64 max_halt_duration_blocks = 23;
+
+  // Circuit breakers: automatic threshold monitoring.
+  // When circuit_breakers_enabled is true, the emergency module automatically
+  // halts the chain if circuit_slash_rate_threshold slashes are recorded within
+  // any rolling window of circuit_slash_rate_window_blocks blocks.
+  bool   circuit_breakers_enabled         = 24;
+  uint64 circuit_slash_rate_window_blocks = 25; // rolling window length (blocks)
+  uint64 circuit_slash_rate_threshold     = 26; // slashes in window that triggers halt
 }

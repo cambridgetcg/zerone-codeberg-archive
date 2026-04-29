@@ -24,6 +24,7 @@ type Keeper struct {
 	bankKeeper        types.BankKeeper
 	authKeeper        types.ZeroneAuthKeeper
 	autopoiesisKeeper types.AutopoiesisKeeper
+	emergencyKeeper   types.EmergencyKeeper // nil-safe; set via SetEmergencyKeeper
 	authority         string
 	logger            log.Logger
 }
@@ -54,6 +55,13 @@ func (k *Keeper) SetAutopoiesisKeeper(ak types.AutopoiesisKeeper) {
 // SetAuthKeeper sets the zerone auth keeper.
 func (k *Keeper) SetAuthKeeper(ak types.ZeroneAuthKeeper) {
 	k.authKeeper = ak
+}
+
+// SetEmergencyKeeper sets the emergency keeper (post-init to break circular dep).
+// The emergency keeper receives a RecordSlash notification on every confirmed slash
+// so it can monitor the slash rate for circuit breaker purposes.
+func (k *Keeper) SetEmergencyKeeper(ek types.EmergencyKeeper) {
+	k.emergencyKeeper = ek
 }
 
 // GetAuthority returns the module authority address.
@@ -562,6 +570,11 @@ func (k Keeper) SlashValidator(ctx sdk.Context, validatorAddr string, amount *bi
 		val.LastSlashHeight = uint64(ctx.BlockHeight())
 	}
 
+	// Notify emergency module for circuit breaker monitoring.
+	if slashInt.Sign() > 0 && k.emergencyKeeper != nil {
+		k.emergencyKeeper.RecordSlash(ctx)
+	}
+
 	// Update stake values
 	selfStakeNew, _ := new(big.Int).SetString(val.SelfDelegation, 10)
 	if selfStakeNew == nil {
@@ -675,6 +688,11 @@ func (k Keeper) SlashValidatorToModule(ctx sdk.Context, validatorAddr string, am
 		val.SlashCount++
 		val.SlashesThisEpoch++
 		val.LastSlashHeight = uint64(ctx.BlockHeight())
+	}
+
+	// Notify emergency module for circuit breaker monitoring.
+	if slashInt.Sign() > 0 && k.emergencyKeeper != nil {
+		k.emergencyKeeper.RecordSlash(ctx)
 	}
 
 	// Update stake values

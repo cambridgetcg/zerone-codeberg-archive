@@ -123,8 +123,15 @@ type Params struct {
 	CouncilVirtualStake string   `protobuf:"bytes,22,opt,name=council_virtual_stake,json=councilVirtualStake,proto3" json:"council_virtual_stake,omitempty"` // uzrn bigint string
 	// Auto-resume: max halt duration before automatic resume.
 	MaxHaltDurationBlocks uint64 `protobuf:"varint,23,opt,name=max_halt_duration_blocks,json=maxHaltDurationBlocks,proto3" json:"max_halt_duration_blocks,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// Circuit breakers: automatic threshold monitoring.
+	// When circuit_breakers_enabled is true, the emergency module automatically
+	// halts the chain if circuit_slash_rate_threshold slashes are recorded within
+	// any rolling window of circuit_slash_rate_window_blocks blocks.
+	CircuitBreakersEnabled       bool   `protobuf:"varint,24,opt,name=circuit_breakers_enabled,json=circuitBreakersEnabled,proto3" json:"circuit_breakers_enabled,omitempty"`
+	CircuitSlashRateWindowBlocks uint64 `protobuf:"varint,25,opt,name=circuit_slash_rate_window_blocks,json=circuitSlashRateWindowBlocks,proto3" json:"circuit_slash_rate_window_blocks,omitempty"` // rolling window length (blocks)
+	CircuitSlashRateThreshold    uint64 `protobuf:"varint,26,opt,name=circuit_slash_rate_threshold,json=circuitSlashRateThreshold,proto3" json:"circuit_slash_rate_threshold,omitempty"`            // slashes in window that triggers halt
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -318,6 +325,27 @@ func (x *Params) GetMaxHaltDurationBlocks() uint64 {
 	return 0
 }
 
+func (x *Params) GetCircuitBreakersEnabled() bool {
+	if x != nil {
+		return x.CircuitBreakersEnabled
+	}
+	return false
+}
+
+func (x *Params) GetCircuitSlashRateWindowBlocks() uint64 {
+	if x != nil {
+		return x.CircuitSlashRateWindowBlocks
+	}
+	return 0
+}
+
+func (x *Params) GetCircuitSlashRateThreshold() uint64 {
+	if x != nil {
+		return x.CircuitSlashRateThreshold
+	}
+	return 0
+}
+
 var File_zerone_emergency_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_emergency_v1_genesis_proto_rawDesc = "" +
@@ -329,7 +357,8 @@ const file_zerone_emergency_v1_genesis_proto_rawDesc = "" +
 	"\n" +
 	"ceremonies\x18\x03 \x03(\v2&.zerone.emergency.v1.EmergencyCeremonyR\n" +
 	"ceremonies\x12E\n" +
-	"\taudit_log\x18\x04 \x03(\v2(.zerone.emergency.v1.EmergencyAuditEntryR\bauditLog\"\xe9\b\n" +
+	"\taudit_log\x18\x04 \x03(\v2(.zerone.emergency.v1.EmergencyAuditEntryR\bauditLog\"\xac\n" +
+	"\n" +
 	"\x06Params\x12\x1f\n" +
 	"\vhalt_quorum\x18\x01 \x01(\x04R\n" +
 	"haltQuorum\x12#\n" +
@@ -355,7 +384,10 @@ const file_zerone_emergency_v1_genesis_proto_rawDesc = "" +
 	"\x0fgenesis_council\x18\x14 \x03(\tR\x0egenesisCouncil\x120\n" +
 	"\x14council_expiry_block\x18\x15 \x01(\x04R\x12councilExpiryBlock\x122\n" +
 	"\x15council_virtual_stake\x18\x16 \x01(\tR\x13councilVirtualStake\x127\n" +
-	"\x18max_halt_duration_blocks\x18\x17 \x01(\x04R\x15maxHaltDurationBlocksB2Z0github.com/zerone-chain/zerone/x/emergency/typesb\x06proto3"
+	"\x18max_halt_duration_blocks\x18\x17 \x01(\x04R\x15maxHaltDurationBlocks\x128\n" +
+	"\x18circuit_breakers_enabled\x18\x18 \x01(\bR\x16circuitBreakersEnabled\x12F\n" +
+	" circuit_slash_rate_window_blocks\x18\x19 \x01(\x04R\x1ccircuitSlashRateWindowBlocks\x12?\n" +
+	"\x1ccircuit_slash_rate_threshold\x18\x1a \x01(\x04R\x19circuitSlashRateThresholdB2Z0github.com/zerone-chain/zerone/x/emergency/typesb\x06proto3"
 
 var (
 	file_zerone_emergency_v1_genesis_proto_rawDescOnce sync.Once

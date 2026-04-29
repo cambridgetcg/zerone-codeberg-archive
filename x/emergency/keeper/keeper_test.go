@@ -2004,3 +2004,160 @@ func TestBeginBlockCeremonyTimeout(t *testing.T) {
 		t.Fatalf("expected normal after halt failure via BeginBlock, got %s", status)
 	}
 }
+
+// --- Circuit Breaker Tests ---
+
+// enableCircuitBreakers returns a params set with circuit breakers enabled
+// and a low threshold suitable for unit tests.
+func enableCircuitBreakers(params *types.Params) {
+	params.CircuitBreakersEnabled = true
+	params.CircuitSlashRateWindowBlocks = 100 // 100-block window
+	params.CircuitSlashRateThreshold = 3      // 3 slashes triggers halt
+}
+
+// TestCircuitBreaker_Disabled verifies that RecordSlash is a no-op when
+// circuit breakers are disabled (the default).
+func TestCircuitBreaker_Disabled(t *testing.T) {
+	k, _, ctx := setupKeeper(t)
+	// Default params have CircuitBreakersEnabled = false.
+
+	// Fire more slashes than any threshold would allow.
+	for i := 0; i < 20; i++ {
+		k.RecordSlash(ctx)
+	}
+
+	status := k.GetEmergencyStatus(ctx)
+	if status != types.StatusNormal {
+		t.Fatalf("expected normal status (circuit breakers disabled), got %s", status)
+	}
+}
+
+// TestCircuitBreaker_ThresholdNotMet verifies that fewer than threshold slashes
+// do not trigger a halt.
+func TestCircuitBreaker_ThresholdNotMet(t *testing.T) {
+	k, _, ctx := setupKeeper(t)
+
+	params := types.DefaultParams()
+	params.MinGuardianStake = "0"
+	enableCircuitBreakers(&params)
+	k.SetParams(ctx, &params)
+
+	// threshold = 3; fire 2 slashes — should NOT halt.
+	k.RecordSlash(ctx)
+	k.RecordSlash(ctx)
+
+	status := k.GetEmergencyStatus(ctx)
+	if status != types.StatusNormal {
+		t.Fatalf("expected normal status after 2 slashes (threshold 3), got %s", status)
+	}
+	count := k.GetCircuitSlashCount(ctx)
+	if count != 2 {
+		t.Fatalf("expected slash count 2, got %d", count)
+	}
+}
+
+// TestCircuitBreaker_ThresholdMet verifies that reaching the threshold triggers
+// an automatic halt and writes an audit entry.
+func TestCircuitBreaker_ThresholdMet(t *testing.T) {
+	k, _, ctx := setupKeeper(t)
+
+	params := types.DefaultParams()
+	params.MinGuardianStake = "0"
+	enableCircuitBreakers(&params)
+	k.SetParams(ctx, &params)
+
+	// Fire threshold (3) slashes; third should trigger halt.
+	k.RecordSlash(ctx)
+	k.RecordSlash(ctx)
+	k.RecordSlash(ctx) // triggers halt
+
+	status := k.GetEmergencyStatus(ctx)
+	if status != types.StatusHalted {
+		t.Fatalf("expected halted status after %d slashes, got %s", params.CircuitSlashRateThreshold, status)
+	}
+
+	// Verify halt start block is set.
+	haltBlock := k.GetHaltStartBlock(ctx)
+	if haltBlock != uint64(ctx.BlockHeight()) {
+		t.Fatalf("expected halt start block %d, got %d", ctx.BlockHeight(), haltBlock)
+	}
+
+	// Verify audit entry was written with circuit_breaker actor.
+	auditLog := k.GetAuditLog(ctx)
+	var cbEntry *types.EmergencyAuditEntry
+	for _, e := range auditLog {
+		if e.Actor == "circuit_breaker" {
+			cbEntry = e
+			break
+		}
+	}
+	if cbEntry == nil {
+		t.Fatal("expected circuit_breaker audit entry, found none")
+	}
+	if cbEntry.Action != string(types.AuditHaltExecuted) {
+		t.Fatalf("expected AuditHaltExecuted action, got %s", cbEntry.Action)
+	}
+}
+
+// TestCircuitBreaker_WindowReset verifies that the slash counter resets when
+// the window expires and fresh slashes start a new window.
+func TestCircuitBreaker_WindowReset(t *testing.T) {
+	k, _, ctx := setupKeeper(t)
+
+	params := types.DefaultParams()
+	params.MinGuardianStake = "0"
+	enableCircuitBreakers(&params) // threshold=3, window=100
+	k.SetParams(ctx, &params)
+
+	// Slash twice in the initial window (blocks 100-199).
+	k.RecordSlash(ctx)
+	k.RecordSlash(ctx)
+
+	// Advance past the window — block 200 is exactly windowStart(100) + windowBlocks(100).
+	ctx = ctx.WithBlockHeight(200)
+
+	// This slash opens a fresh window starting at block 200.
+	k.RecordSlash(ctx)
+
+	// Count should be 1 (fresh window), not 3.
+	count := k.GetCircuitSlashCount(ctx)
+	if count != 1 {
+		t.Fatalf("expected count 1 after window reset, got %d", count)
+	}
+	windowStart := k.GetCircuitSlashWindowStart(ctx)
+	if windowStart != 200 {
+		t.Fatalf("expected window start 200, got %d", windowStart)
+	}
+
+	// Status must still be normal (threshold not reached in new window).
+	status := k.GetEmergencyStatus(ctx)
+	if status != types.StatusNormal {
+		t.Fatalf("expected normal status after window reset, got %s", status)
+	}
+}
+
+// TestCircuitBreaker_AlreadyHalted verifies that RecordSlash is a no-op when
+// the chain is already halted (no double-trigger, no panic).
+func TestCircuitBreaker_AlreadyHalted(t *testing.T) {
+	k, _, ctx := setupKeeper(t)
+
+	params := types.DefaultParams()
+	params.MinGuardianStake = "0"
+	enableCircuitBreakers(&params)
+	k.SetParams(ctx, &params)
+
+	// Pre-halt the chain manually.
+	k.SetEmergencyStatus(ctx, types.StatusHalted)
+	k.SetHaltStartBlock(ctx, uint64(ctx.BlockHeight()))
+
+	// RecordSlash should be a no-op.
+	for i := 0; i < 10; i++ {
+		k.RecordSlash(ctx)
+	}
+
+	// Status must remain halted (not double-trigger into some other state).
+	status := k.GetEmergencyStatus(ctx)
+	if status != types.StatusHalted {
+		t.Fatalf("expected halted status to remain halted, got %s", status)
+	}
+}

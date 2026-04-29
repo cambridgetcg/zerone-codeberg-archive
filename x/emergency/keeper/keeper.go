@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 
 	"cosmossdk.io/core/store"
@@ -178,4 +179,83 @@ func (k Keeper) ExportGenesis(ctx context.Context) *types.GenesisState {
 		Ceremonies: ceremonies,
 		AuditLog:   auditLog,
 	}
+}
+
+// --- Circuit Breakers ---
+
+// RecordSlash is called by the staking module on every confirmed slash.
+// It maintains a rolling slash-count window and triggers an automatic halt
+// when the threshold is crossed. Safe to call when circuit breakers are
+// disabled or when the chain is already halted — both are no-ops.
+func (k Keeper) RecordSlash(ctx context.Context) {
+	params := k.GetParams(ctx)
+	if !params.CircuitBreakersEnabled {
+		return
+	}
+	// Already in a non-normal state — do not double-trigger.
+	if k.GetEmergencyStatus(ctx) != types.StatusNormal {
+		return
+	}
+
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+	currentBlock := uint64(sdkCtx.BlockHeight())
+
+	windowBlocks := params.CircuitSlashRateWindowBlocks
+	if windowBlocks == 0 {
+		windowBlocks = 100 // safety default: never divide by zero
+	}
+
+	windowStart := k.GetCircuitSlashWindowStart(ctx)
+
+	// Roll the window forward if it has expired.
+	if windowStart == 0 || currentBlock >= windowStart+windowBlocks {
+		k.SetCircuitSlashWindowStart(ctx, currentBlock)
+		k.SetCircuitSlashCount(ctx, 1)
+		return // first slash of a fresh window — threshold not yet reachable
+	}
+
+	count := k.GetCircuitSlashCount(ctx) + 1
+	k.SetCircuitSlashCount(ctx, count)
+
+	threshold := params.CircuitSlashRateThreshold
+	if threshold > 0 && count >= threshold {
+		reason := fmt.Sprintf(
+			"circuit_breaker: %d slashes in blocks %d-%d (threshold %d)",
+			count, windowStart, currentBlock, threshold,
+		)
+		k.autoHaltCircuitBreaker(ctx, reason)
+	}
+}
+
+// autoHaltCircuitBreaker immediately halts the chain when a circuit breaker
+// threshold is crossed. Unlike the manual ceremony path, this requires no
+// Guardian vote — the threshold crossing IS the consensus signal. Guardians
+// resume via the standard resume ceremony after investigation.
+func (k Keeper) autoHaltCircuitBreaker(ctx context.Context, reason string) {
+	// Guard: only act from StatusNormal (idempotent against concurrent triggers).
+	if k.GetEmergencyStatus(ctx) != types.StatusNormal {
+		return
+	}
+
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+	currentBlock := uint64(sdkCtx.BlockHeight())
+
+	k.SetEmergencyStatus(ctx, types.StatusHalted)
+	k.SetHaltStartBlock(ctx, currentBlock)
+
+	k.AddAuditEntry(ctx, &types.EmergencyAuditEntry{
+		Timestamp:   sdkCtx.BlockTime().Unix(),
+		BlockNumber: currentBlock,
+		Action:      string(types.AuditHaltExecuted),
+		Actor:       "circuit_breaker",
+		CeremonyId:  "",
+		Details:     reason,
+	})
+
+	sdkCtx.EventManager().EmitEvent(
+		sdk.NewEvent("zerone.emergency.circuit_breaker_halt",
+			sdk.NewAttribute("reason", reason),
+			sdk.NewAttribute("block", fmt.Sprintf("%d", currentBlock)),
+		),
+	)
 }
