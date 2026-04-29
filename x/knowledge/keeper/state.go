@@ -435,9 +435,10 @@ func (k Keeper) StoreCommitmentInRound(ctx context.Context, roundID string, comm
 }
 
 // StoreRevealInRound stores a reveal entry in a verification round.
-// Verifies the reveal matches the prior commitment hash using the provided confidence.
-// The confidence parameter is needed because RevealEntry (proto) does not carry it,
-// but it is part of the commitment hash preimage.
+// Verifies the reveal matches the prior commitment hash using the provided confidence,
+// then persists confidence in reveal.ConfidenceBps for downstream Brier-score
+// verifier calibration (Wave 4). Confidence is part of the commitment hash preimage,
+// so it is verified here against the commitment before being stored.
 func (k Keeper) StoreRevealInRound(ctx context.Context, roundID string, reveal *types.RevealEntry, confidence uint64) error {
 	round, found := k.GetVerificationRound(ctx, roundID)
 	if !found {
@@ -466,6 +467,11 @@ func (k Keeper) StoreRevealInRound(ctx context.Context, roundID string, reveal *
 		}
 		return types.ErrEquivocation
 	}
+
+	// Persist confidence in the reveal entry now that it has been verified
+	// against the commitment hash. This enables downstream Brier-score
+	// verifier calibration (Wave 4).
+	reveal.ConfidenceBps = confidence
 
 	round.Reveals = append(round.Reveals, reveal)
 	return k.SetVerificationRound(ctx, round)

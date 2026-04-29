@@ -3929,8 +3929,11 @@ type AgentMethodStats struct {
 	Rejected             uint64                 `protobuf:"varint,3,opt,name=rejected,proto3" json:"rejected,omitempty"`
 	CorroborationsEarned uint64                 `protobuf:"varint,4,opt,name=corroborations_earned,json=corroborationsEarned,proto3" json:"corroborations_earned,omitempty"` // sum across submitter's facts under this method
 	Disproven            uint64                 `protobuf:"varint,5,opt,name=disproven,proto3" json:"disproven,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Wave 4: verifier Brier scoring under this methodology.
+	VerifierRounds      uint64 `protobuf:"varint,6,opt,name=verifier_rounds,json=verifierRounds,proto3" json:"verifier_rounds,omitempty"`                    // rounds where this agent verified under this method
+	VerifierSumBrierBps uint64 `protobuf:"varint,7,opt,name=verifier_sum_brier_bps,json=verifierSumBrierBps,proto3" json:"verifier_sum_brier_bps,omitempty"` // Σ individual Brier errors (BPS, accumulator)
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *AgentMethodStats) Reset() {
@@ -3998,6 +4001,20 @@ func (x *AgentMethodStats) GetDisproven() uint64 {
 	return 0
 }
 
+func (x *AgentMethodStats) GetVerifierRounds() uint64 {
+	if x != nil {
+		return x.VerifierRounds
+	}
+	return 0
+}
+
+func (x *AgentMethodStats) GetVerifierSumBrierBps() uint64 {
+	if x != nil {
+		return x.VerifierSumBrierBps
+	}
+	return 0
+}
+
 // AgentCalibration is the feedback record for a submitter — agent or human.
 // It is the mechanism by which ZERONE-trained models (and human participants)
 // are measured against the same adjudication they were trained on. Closes
@@ -4026,8 +4043,15 @@ type AgentCalibration struct {
 	// ComputeAgentCalibrationScore in the keeper.
 	CalibrationScoreBps uint64 `protobuf:"varint,16,opt,name=calibration_score_bps,json=calibrationScoreBps,proto3" json:"calibration_score_bps,omitempty"`
 	LastUpdatedBlock    uint64 `protobuf:"varint,17,opt,name=last_updated_block,json=lastUpdatedBlock,proto3" json:"last_updated_block,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Wave 4: verifier Brier scoring. Measures probability calibration of
+	// verification votes — rewards agents who report well-calibrated confidence,
+	// not just agents who are in the majority.
+	// Field numbers 20-22 (Wave 4 reservation, see comment above per_method).
+	VerifierRounds              uint64 `protobuf:"varint,20,opt,name=verifier_rounds,json=verifierRounds,proto3" json:"verifier_rounds,omitempty"`                                            // total rounds this agent participated in as verifier
+	VerifierSumBrierBps         uint64 `protobuf:"varint,21,opt,name=verifier_sum_brier_bps,json=verifierSumBrierBps,proto3" json:"verifier_sum_brier_bps,omitempty"`                         // Σ Brier errors × 1_000_000 / 1_000_000 (BPS accum)
+	VerifierCalibrationScoreBps uint64 `protobuf:"varint,22,opt,name=verifier_calibration_score_bps,json=verifierCalibrationScoreBps,proto3" json:"verifier_calibration_score_bps,omitempty"` // derived: 1_000_000 − (sum_brier / rounds)
+	unknownFields               protoimpl.UnknownFields
+	sizeCache                   protoimpl.SizeCache
 }
 
 func (x *AgentCalibration) Reset() {
@@ -4175,6 +4199,27 @@ func (x *AgentCalibration) GetCalibrationScoreBps() uint64 {
 func (x *AgentCalibration) GetLastUpdatedBlock() uint64 {
 	if x != nil {
 		return x.LastUpdatedBlock
+	}
+	return 0
+}
+
+func (x *AgentCalibration) GetVerifierRounds() uint64 {
+	if x != nil {
+		return x.VerifierRounds
+	}
+	return 0
+}
+
+func (x *AgentCalibration) GetVerifierSumBrierBps() uint64 {
+	if x != nil {
+		return x.VerifierSumBrierBps
+	}
+	return 0
+}
+
+func (x *AgentCalibration) GetVerifierCalibrationScoreBps() uint64 {
+	if x != nil {
+		return x.VerifierCalibrationScoreBps
 	}
 	return 0
 }
@@ -4699,8 +4744,13 @@ type RevealEntry struct {
 	Vote            string                 `protobuf:"bytes,2,opt,name=vote,proto3" json:"vote,omitempty"` // "accept", "reject", or "malformed"
 	Salt            []byte                 `protobuf:"bytes,3,opt,name=salt,proto3" json:"salt,omitempty"`
 	RevealedAtBlock uint64                 `protobuf:"varint,4,opt,name=revealed_at_block,json=revealedAtBlock,proto3" json:"revealed_at_block,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Wave 4: verifier's stated confidence in their vote, in BPS (0..1_000_000).
+	// 0 = absent (pre-Wave-4 entries or verifier chose not to report).
+	// Used for Brier-score verifier calibration; NOT part of the commitment hash
+	// preimage (confidence was already verified against the commitment in StoreRevealInRound).
+	ConfidenceBps uint64 `protobuf:"varint,5,opt,name=confidence_bps,json=confidenceBps,proto3" json:"confidence_bps,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RevealEntry) Reset() {
@@ -4757,6 +4807,13 @@ func (x *RevealEntry) GetSalt() []byte {
 func (x *RevealEntry) GetRevealedAtBlock() uint64 {
 	if x != nil {
 		return x.RevealedAtBlock
+	}
+	return 0
+}
+
+func (x *RevealEntry) GetConfidenceBps() uint64 {
+	if x != nil {
+		return x.ConfidenceBps
 	}
 	return 0
 }
@@ -8499,13 +8556,15 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x1dreproducibility_proof_present\x18\f \x01(\bR\x1breproducibilityProofPresent\x12,\n" +
 	"\x12clawed_back_amount\x18\r \x01(\tR\x10clawedBackAmount\x12/\n" +
 	"\x14clawed_back_at_block\x18\x0e \x01(\x04R\x11clawedBackAtBlock\x12'\n" +
-	"\x0fclawback_reason\x18\x0f \x01(\tR\x0eclawbackReason\"\xbf\x01\n" +
+	"\x0fclawback_reason\x18\x0f \x01(\tR\x0eclawbackReason\"\x9d\x02\n" +
 	"\x10AgentMethodStats\x12 \n" +
 	"\vsubmissions\x18\x01 \x01(\x04R\vsubmissions\x12\x1a\n" +
 	"\baccepted\x18\x02 \x01(\x04R\baccepted\x12\x1a\n" +
 	"\brejected\x18\x03 \x01(\x04R\brejected\x123\n" +
 	"\x15corroborations_earned\x18\x04 \x01(\x04R\x14corroborationsEarned\x12\x1c\n" +
-	"\tdisproven\x18\x05 \x01(\x04R\tdisproven\"\xe7\x06\n" +
+	"\tdisproven\x18\x05 \x01(\x04R\tdisproven\x12'\n" +
+	"\x0fverifier_rounds\x18\x06 \x01(\x04R\x0everifierRounds\x123\n" +
+	"\x16verifier_sum_brier_bps\x18\a \x01(\x04R\x13verifierSumBrierBps\"\x8a\b\n" +
 	"\x10AgentCalibration\x12\x18\n" +
 	"\aaddress\x18\x01 \x01(\tR\aaddress\x12!\n" +
 	"\faccount_type\x18\x02 \x01(\tR\vaccountType\x12+\n" +
@@ -8525,7 +8584,10 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\n" +
 	"per_method\x18\x0f \x03(\v24.zerone.knowledge.v1.AgentCalibration.PerMethodEntryR\tperMethod\x122\n" +
 	"\x15calibration_score_bps\x18\x10 \x01(\x04R\x13calibrationScoreBps\x12,\n" +
-	"\x12last_updated_block\x18\x11 \x01(\x04R\x10lastUpdatedBlock\x1ac\n" +
+	"\x12last_updated_block\x18\x11 \x01(\x04R\x10lastUpdatedBlock\x12'\n" +
+	"\x0fverifier_rounds\x18\x14 \x01(\x04R\x0everifierRounds\x123\n" +
+	"\x16verifier_sum_brier_bps\x18\x15 \x01(\x04R\x13verifierSumBrierBps\x12C\n" +
+	"\x1everifier_calibration_score_bps\x18\x16 \x01(\x04R\x1bverifierCalibrationScoreBps\x1ac\n" +
 	"\x0ePerMethodEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12;\n" +
 	"\x05value\x18\x02 \x01(\v2%.zerone.knowledge.v1.AgentMethodStatsR\x05value:\x028\x01\"\xbc\x01\n" +
@@ -8584,12 +8646,13 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\bverifier\x18\x01 \x01(\tR\bverifier\x12\x1f\n" +
 	"\vcommit_hash\x18\x02 \x01(\fR\n" +
 	"commitHash\x12,\n" +
-	"\x12committed_at_block\x18\x03 \x01(\x04R\x10committedAtBlock\"}\n" +
+	"\x12committed_at_block\x18\x03 \x01(\x04R\x10committedAtBlock\"\xa4\x01\n" +
 	"\vRevealEntry\x12\x1a\n" +
 	"\bverifier\x18\x01 \x01(\tR\bverifier\x12\x12\n" +
 	"\x04vote\x18\x02 \x01(\tR\x04vote\x12\x12\n" +
 	"\x04salt\x18\x03 \x01(\fR\x04salt\x12*\n" +
-	"\x11revealed_at_block\x18\x04 \x01(\x04R\x0frevealedAtBlock\"w\n" +
+	"\x11revealed_at_block\x18\x04 \x01(\x04R\x0frevealedAtBlock\x12%\n" +
+	"\x0econfidence_bps\x18\x05 \x01(\x04R\rconfidenceBps\"w\n" +
 	"\bVRFProof\x12\x14\n" +
 	"\x05proof\x18\x01 \x01(\fR\x05proof\x12\x16\n" +
 	"\x06output\x18\x02 \x01(\fR\x06output\x12\x1a\n" +

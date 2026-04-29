@@ -83,6 +83,22 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 	// handled below with their own challenger-side recording.
 	k.RecordSubmissionOutcome(ctx, claim.Submitter, ResolveMethodId(claim.MethodId), result.Verdict)
 
+	// Wave 4: record Brier-score verifier calibration for each participant
+	// that reported a confidence value. Only binary verdicts (ACCEPT/REJECT)
+	// produce a clear outcome to score against; skip MALFORMED/INCONCLUSIVE.
+	if result.Verdict == types.Verdict_VERDICT_ACCEPT || result.Verdict == types.Verdict_VERDICT_REJECT {
+		outcomeAccept := result.Verdict == types.Verdict_VERDICT_ACCEPT
+		verifierMethodId := ResolveMethodId(claim.MethodId)
+		for _, reveal := range round.Reveals {
+			if reveal.ConfidenceBps == 0 {
+				// Pre-Wave-4 reveal or verifier declined to report confidence.
+				continue
+			}
+			votedAccept := reveal.Vote == "accept"
+			k.RecordVerifierOutcome(ctx, reveal.Verifier, verifierMethodId, reveal.ConfidenceBps, votedAccept, outcomeAccept)
+		}
+	}
+
 	var factId string
 	switch result.Verdict {
 	case types.Verdict_VERDICT_ACCEPT:

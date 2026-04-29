@@ -273,6 +273,91 @@ func ComputeAgentCalibrationScore(c *types.AgentCalibration) uint64 {
 	return score
 }
 
+// ─── Verifier Brier scoring (Wave 4) ────────────────────────────────────────
+
+// RecordVerifierOutcome updates Brier-score calibration for a verifier after a
+// round resolves to a binary verdict (ACCEPT or REJECT). Called from
+// CompleteRound for each reveal that carries a non-zero ConfidenceBps.
+//
+// The Brier score for a single prediction is (p − o)² where:
+//   - p = stated probability that the claim is TRUE, in [0, 1]
+//   - o = actual outcome: 1 if claim was accepted, 0 if rejected
+//
+// The function converts vote+confidence to P(ACCEPT) so that confidence
+// always expresses belief about the underlying claim, not about the verifier's
+// own vote:
+//   - votedAccept=true:  P(ACCEPT) = confidenceBps / 1_000_000
+//   - votedAccept=false: P(ACCEPT) = 1 - (confidenceBps / 1_000_000)
+//
+// The running mean Brier score is stored as BPS (0..1_000_000) and inverted
+// in ComputeVerifierCalibrationScore to produce a score where 1_000_000 is
+// perfect calibration.
+func (k Keeper) RecordVerifierOutcome(
+	ctx context.Context,
+	verifier string,
+	methodId string,
+	confidenceBps uint64,
+	votedAccept bool,
+	outcomeAccept bool,
+) {
+	if verifier == "" || confidenceBps == 0 {
+		// Skip absent confidence — pre-Wave-4 reveals or confidence not reported.
+		return
+	}
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+	height := uint64(sdkCtx.BlockHeight())
+
+	c := k.getOrInitCalibration(ctx, verifier)
+	stats := ensureMethodStats(c, methodId)
+
+	// Convert vote+confidence → P(claim is TRUE) in BPS.
+	var pAcceptBps uint64
+	if votedAccept {
+		pAcceptBps = confidenceBps
+	} else {
+		// Confidence in REJECT vote → complement expresses belief in ACCEPT.
+		if confidenceBps > 1_000_000 {
+			confidenceBps = 1_000_000
+		}
+		pAcceptBps = 1_000_000 - confidenceBps
+	}
+
+	// Outcome in BPS (1_000_000 = accepted, 0 = rejected).
+	var oAcceptBps int64
+	if outcomeAccept {
+		oAcceptBps = 1_000_000
+	}
+
+	// Brier error = (P_bps − O_bps)² / 1_000_000, normalised back to BPS scale.
+	// diff ∈ [−1_000_000, 1_000_000] → diff² ≤ 10^12 → fits uint64.
+	diff := int64(pAcceptBps) - oAcceptBps
+	brierBps := uint64(diff*diff) / 1_000_000
+
+	c.VerifierRounds++
+	c.VerifierSumBrierBps += brierBps
+	stats.VerifierRounds++
+	stats.VerifierSumBrierBps += brierBps
+
+	c.VerifierCalibrationScoreBps = ComputeVerifierCalibrationScore(c)
+	c.LastUpdatedBlock = height
+	_ = k.SetAgentCalibration(ctx, c)
+	k.EmitCalibrationUpdated(ctx, c)
+}
+
+// ComputeVerifierCalibrationScore derives a BPS calibration score in [0, 1_000_000]
+// from accumulated Brier errors. Higher is better; 1_000_000 = perfect calibration.
+// Returns 0 if the verifier has no rounds recorded.
+func ComputeVerifierCalibrationScore(c *types.AgentCalibration) uint64 {
+	if c == nil || c.VerifierRounds == 0 {
+		return 0
+	}
+	avgBrierBps := c.VerifierSumBrierBps / c.VerifierRounds
+	if avgBrierBps >= 1_000_000 {
+		return 0
+	}
+	return 1_000_000 - avgBrierBps
+}
+
 // EmitCalibrationUpdated emits an event for off-chain observers (training
 // pipelines, dashboards) to track calibration changes without polling.
 func (k Keeper) EmitCalibrationUpdated(ctx context.Context, c *types.AgentCalibration) {
@@ -288,5 +373,7 @@ func (k Keeper) EmitCalibrationUpdated(ctx context.Context, c *types.AgentCalibr
 		sdk.NewAttribute("disproven_count", fmt.Sprintf("%d", c.DisprovenCount)),
 		sdk.NewAttribute("corroborations_earned", fmt.Sprintf("%d", c.CorroborationsEarned)),
 		sdk.NewAttribute("calibration_score_bps", fmt.Sprintf("%d", c.CalibrationScoreBps)),
+		sdk.NewAttribute("verifier_rounds", fmt.Sprintf("%d", c.VerifierRounds)),
+		sdk.NewAttribute("verifier_calibration_score_bps", fmt.Sprintf("%d", c.VerifierCalibrationScoreBps)),
 	))
 }

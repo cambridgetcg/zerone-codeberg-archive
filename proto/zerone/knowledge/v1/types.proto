@@ -620,6 +620,10 @@ message AgentMethodStats {
   uint64 rejected              = 3;
   uint64 corroborations_earned = 4; // sum across submitter's facts under this method
   uint64 disproven             = 5;
+
+  // Wave 4: verifier Brier scoring under this methodology.
+  uint64 verifier_rounds        = 6;  // rounds where this agent verified under this method
+  uint64 verifier_sum_brier_bps = 7;  // Σ individual Brier errors (BPS, accumulator)
 }
 
 // AgentCalibration is the feedback record for a submitter — agent or human.
@@ -655,6 +659,14 @@ message AgentCalibration {
   // ComputeAgentCalibrationScore in the keeper.
   uint64 calibration_score_bps = 16;
   uint64 last_updated_block    = 17;
+
+  // Wave 4: verifier Brier scoring. Measures probability calibration of
+  // verification votes — rewards agents who report well-calibrated confidence,
+  // not just agents who are in the majority.
+  // Field numbers 20-22 (Wave 4 reservation, see comment above per_method).
+  uint64 verifier_rounds               = 20;  // total rounds this agent participated in as verifier
+  uint64 verifier_sum_brier_bps        = 21;  // Σ Brier errors × 1_000_000 / 1_000_000 (BPS accum)
+  uint64 verifier_calibration_score_bps = 22; // derived: 1_000_000 − (sum_brier / rounds)
 }
 
 // CommonKnowledgeEntry represents a subject that LLMs already know.
@@ -732,10 +744,15 @@ message CommitEntry {
 
 // RevealEntry records a validator's revealed vote and salt.
 message RevealEntry {
-  string verifier         = 1;
-  string vote             = 2; // "accept", "reject", or "malformed"
-  bytes  salt             = 3;
+  string verifier          = 1;
+  string vote              = 2; // "accept", "reject", or "malformed"
+  bytes  salt              = 3;
   uint64 revealed_at_block = 4;
+  // Wave 4: verifier's stated confidence in their vote, in BPS (0..1_000_000).
+  // 0 = absent (pre-Wave-4 entries or verifier chose not to report).
+  // Used for Brier-score verifier calibration; NOT part of the commitment hash
+  // preimage (confidence was already verified against the commitment in StoreRevealInRound).
+  uint64 confidence_bps    = 5;
 }
 
 // VRFProof captures a Verifiable Random Function output for validator selection.
