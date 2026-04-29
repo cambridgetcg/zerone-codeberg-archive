@@ -114,6 +114,16 @@ func (m *mockBankKeeper) SendCoinsFromModuleToModule(_ context.Context, senderMo
 	return nil
 }
 
+func (m *mockBankKeeper) BurnCoins(_ context.Context, moduleName string, amt sdk.Coins) error {
+	for _, coin := range amt {
+		if m.moduleBalances[moduleName] == nil {
+			m.moduleBalances[moduleName] = make(map[string]int64)
+		}
+		m.moduleBalances[moduleName][coin.Denom] -= coin.Amount.Int64()
+	}
+	return nil
+}
+
 // ---------- Mock StakingKeeper ----------
 
 type mockStakingKeeper struct {

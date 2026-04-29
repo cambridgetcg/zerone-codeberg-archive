@@ -126,8 +126,8 @@ func (k Keeper) HandleExit(ctx sdk.Context, partnershipId string, initiator stri
 	}
 	if burned.Sign() > 0 {
 		coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(burned)))
-		if err := k.bankKeeper.SendCoinsFromModuleToModule(ctx, types.ModuleName, "development_fund", coins); err != nil {
-			k.Logger(ctx).Error("failed to route forfeited amount to development fund", "err", err)
+		if err := k.bankKeeper.BurnCoins(ctx, types.ModuleName, coins); err != nil {
+			k.Logger(ctx).Error("failed to burn forfeited exit amount", "err", err)
 		}
 	}
 

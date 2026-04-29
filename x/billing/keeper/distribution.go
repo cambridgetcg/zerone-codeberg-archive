@@ -196,16 +196,16 @@ func (k Keeper) ExecuteDistribution(ctx context.Context, callerAddr sdk.AccAddre
 		}
 	}
 
-	// 4. Development fund
+	// 4. Protocol burn (rounding dust — escrow into billing then destroy).
 	devAmt := new(big.Int)
 	devAmt.SetString(distribution.ProtocolBurn, 10)
 	if devAmt.Sign() > 0 {
 		coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(devAmt)))
 		if err := k.bankKeeper.SendCoinsFromAccountToModule(ctx, callerAddr, types.ModuleName, coins); err != nil {
-			return fmt.Errorf("development fund transfer failed: %w", err)
+			return fmt.Errorf("protocol burn escrow failed: %w", err)
 		}
-		if err := k.bankKeeper.SendCoinsFromModuleToModule(ctx, types.ModuleName, DevelopmentFund, coins); err != nil {
-			return fmt.Errorf("development fund deposit failed: %w", err)
+		if err := k.bankKeeper.BurnCoins(ctx, types.ModuleName, coins); err != nil {
+			return fmt.Errorf("protocol burn failed: %w", err)
 		}
 	}
 

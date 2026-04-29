@@ -63,6 +63,8 @@ type mockBankKeeper struct {
 	moduleBalances map[string]map[string]int64
 	modToModCalled bool
 	modToModAmount int64
+	burnCalled     bool
+	burnAmount     int64
 }
 
 func newMockBankKeeper() *mockBankKeeper {
@@ -144,6 +146,18 @@ func (m *mockBankKeeper) SendCoinsFromModuleToModule(_ context.Context, senderMo
 		}
 		m.moduleBalances[senderModule][coin.Denom] -= coin.Amount.Int64()
 		m.moduleBalances[recipientModule][coin.Denom] += coin.Amount.Int64()
+	}
+	return nil
+}
+
+func (m *mockBankKeeper) BurnCoins(_ context.Context, moduleName string, amt sdk.Coins) error {
+	m.burnCalled = true
+	for _, coin := range amt {
+		m.burnAmount += coin.Amount.Int64()
+		if m.moduleBalances[moduleName] == nil {
+			m.moduleBalances[moduleName] = make(map[string]int64)
+		}
+		m.moduleBalances[moduleName][coin.Denom] -= coin.Amount.Int64()
 	}
 	return nil
 }
@@ -1667,9 +1681,12 @@ func TestExitSettlement_BankTransfers(t *testing.T) {
 		t.Fatalf("InitiateDissolution failed: %v", err)
 	}
 
-	// Verify module-to-module send was called during exit settlement
-	if !bk.modToModCalled {
-		t.Error("expected SendCoinsFromModuleToModule to be called during exit settlement")
+	// Verify forfeited coins were burned (not routed to development_fund).
+	if !bk.burnCalled {
+		t.Error("expected BurnCoins to be called during exit settlement for forfeited amounts")
+	}
+	if bk.burnAmount <= 0 {
+		t.Errorf("expected positive burn amount, got %d", bk.burnAmount)
 	}
 
 	p, _ := k.GetPartnership(futureCtx, pid)

@@ -597,10 +597,10 @@ func (k Keeper) distributeWin(ctx context.Context, dispute *types.Dispute, param
 		}
 	}
 
-	// Route remainder to development fund
+	// Burn slash remainder (loser's forfeiture after winner + arbiter rewards).
 	if burnAmt.Sign() > 0 {
 		coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(burnAmt)))
-		if err := k.bankKeeper.SendCoinsFromModuleToModule(ctx, types.ModuleName, "development_fund", coins); err != nil {
+		if err := k.bankKeeper.BurnCoins(ctx, types.ModuleName, coins); err != nil {
 			return err
 		}
 	}

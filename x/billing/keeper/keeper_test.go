@@ -130,6 +130,21 @@ func (m *mockBankKeeper) SendCoinsFromModuleToModule(_ context.Context, senderMo
 	return nil
 }
 
+func (m *mockBankKeeper) BurnCoins(_ context.Context, moduleName string, amt sdk.Coins) error {
+	for _, coin := range amt {
+		modKey := moduleName + "/" + coin.Denom
+		modBal, ok := m.balances[modKey]
+		if !ok {
+			modBal = sdkmath.ZeroInt()
+		}
+		if modBal.LT(coin.Amount) {
+			return fmt.Errorf("insufficient module balance to burn")
+		}
+		m.balances[modKey] = modBal.Sub(coin.Amount)
+	}
+	return nil
+}
+
 // -----------------------------------------------------------------------
 // Mock KnowledgeKeeper
 // -----------------------------------------------------------------------
@@ -413,7 +428,7 @@ func TestDistribution_RevenueSplit(t *testing.T) {
 	}
 }
 
-func TestDistribution_DevelopmentFund(t *testing.T) {
+func TestDistribution_ProtocolBurn(t *testing.T) {
 	k, ctx, bk, kk := setupKeeper(t)
 
 	callerAddr := sdk.AccAddress([]byte(fmt.Sprintf("test-addr-%010d", 1)))
@@ -431,17 +446,24 @@ func TestDistribution_DevelopmentFund(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Billing module should have zero balance after routing to development_fund
+	// Billing module should have zero balance: rounding dust was escrowed then burned.
 	billingBal := bk.balances["billing/uzrn"]
 	if billingBal.IsPositive() {
-		t.Errorf("expected billing module balance 0 after development fund transfer, got %s", billingBal)
+		t.Errorf("expected billing module balance 0 after protocol burn, got %s", billingBal)
 	}
 
-	// Development fund should have received the allocation
-	devBal := bk.balances[keeper.DevelopmentFund+"/uzrn"]
-	expectedDev := sdkmath.NewInt(1967000) // 19.67% of 10M
-	if !devBal.Equal(expectedDev) {
-		t.Errorf("expected development_fund balance %s, got %s", expectedDev, devBal)
+	// Development fund must NOT receive the protocol burn — coins are burned, not routed.
+	devBal, devExists := bk.balances[keeper.DevelopmentFund+"/uzrn"]
+	if devExists && devBal.IsPositive() {
+		t.Errorf("expected development_fund balance 0 (coins burned), got %s", devBal)
+	}
+
+	// The ProtocolBurn field should still carry the correct amount for accounting.
+	burnAmt := new(big.Int)
+	burnAmt.SetString(distribution.ProtocolBurn, 10)
+	expectedBurn := big.NewInt(1967000) // rounding dust ≈ 19.67% of 10M at default split
+	if burnAmt.Cmp(expectedBurn) != 0 {
+		t.Errorf("expected ProtocolBurn %s, got %s", expectedBurn, burnAmt)
 	}
 }
 
