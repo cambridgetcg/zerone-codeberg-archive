@@ -134,6 +134,9 @@ func (ms *msgServer) Delegate(goCtx context.Context, msg *types.MsgDelegate) (*t
 	if !found {
 		return nil, types.ErrValidatorNotFound
 	}
+	if val.Jailed {
+		return nil, types.ErrValidatorJailed
+	}
 	if !val.IsActive {
 		return nil, types.ErrValidatorInactive
 	}
@@ -318,6 +321,9 @@ func (ms *msgServer) Redelegate(goCtx context.Context, msg *types.MsgRedelegate)
 	dstVal, found := ms.GetValidator(ctx, msg.DstValidator)
 	if !found {
 		return nil, types.ErrValidatorNotFound
+	}
+	if dstVal.Jailed {
+		return nil, types.ErrValidatorJailed
 	}
 	if !dstVal.IsActive {
 		return nil, types.ErrValidatorInactive

@@ -588,9 +588,18 @@ func (k Keeper) SlashValidator(ctx sdk.Context, validatorAddr string, amount *bi
 		val.ReputationScore = 0
 	}
 
-	// Deactivate if excessive slashes
+	// Deactivate and tombstone if excessive slashes.
+	// Tombstoning is permanent: Jailed=true means the validator is excluded from
+	// governance seats and cannot receive new delegations, even after IsActive is
+	// administratively restored. The first crossing of the threshold emits a
+	// dedicated validator_tombstoned event.
+	tombstoned := false
 	if params.MaxSlashCountDeactivate > 0 && val.SlashCount >= params.MaxSlashCountDeactivate {
+		if !val.Jailed {
+			tombstoned = true
+		}
 		val.IsActive = false
+		val.Jailed = true
 	}
 
 	// Check tier transition
@@ -607,6 +616,13 @@ func (k Keeper) SlashValidator(ctx sdk.Context, validatorAddr string, amount *bi
 		sdk.NewAttribute("amount", slashInt.String()),
 		sdk.NewAttribute("reason", reason),
 	))
+	if tombstoned {
+		ctx.EventManager().EmitEvent(sdk.NewEvent(
+			"zerone.staking.validator_tombstoned",
+			sdk.NewAttribute("validator", validatorAddr),
+			sdk.NewAttribute("slash_count", fmt.Sprintf("%d", val.SlashCount)),
+		))
+	}
 }
 
 // SlashValidatorToModule slashes a validator with progressive escalation and routes
@@ -703,9 +719,14 @@ func (k Keeper) SlashValidatorToModule(ctx sdk.Context, validatorAddr string, am
 		val.ReputationScore = 0
 	}
 
-	// Deactivate if excessive slashes
+	// Deactivate and tombstone if excessive slashes (same semantics as SlashValidator).
+	tombstoned := false
 	if params.MaxSlashCountDeactivate > 0 && val.SlashCount >= params.MaxSlashCountDeactivate {
+		if !val.Jailed {
+			tombstoned = true
+		}
 		val.IsActive = false
+		val.Jailed = true
 	}
 
 	// Check tier transition
@@ -723,6 +744,13 @@ func (k Keeper) SlashValidatorToModule(ctx sdk.Context, validatorAddr string, am
 		sdk.NewAttribute("reason", reason),
 		sdk.NewAttribute("dest_module", destModule),
 	))
+	if tombstoned {
+		ctx.EventManager().EmitEvent(sdk.NewEvent(
+			"zerone.staking.validator_tombstoned",
+			sdk.NewAttribute("validator", validatorAddr),
+			sdk.NewAttribute("slash_count", fmt.Sprintf("%d", val.SlashCount)),
+		))
+	}
 
 	return slashInt
 }

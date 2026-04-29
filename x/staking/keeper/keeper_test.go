@@ -3109,3 +3109,155 @@ func TestGuardianDemotion_OnSlash(t *testing.T) {
 			types.ValidatorTierString(val.Tier))
 	}
 }
+
+// ============================================================
+// P-19a: Tombstoning — Validator.Jailed enforcement
+// ============================================================
+
+// TestSlashValidator_Tombstones verifies that crossing MaxSlashCountDeactivate
+// sets both IsActive=false and Jailed=true via SlashValidator.
+func TestSlashValidator_Tombstones(t *testing.T) {
+	k, ctx := setupKeeper(t)
+	addr := testAddr("tomb_basic")
+	registerTestValidator(t, k, ctx, addr, "", "10000000000")
+	promoteToScholar(t, k, ctx, addr)
+
+	params := k.GetParams(ctx)
+	params.MaxSlashesPerEpoch = 10
+	params.MaxSlashCountDeactivate = 3
+	k.SetParams(ctx, params)
+
+	// Two slashes: below threshold — not yet tombstoned.
+	k.SlashValidator(ctx, addr, big.NewInt(1000), "slash_1")
+	k.SlashValidator(ctx, addr, big.NewInt(1000), "slash_2")
+	val, _ := k.GetValidator(ctx, addr)
+	if val.Jailed {
+		t.Error("expected Jailed=false after 2 slashes (threshold is 3)")
+	}
+	if !val.IsActive {
+		t.Error("expected IsActive=true after 2 slashes (below threshold)")
+	}
+
+	// Third slash: crosses threshold — tombstoned.
+	k.SlashValidator(ctx, addr, big.NewInt(1000), "slash_3")
+	val, _ = k.GetValidator(ctx, addr)
+	if !val.Jailed {
+		t.Error("expected Jailed=true after MaxSlashCountDeactivate threshold crossed")
+	}
+	if val.IsActive {
+		t.Error("expected IsActive=false after tombstone")
+	}
+
+	// Subsequent slashes: Jailed remains true (idempotent).
+	k.SlashValidator(ctx, addr, big.NewInt(1000), "slash_4")
+	val, _ = k.GetValidator(ctx, addr)
+	if !val.Jailed {
+		t.Error("Jailed should remain true after additional slashes")
+	}
+}
+
+// TestSlashValidatorToModule_Tombstones verifies the same tombstone logic
+// applies in SlashValidatorToModule.
+func TestSlashValidatorToModule_Tombstones(t *testing.T) {
+	k, ctx := setupKeeper(t)
+	addr := testAddr("tomb_module")
+	registerTestValidator(t, k, ctx, addr, "", "10000000000")
+	promoteToScholar(t, k, ctx, addr)
+
+	params := k.GetParams(ctx)
+	params.MaxSlashesPerEpoch = 10
+	params.MaxSlashCountDeactivate = 3
+	k.SetParams(ctx, params)
+
+	k.SlashValidatorToModule(ctx, addr, big.NewInt(1000), "development_fund", "s1")
+	k.SlashValidatorToModule(ctx, addr, big.NewInt(1000), "development_fund", "s2")
+	val, _ := k.GetValidator(ctx, addr)
+	if val.Jailed {
+		t.Error("expected Jailed=false after 2 slashes")
+	}
+
+	k.SlashValidatorToModule(ctx, addr, big.NewInt(1000), "development_fund", "s3")
+	val, _ = k.GetValidator(ctx, addr)
+	if !val.Jailed {
+		t.Error("expected Jailed=true after threshold in SlashValidatorToModule")
+	}
+	if val.IsActive {
+		t.Error("expected IsActive=false after tombstone in SlashValidatorToModule")
+	}
+}
+
+// TestMsgServer_Delegate_JailedValidator verifies that a jailed validator
+// cannot receive new delegations — ErrValidatorJailed is returned.
+func TestMsgServer_Delegate_JailedValidator(t *testing.T) {
+	k, ctx := setupKeeper(t)
+	ms := keeper.NewMsgServerImpl(k)
+	valAddr := testAddr("jailed_del_val")
+
+	jailed := &types.Validator{
+		OperatorAddress: valAddr,
+		ConsensusPubkey: "pk_jailed_del",
+		Tier:            types.TierApprentice,
+		SelfDelegation:  "111000",
+		DelegatedStake:  "0",
+		TotalStake:      "111000",
+		IsActive:        false,
+		Jailed:          true,
+	}
+	k.SetValidator(ctx, jailed)
+
+	_, err := ms.Delegate(ctx, &types.MsgDelegate{
+		Delegator: testAddr("del_to_jailed"),
+		Validator: valAddr,
+		Amount:    "500000",
+	})
+	if err == nil {
+		t.Fatal("expected error delegating to jailed validator")
+	}
+	if err != types.ErrValidatorJailed {
+		t.Errorf("expected ErrValidatorJailed, got %v", err)
+	}
+}
+
+// TestMsgServer_Redelegate_JailedDst verifies that redelegation to a jailed
+// destination validator is rejected with ErrValidatorJailed.
+func TestMsgServer_Redelegate_JailedDst(t *testing.T) {
+	k, ctx := setupKeeper(t)
+	ms := keeper.NewMsgServerImpl(k)
+	srcAddr := testAddr("redel_src_val")
+	dstAddr := testAddr("redel_jailed_dst")
+	delAddr := testAddr("redel_delegator")
+
+	registerTestValidator(t, k, ctx, srcAddr, "did:zrn:redelsrc", "1111000")
+
+	jailedDst := &types.Validator{
+		OperatorAddress: dstAddr,
+		ConsensusPubkey: "pk_jailed_dst",
+		Tier:            types.TierApprentice,
+		SelfDelegation:  "111000",
+		DelegatedStake:  "0",
+		TotalStake:      "111000",
+		IsActive:        false,
+		Jailed:          true,
+	}
+	k.SetValidator(ctx, jailedDst)
+
+	k.SetDelegation(ctx, &types.Delegation{
+		DelegatorAddress: delAddr,
+		ValidatorAddress: srcAddr,
+		Amount:           "500000",
+		CreatedAtBlock:   50,
+	})
+
+	_, err := ms.Redelegate(ctx, &types.MsgRedelegate{
+		Delegator:    delAddr,
+		SrcValidator: srcAddr,
+		DstValidator: dstAddr,
+		Amount:       "100000",
+	})
+	if err == nil {
+		t.Fatal("expected error redelegating to jailed destination validator")
+	}
+	if err != types.ErrValidatorJailed {
+		t.Errorf("expected ErrValidatorJailed, got %v", err)
+	}
+}
