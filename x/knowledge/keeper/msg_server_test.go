@@ -180,6 +180,85 @@ func TestMsgServer_SubmitClaim_EmptyDomainAllowed(t *testing.T) {
 	require.NotEmpty(t, resp.ClaimId)
 }
 
+// ─── SubmitClaim: RefutationConditions (P-07) ───────────────────────────────
+
+func TestMsgServer_SubmitClaim_WithRefutationConditions(t *testing.T) {
+	k, ctx := setupKnowledgeTest(t)
+	ms := keeper.NewMsgServerImpl(k)
+
+	conditions := []string{
+		"If a peer-reviewed experiment measures c > 3.1e8 m/s under controlled conditions",
+		"If multiple independent labs reproduce the measurement with calibrated instruments",
+	}
+	resp, err := ms.SubmitClaim(ctx, &types.MsgSubmitClaim{
+		Submitter:            makeValidBech32Addr("submitter1"),
+		FactContent:          "The speed of light is approximately 3e8 m/s in vacuum",
+		Domain:               "physics",
+		Stake:                "1000000",
+		RefutationConditions: conditions,
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, resp.ClaimId)
+
+	// Verify refutation conditions are stored on the claim
+	claim, found := k.GetClaim(ctx, resp.ClaimId)
+	require.True(t, found)
+	require.Equal(t, conditions, claim.RefutationConditions)
+}
+
+func TestMsgServer_SubmitClaim_RefutationConditions_TooMany(t *testing.T) {
+	k, ctx := setupKnowledgeTest(t)
+	ms := keeper.NewMsgServerImpl(k)
+
+	conditions := make([]string, 11)
+	for i := range conditions {
+		conditions[i] = "some refutation condition"
+	}
+	_, err := ms.SubmitClaim(ctx, &types.MsgSubmitClaim{
+		Submitter:            makeValidBech32Addr("submitter1"),
+		FactContent:          "The speed of light is approximately 3e8 m/s in vacuum",
+		Domain:               "physics",
+		Stake:                "1000000",
+		RefutationConditions: conditions,
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "max 10 entries")
+}
+
+func TestMsgServer_SubmitClaim_RefutationConditions_EmptyString(t *testing.T) {
+	k, ctx := setupKnowledgeTest(t)
+	ms := keeper.NewMsgServerImpl(k)
+
+	_, err := ms.SubmitClaim(ctx, &types.MsgSubmitClaim{
+		Submitter:            makeValidBech32Addr("submitter1"),
+		FactContent:          "The speed of light is approximately 3e8 m/s in vacuum",
+		Domain:               "physics",
+		Stake:                "1000000",
+		RefutationConditions: []string{"valid condition", ""},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "empty string not allowed")
+}
+
+func TestMsgServer_SubmitClaim_RefutationConditions_TooLong(t *testing.T) {
+	k, ctx := setupKnowledgeTest(t)
+	ms := keeper.NewMsgServerImpl(k)
+
+	tooLong := make([]byte, 501)
+	for i := range tooLong {
+		tooLong[i] = 'x'
+	}
+	_, err := ms.SubmitClaim(ctx, &types.MsgSubmitClaim{
+		Submitter:            makeValidBech32Addr("submitter1"),
+		FactContent:          "The speed of light is approximately 3e8 m/s in vacuum",
+		Domain:               "physics",
+		Stake:                "1000000",
+		RefutationConditions: []string{string(tooLong)},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "too long")
+}
+
 // ─── SubmitCommitment ───────────────────────────────────────────────────────
 
 func TestMsgServer_SubmitCommitment_Success(t *testing.T) {

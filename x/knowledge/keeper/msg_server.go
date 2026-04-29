@@ -112,6 +112,19 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 		}
 	}
 
+	// Validate refutation conditions (P-07: Popperian falsifiability at claim layer)
+	if len(msg.RefutationConditions) > 10 {
+		return nil, fmt.Errorf("refutation_conditions: max 10 entries allowed, got %d", len(msg.RefutationConditions))
+	}
+	for i, rc := range msg.RefutationConditions {
+		if rc == "" {
+			return nil, fmt.Errorf("refutation_conditions[%d]: empty string not allowed", i)
+		}
+		if len(rc) > 500 {
+			return nil, fmt.Errorf("refutation_conditions[%d]: too long (%d chars, max 500)", i, len(rc))
+		}
+	}
+
 	// Auto-derive or normalize canonical form
 	canonicalForm := msg.CanonicalForm
 	if canonicalForm == "" && msg.Structure != nil {
@@ -194,22 +207,23 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 	}
 
 	claim := &types.Claim{
-		Id:               claimID,
-		FactContent:      msg.FactContent,
-		Domain:           msg.Domain,
-		Category:         msg.Category,
-		Submitter:        msg.Submitter,
-		SubmittedAtBlock: height,
-		Status:           types.ClaimStatus_CLAIM_STATUS_PENDING,
-		References:       msg.References,
-		Stake:            msg.Stake,
-		PartnershipId:    msg.PartnershipId,
-		ContentHash:      contentHash,
-		ClaimType:        claimType,
-		Relations:        msg.Relations,
-		Structure:        msg.Structure,
-		CanonicalForm:    canonicalForm,
-		CanonicalHash:    canonicalHash,
+		Id:                   claimID,
+		FactContent:          msg.FactContent,
+		Domain:               msg.Domain,
+		Category:             msg.Category,
+		Submitter:            msg.Submitter,
+		SubmittedAtBlock:     height,
+		Status:               types.ClaimStatus_CLAIM_STATUS_PENDING,
+		References:           msg.References,
+		Stake:                msg.Stake,
+		PartnershipId:        msg.PartnershipId,
+		ContentHash:          contentHash,
+		ClaimType:            claimType,
+		Relations:            msg.Relations,
+		Structure:            msg.Structure,
+		CanonicalForm:        canonicalForm,
+		CanonicalHash:        canonicalHash,
+		RefutationConditions: msg.RefutationConditions,
 	}
 
 	if err := m.keeper.SetClaim(ctx, claim); err != nil {
@@ -245,6 +259,7 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 			sdk.NewAttribute("content_hash", contentHash),
 			sdk.NewAttribute("claim_type", claimType.String()),
 			sdk.NewAttribute("sponsored", fmt.Sprintf("%t", sponsored)),
+			sdk.NewAttribute("refutation_conditions_count", fmt.Sprintf("%d", len(msg.RefutationConditions))),
 		),
 	)
 	sdkCtx.EventManager().EmitEvent(

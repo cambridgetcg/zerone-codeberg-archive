@@ -4347,9 +4347,17 @@ type Claim struct {
 	// Optional rebuttal text. Attached when the original fact's submitter (or
 	// partnership) formally rebuts a challenge. Stored on the challenge claim
 	// so the full dispute is reconstructible from one record.
-	RebuttalText  string `protobuf:"bytes,23,opt,name=rebuttal_text,json=rebuttalText,proto3" json:"rebuttal_text,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	RebuttalText string `protobuf:"bytes,23,opt,name=rebuttal_text,json=rebuttalText,proto3" json:"rebuttal_text,omitempty"`
+	// RefutationConditions specifies what evidence or observations would falsify
+	// this claim. Encodes Popperian falsifiability at the claim layer (cf.
+	// FalsificationPaths on Methodology, which operates at the method layer).
+	// Optional for backward compatibility; governance can require non-empty via
+	// params.RequireRefutationConditions in a future proposal. Claims without
+	// refutation conditions are still accepted — but the absence is visible and
+	// can be penalized in scoring. Max 10 entries, 500 chars each.
+	RefutationConditions []string `protobuf:"bytes,24,rep,name=refutation_conditions,json=refutationConditions,proto3" json:"refutation_conditions,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *Claim) Reset() {
@@ -4541,6 +4549,13 @@ func (x *Claim) GetRebuttalText() string {
 		return x.RebuttalText
 	}
 	return ""
+}
+
+func (x *Claim) GetRefutationConditions() []string {
+	if x != nil {
+		return x.RefutationConditions
+	}
+	return nil
 }
 
 // VerificationRound tracks one commit-reveal verification cycle.
@@ -8599,7 +8614,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\vpenalty_bps\x18\x05 \x01(\x04R\n" +
 	"penaltyBps\x12\x1f\n" +
 	"\vadded_block\x18\x06 \x01(\x04R\n" +
-	"addedBlock\"\xac\a\n" +
+	"addedBlock\"\xe1\a\n" +
 	"\x05Claim\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\ffact_content\x18\x02 \x01(\tR\vfactContent\x12\x16\n" +
@@ -8627,7 +8642,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\tmethod_id\x18\x14 \x01(\tR\bmethodId\x12'\n" +
 	"\x0freasoning_trace\x18\x15 \x01(\tR\x0ereasoningTrace\x12#\n" +
 	"\rargument_text\x18\x16 \x01(\tR\fargumentText\x12#\n" +
-	"\rrebuttal_text\x18\x17 \x01(\tR\frebuttalText\"\xaf\x04\n" +
+	"\rrebuttal_text\x18\x17 \x01(\tR\frebuttalText\x123\n" +
+	"\x15refutation_conditions\x18\x18 \x03(\tR\x14refutationConditions\"\xaf\x04\n" +
 	"\x11VerificationRound\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\bclaim_id\x18\x02 \x01(\tR\aclaimId\x12(\n" +

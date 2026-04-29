@@ -717,6 +717,14 @@ message Claim {
   // partnership) formally rebuts a challenge. Stored on the challenge claim
   // so the full dispute is reconstructible from one record.
   string rebuttal_text       = 23;
+  // RefutationConditions specifies what evidence or observations would falsify
+  // this claim. Encodes Popperian falsifiability at the claim layer (cf.
+  // FalsificationPaths on Methodology, which operates at the method layer).
+  // Optional for backward compatibility; governance can require non-empty via
+  // params.RequireRefutationConditions in a future proposal. Claims without
+  // refutation conditions are still accepted — but the absence is visible and
+  // can be penalized in scoring. Max 10 entries, 500 chars each.
+  repeated string refutation_conditions = 24;
 }
 
 // VerificationRound tracks one commit-reveal verification cycle.

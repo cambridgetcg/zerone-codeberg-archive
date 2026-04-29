@@ -222,6 +222,10 @@ message MsgSubmitClaim {
   ClaimStructure structure = 10;  // Optional structured decomposition
   string canonical_form    = 11;  // Optional — auto-derived from structure if omitted
   bool   sponsored         = 12;  // Request bootstrap fund sponsorship for review fee
+  // Optional: what evidence would falsify this claim?
+  // Mirrors FalsificationPaths on Methodology at the per-claim layer.
+  // Max 10 entries. Governance can require non-empty via params in a future proposal.
+  repeated string refutation_conditions = 13;
 }
 
 message MsgSubmitClaimResponse {

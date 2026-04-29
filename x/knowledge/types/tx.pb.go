@@ -38,8 +38,12 @@ type MsgSubmitClaim struct {
 	Structure     *ClaimStructure  `protobuf:"bytes,10,opt,name=structure,proto3" json:"structure,omitempty"`                              // Optional structured decomposition
 	CanonicalForm string           `protobuf:"bytes,11,opt,name=canonical_form,json=canonicalForm,proto3" json:"canonical_form,omitempty"` // Optional — auto-derived from structure if omitted
 	Sponsored     bool             `protobuf:"varint,12,opt,name=sponsored,proto3" json:"sponsored,omitempty"`                             // Request bootstrap fund sponsorship for review fee
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Optional: what evidence would falsify this claim?
+	// Mirrors FalsificationPaths on Methodology at the per-claim layer.
+	// Max 10 entries. Governance can require non-empty via params in a future proposal.
+	RefutationConditions []string `protobuf:"bytes,13,rep,name=refutation_conditions,json=refutationConditions,proto3" json:"refutation_conditions,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *MsgSubmitClaim) Reset() {
@@ -154,6 +158,13 @@ func (x *MsgSubmitClaim) GetSponsored() bool {
 		return x.Sponsored
 	}
 	return false
+}
+
+func (x *MsgSubmitClaim) GetRefutationConditions() []string {
+	if x != nil {
+		return x.RefutationConditions
+	}
+	return nil
 }
 
 type MsgSubmitClaimResponse struct {
@@ -5688,7 +5699,7 @@ var File_zerone_knowledge_v1_tx_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_tx_proto_rawDesc = "" +
 	"\n" +
-	"\x1czerone/knowledge/v1/tx.proto\x12\x13zerone.knowledge.v1\x1a\x17cosmos/msg/v1/msg.proto\x1a\x1fzerone/knowledge/v1/types.proto\x1a!zerone/knowledge/v1/genesis.proto\"\xfb\x03\n" +
+	"\x1czerone/knowledge/v1/tx.proto\x12\x13zerone.knowledge.v1\x1a\x17cosmos/msg/v1/msg.proto\x1a\x1fzerone/knowledge/v1/types.proto\x1a!zerone/knowledge/v1/genesis.proto\"\xb0\x04\n" +
 	"\x0eMsgSubmitClaim\x12\x1c\n" +
 	"\tsubmitter\x18\x01 \x01(\tR\tsubmitter\x12!\n" +
 	"\ffact_content\x18\x02 \x01(\tR\vfactContent\x12\x16\n" +
@@ -5705,7 +5716,8 @@ const file_zerone_knowledge_v1_tx_proto_rawDesc = "" +
 	"\tstructure\x18\n" +
 	" \x01(\v2#.zerone.knowledge.v1.ClaimStructureR\tstructure\x12%\n" +
 	"\x0ecanonical_form\x18\v \x01(\tR\rcanonicalForm\x12\x1c\n" +
-	"\tsponsored\x18\f \x01(\bR\tsponsored:\x0e\x82\xe7\xb0*\tsubmitter\"3\n" +
+	"\tsponsored\x18\f \x01(\bR\tsponsored\x123\n" +
+	"\x15refutation_conditions\x18\r \x03(\tR\x14refutationConditions:\x0e\x82\xe7\xb0*\tsubmitter\"3\n" +
 	"\x16MsgSubmitClaimResponse\x12\x19\n" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\"|\n" +
 	"\x13MsgSubmitCommitment\x12\x1a\n" +
