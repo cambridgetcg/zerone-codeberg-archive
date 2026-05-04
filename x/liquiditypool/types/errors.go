@@ -18,4 +18,5 @@ var (
 	ErrInsufficientLP        = errors.Register(ModuleName, 14, "insufficient LP tokens")
 	ErrNoPool                = errors.Register(ModuleName, 15, "no pool found for denom pair")
 	ErrReserveBelowMinimum   = errors.Register(ModuleName, 16, "reserve would fall below minimum")
+	ErrTWAPStale             = errors.Register(ModuleName, 17, "TWAP accumulator is stale")
 )

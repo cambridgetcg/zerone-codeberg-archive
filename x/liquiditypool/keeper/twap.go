@@ -151,6 +151,29 @@ func (k Keeper) getSpotPrice(pool *types.Pool, baseDenom string) (*big.Int, uint
 	return price, 0, nil
 }
 
+// GetTWAPSafe is the staleness-aware variant of GetTWAP.
+//
+// It returns ErrTWAPStale if the TWAP accumulator has not been updated within
+// maxStalenessBlocks of the current block. Callers should use GetTWAPSafe in
+// preference to GetTWAP whenever they need a freshness guarantee — this
+// centralises the staleness check so individual consumers cannot accidentally
+// read a stale price.
+//
+// If maxStalenessBlocks is 0 the check is skipped (equivalent to GetTWAP).
+func (k Keeper) GetTWAPSafe(ctx sdk.Context, poolId string, baseDenom string, window uint64, maxStalenessBlocks uint64) (*big.Int, uint64, error) {
+	if maxStalenessBlocks > 0 {
+		acc, found := k.GetTWAPAccumulator(ctx, poolId)
+		if found {
+			currentBlock := uint64(ctx.BlockHeight())
+			if currentBlock > acc.LastBlock && currentBlock-acc.LastBlock > maxStalenessBlocks {
+				return nil, 0, types.ErrTWAPStale
+			}
+		}
+		// If no accumulator exists yet, fall through to GetTWAP which returns spot price.
+	}
+	return k.GetTWAP(ctx, poolId, baseDenom, window)
+}
+
 // GetSpotPrice returns the spot price for external use (e.g., billing module).
 func (k Keeper) GetSpotPrice(ctx sdk.Context, poolId, baseDenom string) (*big.Int, error) {
 	pool, found := k.GetPool(ctx, poolId)

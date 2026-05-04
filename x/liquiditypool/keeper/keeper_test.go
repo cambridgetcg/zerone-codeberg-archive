@@ -1397,3 +1397,102 @@ func TestMultipleSwaps_PriceMovement(t *testing.T) {
 		t.Errorf("price should decrease after buying uatom: initial=%s final=%s", price0.String(), price1.String())
 	}
 }
+
+// ===================================================================
+// GetTWAPSafe Tests
+// ===================================================================
+
+func TestGetTWAPSafe_FreshAccumulator(t *testing.T) {
+	ms, k, ctx, bk := setupMsgServer(t)
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "200000000000")
+
+	pool, _ := k.GetPool(ctx, poolId)
+
+	// Seed the TWAP accumulator at block 100 (the test context height).
+	k.UpdateTWAPAccumulator(ctx, pool)
+
+	// maxStalenessBlocks=50 — accumulator is at block 100, current block is 100 → fresh.
+	price, _, err := k.GetTWAPSafe(ctx, poolId, "uzrn", 0, 50)
+	if err != nil {
+		t.Fatalf("expected no error for fresh accumulator: %v", err)
+	}
+	if price == nil || price.Sign() <= 0 {
+		t.Fatalf("expected positive price, got %v", price)
+	}
+}
+
+func TestGetTWAPSafe_StaleAccumulator(t *testing.T) {
+	ms, k, ctx, bk := setupMsgServer(t)
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "200000000000")
+
+	pool, _ := k.GetPool(ctx, poolId)
+
+	// Seed the accumulator at block 100.
+	k.UpdateTWAPAccumulator(ctx, pool)
+
+	// Advance block height to 200 — accumulator was last updated at 100.
+	// maxStalenessBlocks=50, delta=100 → stale.
+	laterCtx := ctx.WithBlockHeight(200)
+	_, _, err := k.GetTWAPSafe(laterCtx, poolId, "uzrn", 0, 50)
+	if err == nil {
+		t.Fatal("expected ErrTWAPStale but got nil")
+	}
+}
+
+func TestGetTWAPSafe_ZeroMaxStaleness_SkipsCheck(t *testing.T) {
+	ms, k, ctx, bk := setupMsgServer(t)
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "200000000000")
+
+	pool, _ := k.GetPool(ctx, poolId)
+
+	// Seed at block 100, advance to block 1000.
+	k.UpdateTWAPAccumulator(ctx, pool)
+	laterCtx := ctx.WithBlockHeight(1000)
+
+	// maxStalenessBlocks=0 → check skipped regardless of staleness.
+	price, _, err := k.GetTWAPSafe(laterCtx, poolId, "uzrn", 0, 0)
+	if err != nil {
+		t.Fatalf("expected no error with maxStalenessBlocks=0: %v", err)
+	}
+	if price == nil || price.Sign() <= 0 {
+		t.Fatalf("expected positive price, got %v", price)
+	}
+}
+
+func TestGetTWAPSafe_NoAccumulator_ReturnsSpotPrice(t *testing.T) {
+	ms, k, ctx, bk := setupMsgServer(t)
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "200000000000")
+
+	// No UpdateTWAPAccumulator call → no accumulator in store.
+	// GetTWAPSafe should fall through to GetTWAP which returns spot price.
+	price, _, err := k.GetTWAPSafe(ctx, poolId, "uzrn", 0, 50)
+	if err != nil {
+		t.Fatalf("expected no error when no accumulator exists: %v", err)
+	}
+	if price == nil || price.Sign() <= 0 {
+		t.Fatalf("expected positive spot price, got %v", price)
+	}
+}
+
+func TestGetTWAPSafe_ExactStalenessThreshold(t *testing.T) {
+	ms, k, ctx, bk := setupMsgServer(t)
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "200000000000")
+
+	pool, _ := k.GetPool(ctx, poolId)
+	k.UpdateTWAPAccumulator(ctx, pool) // block 100
+
+	// delta = maxStalenessBlocks exactly → not stale (delta <= maxStalenessBlocks is fresh,
+	// delta > maxStalenessBlocks is stale).
+	at150 := ctx.WithBlockHeight(150)
+	_, _, err := k.GetTWAPSafe(at150, poolId, "uzrn", 0, 50)
+	if err != nil {
+		t.Fatalf("expected fresh at exact threshold: %v", err)
+	}
+
+	// One block beyond threshold → stale.
+	at151 := ctx.WithBlockHeight(151)
+	_, _, err = k.GetTWAPSafe(at151, poolId, "uzrn", 0, 50)
+	if err == nil {
+		t.Fatal("expected ErrTWAPStale one block past threshold")
+	}
+}
