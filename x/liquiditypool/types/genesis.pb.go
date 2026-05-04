@@ -30,6 +30,7 @@ type Params struct {
 	TwapWindowBlocks    uint64                 `protobuf:"varint,4,opt,name=twap_window_blocks,json=twapWindowBlocks,proto3" json:"twap_window_blocks,omitempty"`         // default TWAP window in blocks
 	ProtocolFeeBps      uint64                 `protobuf:"varint,5,opt,name=protocol_fee_bps,json=protocolFeeBps,proto3" json:"protocol_fee_bps,omitempty"`               // protocol's share of swap fees (1M bps scale)
 	MinReserve          string                 `protobuf:"bytes,6,opt,name=min_reserve,json=minReserve,proto3" json:"min_reserve,omitempty"`                              // minimum reserve after swap (bigint string, default "1")
+	MaxSwapFractionBps  uint64                 `protobuf:"varint,7,opt,name=max_swap_fraction_bps,json=maxSwapFractionBps,proto3" json:"max_swap_fraction_bps,omitempty"` // maximum fraction of pool reserve swappable in one tx (1M bps scale, 0 = disabled)
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -106,6 +107,13 @@ func (x *Params) GetMinReserve() string {
 	return ""
 }
 
+func (x *Params) GetMaxSwapFractionBps() uint64 {
+	if x != nil {
+		return x.MaxSwapFractionBps
+	}
+	return 0
+}
+
 // GenesisState defines the liquiditypool module genesis state.
 type GenesisState struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
@@ -171,7 +179,7 @@ var File_zerone_liquiditypool_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_liquiditypool_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"%zerone/liquiditypool/v1/genesis.proto\x12\x17zerone.liquiditypool.v1\x1a#zerone/liquiditypool/v1/types.proto\"\x83\x02\n" +
+	"%zerone/liquiditypool/v1/genesis.proto\x12\x17zerone.liquiditypool.v1\x1a#zerone/liquiditypool/v1/types.proto\"\xb6\x02\n" +
 	"\x06Params\x12/\n" +
 	"\x14default_swap_fee_bps\x18\x01 \x01(\x04R\x11defaultSwapFeeBps\x12\x1b\n" +
 	"\tmax_pools\x18\x02 \x01(\x04R\bmaxPools\x122\n" +
@@ -179,7 +187,8 @@ const file_zerone_liquiditypool_v1_genesis_proto_rawDesc = "" +
 	"\x12twap_window_blocks\x18\x04 \x01(\x04R\x10twapWindowBlocks\x12(\n" +
 	"\x10protocol_fee_bps\x18\x05 \x01(\x04R\x0eprotocolFeeBps\x12\x1f\n" +
 	"\vmin_reserve\x18\x06 \x01(\tR\n" +
-	"minReserve\"\xd3\x01\n" +
+	"minReserve\x121\n" +
+	"\x15max_swap_fraction_bps\x18\a \x01(\x04R\x12maxSwapFractionBps\"\xd3\x01\n" +
 	"\fGenesisState\x127\n" +
 	"\x06params\x18\x01 \x01(\v2\x1f.zerone.liquiditypool.v1.ParamsR\x06params\x123\n" +
 	"\x05pools\x18\x02 \x03(\v2\x1d.zerone.liquiditypool.v1.PoolR\x05pools\x12U\n" +

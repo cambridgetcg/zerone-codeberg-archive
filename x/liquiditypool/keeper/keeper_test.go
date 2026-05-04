@@ -1496,3 +1496,134 @@ func TestGetTWAPSafe_ExactStalenessThreshold(t *testing.T) {
 		t.Fatal("expected ErrTWAPStale one block past threshold")
 	}
 }
+
+// ===================================================================
+// Msg Server Tests: MaxSwapFractionBps enforcement (Gap 5)
+// ===================================================================
+
+// TestSwap_MaxFractionBps_BlocksLargeSwap verifies that a swap exceeding
+// max_swap_fraction_bps of the input reserve is rejected.
+func TestSwap_MaxFractionBps_BlocksLargeSwap(t *testing.T) {
+	ms, k, ctx, bk := setupMsgServer(t)
+	// Reserve: 100_000_000_000 uzrn : 100_000_000_000 uatom (standard test amount).
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "100000000000")
+
+	// Cap: 10% of reserveIn = 10_000_000_000 uzrn.
+	params := types.DefaultParams()
+	params.MaxSwapFractionBps = 100_000 // 10%
+	k.SetParams(ctx, params)
+
+	senderAddr := "zrn1sender0000000000000000000000"
+	bk.setBalance(senderAddr, "uzrn", 20_000_000_000)
+
+	// Attempt to swap 15_000_000_000 (15% > 10%) — must be rejected.
+	_, err := ms.Swap(ctx, &types.MsgSwap{
+		Sender:        senderAddr,
+		PoolId:        poolId,
+		TokenInDenom:  "uzrn",
+		TokenInAmount: "15000000000",
+	})
+	if err == nil {
+		t.Fatal("expected ErrSwapFractionExceeded for oversized swap")
+	}
+}
+
+// TestSwap_MaxFractionBps_AllowsExactBoundary verifies that a swap equal to
+// max_swap_fraction_bps of the input reserve is allowed.
+func TestSwap_MaxFractionBps_AllowsExactBoundary(t *testing.T) {
+	ms, k, ctx, bk := setupMsgServer(t)
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "100000000000")
+
+	params := types.DefaultParams()
+	params.MaxSwapFractionBps = 100_000 // 10% → max 10_000_000_000 uzrn
+	k.SetParams(ctx, params)
+
+	senderAddr := "zrn1sender0000000000000000000000"
+	bk.setBalance(senderAddr, "uzrn", 20_000_000_000)
+
+	// Exactly 10% of reserveIn = 10_000_000_000.
+	_, err := ms.Swap(ctx, &types.MsgSwap{
+		Sender:        senderAddr,
+		PoolId:        poolId,
+		TokenInDenom:  "uzrn",
+		TokenInAmount: "10000000000",
+	})
+	if err != nil {
+		t.Fatalf("expected swap at exact boundary to succeed: %v", err)
+	}
+}
+
+// TestSwap_MaxFractionBps_ZeroMeansDisabled verifies that setting
+// max_swap_fraction_bps = 0 disables the check and permits large swaps.
+func TestSwap_MaxFractionBps_ZeroMeansDisabled(t *testing.T) {
+	ms, k, ctx, bk := setupMsgServer(t)
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "100000000000")
+
+	params := types.DefaultParams()
+	params.MaxSwapFractionBps = 0 // disabled
+	params.MinReserve = "1"
+	k.SetParams(ctx, params)
+
+	senderAddr := "zrn1sender0000000000000000000000"
+	bk.setBalance(senderAddr, "uzrn", 60_000_000_000)
+
+	// Swap 50% of reserve — should be allowed when check is disabled.
+	_, err := ms.Swap(ctx, &types.MsgSwap{
+		Sender:        senderAddr,
+		PoolId:        poolId,
+		TokenInDenom:  "uzrn",
+		TokenInAmount: "50000000000",
+	})
+	if err != nil {
+		t.Fatalf("expected large swap to succeed when max_swap_fraction_bps=0: %v", err)
+	}
+}
+
+// TestSwap_MaxFractionBps_DefaultValue verifies the default param value
+// is 10% (100_000 bps) and that it is enforced.
+func TestSwap_MaxFractionBps_DefaultValue(t *testing.T) {
+	ms, k, ctx, bk := setupMsgServer(t)
+	// Default params already have MaxSwapFractionBps = 100_000 (10%).
+	k.SetParams(ctx, types.DefaultParams())
+
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "100000000000")
+
+	params := k.GetParams(ctx)
+	if params.MaxSwapFractionBps != 100_000 {
+		t.Fatalf("expected default MaxSwapFractionBps 100000, got %d", params.MaxSwapFractionBps)
+	}
+
+	senderAddr := "zrn1sender0000000000000000000000"
+	bk.setBalance(senderAddr, "uzrn", 20_000_000_000)
+
+	// Swap at 11% = 11_000_000_000 > 10% cap → blocked.
+	_, err := ms.Swap(ctx, &types.MsgSwap{
+		Sender:        senderAddr,
+		PoolId:        poolId,
+		TokenInDenom:  "uzrn",
+		TokenInAmount: "11000000000",
+	})
+	if err == nil {
+		t.Fatal("default 10% cap should block 11% swap")
+	}
+}
+
+// TestParams_MaxFractionBps_InvalidExceedsScale verifies that setting
+// max_swap_fraction_bps > 1_000_000 fails Validate().
+func TestParams_MaxFractionBps_InvalidExceedsScale(t *testing.T) {
+	p := types.DefaultParams()
+	p.MaxSwapFractionBps = 1_000_001
+	if err := p.Validate(); err == nil {
+		t.Fatal("expected Validate to fail for max_swap_fraction_bps > 1000000")
+	}
+}
+
+// TestParams_MaxFractionBps_MaxScale verifies that exactly 1_000_000 bps
+// (100%) is valid (though extreme).
+func TestParams_MaxFractionBps_MaxScale(t *testing.T) {
+	p := types.DefaultParams()
+	p.MaxSwapFractionBps = 1_000_000
+	if err := p.Validate(); err != nil {
+		t.Fatalf("expected Validate to pass for max_swap_fraction_bps=1000000: %v", err)
+	}
+}

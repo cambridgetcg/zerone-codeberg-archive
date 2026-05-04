@@ -4,12 +4,13 @@ import "fmt"
 
 func DefaultParams() *Params {
 	return &Params{
-		DefaultSwapFeeBps:  3000,          // 0.3%
-		MaxPools:           0,             // 0 = unlimited
+		DefaultSwapFeeBps:   3000,          // 0.3%
+		MaxPools:            0,             // 0 = unlimited
 		MinInitialLiquidity: "10000000000", // 10,000 ZRN in uzrn
-		TwapWindowBlocks:   1000,          // ~42 minutes at 2.521s blocks
-		ProtocolFeeBps:     450_000,       // 45% of swap fees go to protocol
-		MinReserve:         "1",           // minimum reserve after swap
+		TwapWindowBlocks:    1000,          // ~42 minutes at 2.521s blocks
+		ProtocolFeeBps:      450_000,       // 45% of swap fees go to protocol
+		MinReserve:          "1",           // minimum reserve after swap
+		MaxSwapFractionBps:  100_000,       // 10% of reserve per swap; 0 = disabled
 	}
 }
 
@@ -38,6 +39,9 @@ func (p *Params) Validate() error {
 	}
 	if p.ProtocolFeeBps > 1_000_000 {
 		return fmt.Errorf("protocol_fee_bps cannot exceed 1000000")
+	}
+	if p.MaxSwapFractionBps > 1_000_000 {
+		return fmt.Errorf("max_swap_fraction_bps cannot exceed 1000000")
 	}
 	return nil
 }

@@ -173,6 +173,16 @@ func (m msgServer) Swap(goCtx context.Context, msg *types.MsgSwap) (*types.MsgSw
 		return nil, types.ErrDenomNotInPool
 	}
 
+	// Max swap fraction check (0 = disabled)
+	params := m.Keeper.GetParams(ctx)
+	if params.MaxSwapFractionBps > 0 {
+		maxIn := new(big.Int).Mul(reserveIn, new(big.Int).SetUint64(params.MaxSwapFractionBps))
+		maxIn.Div(maxIn, big.NewInt(1_000_000))
+		if tokenIn.Cmp(maxIn) > 0 {
+			return nil, types.ErrSwapFractionExceeded
+		}
+	}
+
 	// Lock pool for this transaction
 	pool.Locked = true
 	m.Keeper.SetPool(ctx, pool)
@@ -194,7 +204,6 @@ func (m msgServer) Swap(goCtx context.Context, msg *types.MsgSwap) (*types.MsgSw
 
 	// Min reserve check after swap
 	newReserveOut := new(big.Int).Sub(reserveOut, tokenOut)
-	params := m.Keeper.GetParams(ctx)
 	if params.MinReserve != "" {
 		minReserve := new(big.Int)
 		minReserve.SetString(params.MinReserve, 10)

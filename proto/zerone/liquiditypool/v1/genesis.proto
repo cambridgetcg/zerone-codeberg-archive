@@ -13,6 +13,7 @@ message Params {
   uint64 twap_window_blocks    = 4; // default TWAP window in blocks
   uint64 protocol_fee_bps      = 5; // protocol's share of swap fees (1M bps scale)
   string min_reserve           = 6; // minimum reserve after swap (bigint string, default "1")
+  uint64 max_swap_fraction_bps = 7; // maximum fraction of pool reserve swappable in one tx (1M bps scale, 0 = disabled)
 }
 
 // GenesisState defines the liquiditypool module genesis state.
