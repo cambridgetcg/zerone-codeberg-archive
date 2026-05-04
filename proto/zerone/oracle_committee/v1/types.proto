@@ -1,0 +1,90 @@
+syntax = "proto3";
+package zerone.oracle_committee.v1;
+option go_package = "github.com/zerone-chain/zerone/x/oracle_committee/types";
+
+// OracleOperator is a registered oracle evaluation provider.
+//
+// Operators register with a stake and HTTP URI. When a verification round
+// needs an oracle evaluation, registered active operators independently
+// query the claim and submit their verdicts on-chain. Aggregation fires
+// once quorum (min_quorum_bps of active operators) has submitted.
+//
+// Slashing fires post-panel: if an operator's verdict diverges from the
+// panel-adjudicated final result AND confidence_bps is > 5000 (i.e., the
+// operator was confident and wrong), a fraction of their stake is slashed.
+message OracleOperator {
+  // bech32 operator address — also the on-chain identity
+  string address = 1;
+  // HTTP URI of the operator's evaluation endpoint (e.g. "https://oracle.example.com")
+  string uri = 2;
+  // uzrn staked by the operator (bigint as string)
+  string stake = 3;
+  // whether this operator is accepting evaluation requests
+  bool active = 4;
+  // block height when registered
+  uint64 registered_at = 5;
+  // cumulative slash count (informational; does not deactivate automatically)
+  uint64 slash_count = 6;
+}
+
+// OracleEvaluationRecord is one operator's evaluation for a specific claim.
+//
+// Each (operator, claim_id) pair may have at most one record. Duplicate
+// submissions are rejected. Once quorum is reached for a claim_id, the
+// evaluations are aggregated into an OracleAggregation.
+message OracleEvaluationRecord {
+  // the claim being evaluated (zerone-native claim ID)
+  string claim_id = 1;
+  // bech32 operator address
+  string operator = 2;
+  // "true" | "false" | "uncertain"
+  string verdict = 3;
+  // confidence in basis points: 0 = no confidence, 10000 = certain
+  uint32 confidence_bps = 4;
+  // operator's reasoning (stored for auditability; not used in aggregation)
+  string reasoning = 5;
+  // block height when this evaluation was submitted
+  uint64 submitted_at = 6;
+}
+
+// OracleAggregation is the finalized committee result for a claim.
+//
+// Produced when quorum is reached: the evaluations are sorted by confidence_bps,
+// stake-weighted, and the median verdict is returned. The stake weight ensures
+// that operators with more at stake have proportionally more influence over
+// the aggregated confidence.
+//
+// final_verdict is the majority verdict among the quorum submissions, with
+// ties broken toward "uncertain".
+message OracleAggregation {
+  // the claim this aggregation covers
+  string claim_id = 1;
+  // "true" | "false" | "uncertain"
+  string final_verdict = 2;
+  // stake-weighted median confidence across quorum submissions
+  uint32 aggregated_confidence_bps = 3;
+  // number of operators who submitted evaluations
+  uint32 operator_count = 4;
+  // block height when quorum was reached and aggregation was finalized
+  uint64 finalized_at = 5;
+}
+
+// OracleCommitteeParams are the governance-adjustable parameters for the
+// oracle committee module.
+message OracleCommitteeParams {
+  // minimum fraction of active operators required for quorum (basis points)
+  // default: 6000 (60%)
+  uint32 min_quorum_bps = 1;
+  // minimum number of active operators before the committee is considered active
+  // default: 3
+  uint32 min_committee_size = 2;
+  // blocks within which operators must submit after a claim is flagged
+  // default: 50 (~5 minutes at 6s/block)
+  uint64 evaluation_window_blocks = 3;
+  // maximum fraction of stake to slash per misbehavior (basis points)
+  // default: 500 (5%)
+  uint32 max_slash_fraction_bps = 4;
+  // minimum uzrn stake required to register as an operator (bigint string)
+  // default: "1000000" (1 ZRN)
+  string min_stake = 5;
+}

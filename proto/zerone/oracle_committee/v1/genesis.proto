@@ -1,0 +1,14 @@
+syntax = "proto3";
+package zerone.oracle_committee.v1;
+option go_package = "github.com/zerone-chain/zerone/x/oracle_committee/types";
+
+import "zerone/oracle_committee/v1/types.proto";
+
+// GenesisState carries the oracle committee module state for chain exports
+// and genesis bootstrapping.
+message GenesisState {
+  OracleCommitteeParams params = 1;
+  repeated OracleOperator operators = 2;
+  repeated OracleEvaluationRecord evaluations = 3;
+  repeated OracleAggregation aggregations = 4;
+}

@@ -1,0 +1,40 @@
+syntax = "proto3";
+package zerone.oracle_committee.v1;
+option go_package = "github.com/zerone-chain/zerone/x/oracle_committee/types";
+
+import "google/api/annotations.proto";
+import "zerone/oracle_committee/v1/types.proto";
+import "zerone/oracle_committee/v1/genesis.proto";
+
+service Query {
+  rpc OracleOperators(QueryOracleOperatorsRequest) returns (QueryOracleOperatorsResponse) {
+    option (google.api.http).get = "/zerone/oracle_committee/v1/operators";
+  }
+  rpc OracleOperator(QueryOracleOperatorRequest) returns (QueryOracleOperatorResponse) {
+    option (google.api.http).get = "/zerone/oracle_committee/v1/operators/{address}";
+  }
+  rpc OracleEvaluations(QueryOracleEvaluationsRequest) returns (QueryOracleEvaluationsResponse) {
+    option (google.api.http).get = "/zerone/oracle_committee/v1/evaluations/{claim_id}";
+  }
+  rpc OracleAggregation(QueryOracleAggregationRequest) returns (QueryOracleAggregationResponse) {
+    option (google.api.http).get = "/zerone/oracle_committee/v1/aggregation/{claim_id}";
+  }
+  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
+    option (google.api.http).get = "/zerone/oracle_committee/v1/params";
+  }
+}
+
+message QueryOracleOperatorsRequest {}
+message QueryOracleOperatorsResponse { repeated OracleOperator operators = 1; }
+
+message QueryOracleOperatorRequest { string address = 1; }
+message QueryOracleOperatorResponse { OracleOperator operator = 1; }
+
+message QueryOracleEvaluationsRequest { string claim_id = 1; }
+message QueryOracleEvaluationsResponse { repeated OracleEvaluationRecord evaluations = 1; }
+
+message QueryOracleAggregationRequest { string claim_id = 1; }
+message QueryOracleAggregationResponse { OracleAggregation aggregation = 1; }
+
+message QueryParamsRequest {}
+message QueryParamsResponse { OracleCommitteeParams params = 1; }

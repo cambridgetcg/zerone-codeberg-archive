@@ -1,0 +1,62 @@
+syntax = "proto3";
+package zerone.oracle_committee.v1;
+option go_package = "github.com/zerone-chain/zerone/x/oracle_committee/types";
+
+import "cosmos/msg/v1/msg.proto";
+import "zerone/oracle_committee/v1/types.proto";
+
+service Msg {
+  option (cosmos.msg.v1.service) = true;
+
+  // RegisterOracleOperator registers an address as an oracle operator,
+  // locking the specified stake.
+  rpc RegisterOracleOperator(MsgRegisterOracleOperator) returns (MsgRegisterOracleOperatorResponse);
+
+  // SubmitOracleEvaluation posts one operator's evaluation for a claim.
+  // If this submission brings the claim to quorum, aggregation fires automatically.
+  rpc SubmitOracleEvaluation(MsgSubmitOracleEvaluation) returns (MsgSubmitOracleEvaluationResponse);
+
+  // DeregisterOracleOperator removes an operator and returns their stake.
+  // Fails if the operator has pending (unfinalized) evaluations.
+  rpc DeregisterOracleOperator(MsgDeregisterOracleOperator) returns (MsgDeregisterOracleOperatorResponse);
+
+  // UpdateOracleCommitteeParams is a governance-gated message to update params.
+  rpc UpdateOracleCommitteeParams(MsgUpdateOracleCommitteeParams) returns (MsgUpdateOracleCommitteeParamsResponse);
+}
+
+message MsgRegisterOracleOperator {
+  option (cosmos.msg.v1.signer) = "operator";
+  string operator = 1;
+  string uri = 2;
+  // uzrn amount to lock as stake
+  string stake = 3;
+}
+message MsgRegisterOracleOperatorResponse {}
+
+message MsgSubmitOracleEvaluation {
+  option (cosmos.msg.v1.signer) = "operator";
+  string operator = 1;
+  string claim_id = 2;
+  // "true" | "false" | "uncertain"
+  string verdict = 3;
+  // 0-10000 basis points
+  uint32 confidence_bps = 4;
+  string reasoning = 5;
+}
+message MsgSubmitOracleEvaluationResponse {
+  // true if this submission triggered quorum and an aggregation was written
+  bool quorum_reached = 1;
+}
+
+message MsgDeregisterOracleOperator {
+  option (cosmos.msg.v1.signer) = "operator";
+  string operator = 1;
+}
+message MsgDeregisterOracleOperatorResponse {}
+
+message MsgUpdateOracleCommitteeParams {
+  option (cosmos.msg.v1.signer) = "authority";
+  string authority = 1;
+  OracleCommitteeParams params = 2;
+}
+message MsgUpdateOracleCommitteeParamsResponse {}
