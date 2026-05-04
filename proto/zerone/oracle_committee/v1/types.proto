@@ -45,6 +45,10 @@ message OracleEvaluationRecord {
   string reasoning = 5;
   // block height when this evaluation was submitted
   uint64 submitted_at = 6;
+  // oracle_request_id is the freshness nonce from the on-chain OracleRequest.
+  // Operators must include the nonce generated when the request was opened.
+  // Stored for auditability; validated on submission when a request exists.
+  string oracle_request_id = 7;
 }
 
 // OracleAggregation is the finalized committee result for a claim.
@@ -67,6 +71,27 @@ message OracleAggregation {
   uint32 operator_count = 4;
   // block height when quorum was reached and aggregation was finalized
   uint64 finalized_at = 5;
+}
+
+// OracleRequest is an on-chain freshness token for a knowledge oracle evaluation
+// round. It is created when a verification round requests oracle evaluation for
+// a claim.
+//
+// The nonce binds the evaluation round to a specific block height and requestor,
+// preventing pre-computed or replayed evaluations. Oracle operators must include
+// the nonce in their MsgSubmitOracleEvaluation. Evaluations with a missing or
+// mismatched nonce are rejected.
+//
+// nonce = hex(sha256(chainID + "|" + blockHeight + "|" + claimID + "|" + requestorAddr))
+message OracleRequest {
+  // the claim being evaluated
+  string claim_id = 1;
+  // freshness nonce: hex(sha256(chainID|blockHeight|claimID|requestor))
+  string nonce = 2;
+  // block height when this request was opened
+  uint64 opened_at_block = 3;
+  // address that opened this request (the verification module or governance address)
+  string requestor = 4;
 }
 
 // OracleCommitteeParams are the governance-adjustable parameters for the

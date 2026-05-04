@@ -42,6 +42,11 @@ message MsgSubmitOracleEvaluation {
   // 0-10000 basis points
   uint32 confidence_bps = 4;
   string reasoning = 5;
+  // oracle_request_id is the freshness nonce from the on-chain OracleRequest.
+  // Must match the nonce stored for this claim_id. Required when a request
+  // has been opened via OpenOracleRequest; empty string is rejected if a
+  // request exists.
+  string oracle_request_id = 6;
 }
 message MsgSubmitOracleEvaluationResponse {
   // true if this submission triggered quorum and an aggregation was written

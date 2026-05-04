@@ -139,9 +139,13 @@ type OracleEvaluationRecord struct {
 	// operator's reasoning (stored for auditability; not used in aggregation)
 	Reasoning string `protobuf:"bytes,5,opt,name=reasoning,proto3" json:"reasoning,omitempty"`
 	// block height when this evaluation was submitted
-	SubmittedAt   uint64 `protobuf:"varint,6,opt,name=submitted_at,json=submittedAt,proto3" json:"submitted_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	SubmittedAt uint64 `protobuf:"varint,6,opt,name=submitted_at,json=submittedAt,proto3" json:"submitted_at,omitempty"`
+	// oracle_request_id is the freshness nonce from the on-chain OracleRequest.
+	// Operators must include the nonce generated when the request was opened.
+	// Stored for auditability; validated on submission when a request exists.
+	OracleRequestId string `protobuf:"bytes,7,opt,name=oracle_request_id,json=oracleRequestId,proto3" json:"oracle_request_id,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *OracleEvaluationRecord) Reset() {
@@ -214,6 +218,13 @@ func (x *OracleEvaluationRecord) GetSubmittedAt() uint64 {
 		return x.SubmittedAt
 	}
 	return 0
+}
+
+func (x *OracleEvaluationRecord) GetOracleRequestId() string {
+	if x != nil {
+		return x.OracleRequestId
+	}
+	return ""
 }
 
 // OracleAggregation is the finalized committee result for a claim.
@@ -306,6 +317,88 @@ func (x *OracleAggregation) GetFinalizedAt() uint64 {
 	return 0
 }
 
+// OracleRequest is an on-chain freshness token for a knowledge oracle evaluation
+// round. It is created when a verification round requests oracle evaluation for
+// a claim.
+//
+// The nonce binds the evaluation round to a specific block height and requestor,
+// preventing pre-computed or replayed evaluations. Oracle operators must include
+// the nonce in their MsgSubmitOracleEvaluation. Evaluations with a missing or
+// mismatched nonce are rejected.
+//
+// nonce = hex(sha256(chainID + "|" + blockHeight + "|" + claimID + "|" + requestorAddr))
+type OracleRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// the claim being evaluated
+	ClaimId string `protobuf:"bytes,1,opt,name=claim_id,json=claimId,proto3" json:"claim_id,omitempty"`
+	// freshness nonce: hex(sha256(chainID|blockHeight|claimID|requestor))
+	Nonce string `protobuf:"bytes,2,opt,name=nonce,proto3" json:"nonce,omitempty"`
+	// block height when this request was opened
+	OpenedAtBlock uint64 `protobuf:"varint,3,opt,name=opened_at_block,json=openedAtBlock,proto3" json:"opened_at_block,omitempty"`
+	// address that opened this request (the verification module or governance address)
+	Requestor     string `protobuf:"bytes,4,opt,name=requestor,proto3" json:"requestor,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OracleRequest) Reset() {
+	*x = OracleRequest{}
+	mi := &file_zerone_oracle_committee_v1_types_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OracleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OracleRequest) ProtoMessage() {}
+
+func (x *OracleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_oracle_committee_v1_types_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OracleRequest.ProtoReflect.Descriptor instead.
+func (*OracleRequest) Descriptor() ([]byte, []int) {
+	return file_zerone_oracle_committee_v1_types_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *OracleRequest) GetClaimId() string {
+	if x != nil {
+		return x.ClaimId
+	}
+	return ""
+}
+
+func (x *OracleRequest) GetNonce() string {
+	if x != nil {
+		return x.Nonce
+	}
+	return ""
+}
+
+func (x *OracleRequest) GetOpenedAtBlock() uint64 {
+	if x != nil {
+		return x.OpenedAtBlock
+	}
+	return 0
+}
+
+func (x *OracleRequest) GetRequestor() string {
+	if x != nil {
+		return x.Requestor
+	}
+	return ""
+}
+
 // OracleCommitteeParams are the governance-adjustable parameters for the
 // oracle committee module.
 type OracleCommitteeParams struct {
@@ -331,7 +424,7 @@ type OracleCommitteeParams struct {
 
 func (x *OracleCommitteeParams) Reset() {
 	*x = OracleCommitteeParams{}
-	mi := &file_zerone_oracle_committee_v1_types_proto_msgTypes[3]
+	mi := &file_zerone_oracle_committee_v1_types_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -343,7 +436,7 @@ func (x *OracleCommitteeParams) String() string {
 func (*OracleCommitteeParams) ProtoMessage() {}
 
 func (x *OracleCommitteeParams) ProtoReflect() protoreflect.Message {
-	mi := &file_zerone_oracle_committee_v1_types_proto_msgTypes[3]
+	mi := &file_zerone_oracle_committee_v1_types_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -356,7 +449,7 @@ func (x *OracleCommitteeParams) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OracleCommitteeParams.ProtoReflect.Descriptor instead.
 func (*OracleCommitteeParams) Descriptor() ([]byte, []int) {
-	return file_zerone_oracle_committee_v1_types_proto_rawDescGZIP(), []int{3}
+	return file_zerone_oracle_committee_v1_types_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *OracleCommitteeParams) GetMinQuorumBps() uint32 {
@@ -406,20 +499,26 @@ const file_zerone_oracle_committee_v1_types_proto_rawDesc = "" +
 	"\x06active\x18\x04 \x01(\bR\x06active\x12#\n" +
 	"\rregistered_at\x18\x05 \x01(\x04R\fregisteredAt\x12\x1f\n" +
 	"\vslash_count\x18\x06 \x01(\x04R\n" +
-	"slashCount\"\xd1\x01\n" +
+	"slashCount\"\xfd\x01\n" +
 	"\x16OracleEvaluationRecord\x12\x19\n" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\x12\x1a\n" +
 	"\boperator\x18\x02 \x01(\tR\boperator\x12\x18\n" +
 	"\averdict\x18\x03 \x01(\tR\averdict\x12%\n" +
 	"\x0econfidence_bps\x18\x04 \x01(\rR\rconfidenceBps\x12\x1c\n" +
 	"\treasoning\x18\x05 \x01(\tR\treasoning\x12!\n" +
-	"\fsubmitted_at\x18\x06 \x01(\x04R\vsubmittedAt\"\xd9\x01\n" +
+	"\fsubmitted_at\x18\x06 \x01(\x04R\vsubmittedAt\x12*\n" +
+	"\x11oracle_request_id\x18\a \x01(\tR\x0foracleRequestId\"\xd9\x01\n" +
 	"\x11OracleAggregation\x12\x19\n" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\x12#\n" +
 	"\rfinal_verdict\x18\x02 \x01(\tR\ffinalVerdict\x12:\n" +
 	"\x19aggregated_confidence_bps\x18\x03 \x01(\rR\x17aggregatedConfidenceBps\x12%\n" +
 	"\x0eoperator_count\x18\x04 \x01(\rR\roperatorCount\x12!\n" +
-	"\ffinalized_at\x18\x05 \x01(\x04R\vfinalizedAt\"\xf7\x01\n" +
+	"\ffinalized_at\x18\x05 \x01(\x04R\vfinalizedAt\"\x86\x01\n" +
+	"\rOracleRequest\x12\x19\n" +
+	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\x12\x14\n" +
+	"\x05nonce\x18\x02 \x01(\tR\x05nonce\x12&\n" +
+	"\x0fopened_at_block\x18\x03 \x01(\x04R\ropenedAtBlock\x12\x1c\n" +
+	"\trequestor\x18\x04 \x01(\tR\trequestor\"\xf7\x01\n" +
 	"\x15OracleCommitteeParams\x12$\n" +
 	"\x0emin_quorum_bps\x18\x01 \x01(\rR\fminQuorumBps\x12,\n" +
 	"\x12min_committee_size\x18\x02 \x01(\rR\x10minCommitteeSize\x128\n" +
@@ -439,12 +538,13 @@ func file_zerone_oracle_committee_v1_types_proto_rawDescGZIP() []byte {
 	return file_zerone_oracle_committee_v1_types_proto_rawDescData
 }
 
-var file_zerone_oracle_committee_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_zerone_oracle_committee_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_zerone_oracle_committee_v1_types_proto_goTypes = []any{
 	(*OracleOperator)(nil),         // 0: zerone.oracle_committee.v1.OracleOperator
 	(*OracleEvaluationRecord)(nil), // 1: zerone.oracle_committee.v1.OracleEvaluationRecord
 	(*OracleAggregation)(nil),      // 2: zerone.oracle_committee.v1.OracleAggregation
-	(*OracleCommitteeParams)(nil),  // 3: zerone.oracle_committee.v1.OracleCommitteeParams
+	(*OracleRequest)(nil),          // 3: zerone.oracle_committee.v1.OracleRequest
+	(*OracleCommitteeParams)(nil),  // 4: zerone.oracle_committee.v1.OracleCommitteeParams
 }
 var file_zerone_oracle_committee_v1_types_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -465,7 +565,7 @@ func file_zerone_oracle_committee_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_zerone_oracle_committee_v1_types_proto_rawDesc), len(file_zerone_oracle_committee_v1_types_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

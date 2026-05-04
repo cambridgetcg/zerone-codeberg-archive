@@ -13,4 +13,6 @@ var (
 	ErrAggregationExists      = errors.Register(ModuleName, 9, "aggregation already finalized for this claim")
 	ErrCommitteeTooSmall      = errors.Register(ModuleName, 10, "active operator count below min_committee_size")
 	ErrUnauthorized           = errors.Register(ModuleName, 11, "unauthorized")
+	ErrInvalidOracleRequestId = errors.Register(ModuleName, 12, "oracle request id is missing or does not match the on-chain request")
+	ErrOracleRequestNotFound  = errors.Register(ModuleName, 13, "no oracle request found for this claim")
 )

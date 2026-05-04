@@ -21,9 +21,12 @@
 package keeper
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"sort"
+	"strconv"
 
 	"cosmossdk.io/core/store"
 	"cosmossdk.io/log"
@@ -252,6 +255,68 @@ func (k Keeper) SetAggregation(ctx sdk.Context, agg *types.OracleAggregation) er
 	return store.Set(types.AggregationKey(agg.ClaimId), bz)
 }
 
+// ── Oracle Requests (Freshness Tokens) ───────────────────────────
+
+// GenerateRequestId computes the deterministic freshness nonce for an oracle
+// evaluation request.
+//
+// nonce = hex(sha256(chainID + "|" + blockHeight + "|" + claimID + "|" + requestorAddr))
+//
+// Exported so callers (e.g., off-chain operators) can reproduce the nonce
+// independently and include it in their MsgSubmitOracleEvaluation.
+func GenerateRequestId(chainID string, blockHeight uint64, claimID, requestorAddr string) string {
+	input := chainID + "|" + strconv.FormatUint(blockHeight, 10) + "|" + claimID + "|" + requestorAddr
+	hash := sha256.Sum256([]byte(input))
+	return hex.EncodeToString(hash[:])
+}
+
+// OpenOracleRequest creates a freshness token for a claim evaluation round and
+// stores it on-chain. Must be called before operators can submit evaluations
+// when nonce validation is active. Returns the generated oracle_request_id.
+//
+// Returns an error if a request is already open for this claim.
+func (k Keeper) OpenOracleRequest(ctx sdk.Context, claimID, requestorAddr string) (string, error) {
+	if _, exists := k.GetOracleRequest(ctx, claimID); exists {
+		return "", fmt.Errorf("oracle request already open for claim %s", claimID)
+	}
+	nonce := GenerateRequestId(ctx.ChainID(), uint64(ctx.BlockHeight()), claimID, requestorAddr)
+	req := &types.OracleRequest{
+		ClaimId:       claimID,
+		Nonce:         nonce,
+		OpenedAtBlock: uint64(ctx.BlockHeight()),
+		Requestor:     requestorAddr,
+	}
+	if err := k.SetOracleRequest(ctx, req); err != nil {
+		return "", err
+	}
+	return nonce, nil
+}
+
+// GetOracleRequest returns the OracleRequest freshness token for a claim.
+// Returns (nil, false) when no request has been opened.
+func (k Keeper) GetOracleRequest(ctx sdk.Context, claimID string) (*types.OracleRequest, bool) {
+	kvStore := k.storeService.OpenKVStore(ctx)
+	bz, err := kvStore.Get(types.OracleRequestKey(claimID))
+	if err != nil || bz == nil {
+		return nil, false
+	}
+	var req types.OracleRequest
+	if err := k.cdc.Unmarshal(bz, &req); err != nil {
+		return nil, false
+	}
+	return &req, true
+}
+
+// SetOracleRequest persists an OracleRequest freshness token.
+func (k Keeper) SetOracleRequest(ctx sdk.Context, req *types.OracleRequest) error {
+	bz, err := k.cdc.Marshal(req)
+	if err != nil {
+		return err
+	}
+	kvStore := k.storeService.OpenKVStore(ctx)
+	return kvStore.Set(types.OracleRequestKey(req.ClaimId), bz)
+}
+
 // ── Core Logic ────────────────────────────────────────────────────
 
 // RegisterOperator registers a new oracle operator, locking their stake.
@@ -322,11 +387,16 @@ func (k Keeper) DeregisterOperator(ctx sdk.Context, address string) error {
 
 // SubmitEvaluation records one operator's evaluation. If quorum is reached,
 // fires aggregation and returns (aggregation, true). Otherwise (nil, false).
+//
+// oracleRequestId is the freshness nonce from MsgSubmitOracleEvaluation. When
+// an OracleRequest has been opened for this claimID, the nonce must match
+// exactly — an empty string or mismatch returns ErrInvalidOracleRequestId.
+// When no request has been opened, the nonce field is ignored (backward compat).
 func (k Keeper) SubmitEvaluation(
 	ctx sdk.Context,
 	operator, claimID, verdict string,
 	confidenceBps uint32,
-	reasoning string,
+	reasoning, oracleRequestId string,
 ) (*types.OracleAggregation, bool, error) {
 	// Validation.
 	op, found := k.GetOperator(ctx, operator)
@@ -349,14 +419,23 @@ func (k Keeper) SubmitEvaluation(
 		return nil, false, types.ErrAggregationExists
 	}
 
+	// Freshness token validation: if a request was opened for this claim, the
+	// operator must supply the matching nonce.
+	if oracleReq, reqExists := k.GetOracleRequest(ctx, claimID); reqExists {
+		if oracleRequestId == "" || oracleRequestId != oracleReq.Nonce {
+			return nil, false, types.ErrInvalidOracleRequestId
+		}
+	}
+
 	// Store the evaluation.
 	rec := &types.OracleEvaluationRecord{
-		ClaimId:       claimID,
-		Operator:      operator,
-		Verdict:       verdict,
-		ConfidenceBps: confidenceBps,
-		Reasoning:     reasoning,
-		SubmittedAt:   uint64(ctx.BlockHeight()),
+		ClaimId:         claimID,
+		Operator:        operator,
+		Verdict:         verdict,
+		ConfidenceBps:   confidenceBps,
+		Reasoning:       reasoning,
+		SubmittedAt:     uint64(ctx.BlockHeight()),
+		OracleRequestId: oracleRequestId,
 	}
 	if err := k.SetEvaluation(ctx, rec); err != nil {
 		return nil, false, err

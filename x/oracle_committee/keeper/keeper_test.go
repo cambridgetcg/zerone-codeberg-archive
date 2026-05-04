@@ -340,7 +340,7 @@ func TestDeregisterOperator_NotFound(t *testing.T) {
 func TestSubmitEvaluation_NoQuorum(t *testing.T) {
 	k, ctx, _ := setupKeeper(t)
 	addrs := registerN(t, k, ctx, 3)
-	agg, quorum, err := k.SubmitEvaluation(ctx, addrs[0], "claim1", "true", 8000, "first")
+	agg, quorum, err := k.SubmitEvaluation(ctx, addrs[0], "claim1", "true", 8000, "first", "")
 	if err != nil {
 		t.Fatalf("submit: %v", err)
 	}
@@ -356,8 +356,8 @@ func TestSubmitEvaluation_NoQuorum(t *testing.T) {
 func TestSubmitEvaluation_QuorumReached(t *testing.T) {
 	k, ctx, _ := setupKeeper(t)
 	addrs := registerN(t, k, ctx, 3)
-	_, _, _ = k.SubmitEvaluation(ctx, addrs[0], "claim1", "true", 8000, "first")
-	agg, quorum, err := k.SubmitEvaluation(ctx, addrs[1], "claim1", "true", 9000, "second")
+	_, _, _ = k.SubmitEvaluation(ctx, addrs[0], "claim1", "true", 8000, "first", "")
+	agg, quorum, err := k.SubmitEvaluation(ctx, addrs[1], "claim1", "true", 9000, "second", "")
 	if err != nil {
 		t.Fatalf("submit: %v", err)
 	}
@@ -376,8 +376,8 @@ func TestSubmitEvaluation_QuorumReached(t *testing.T) {
 func TestSubmitEvaluation_DuplicateRejected(t *testing.T) {
 	k, ctx, _ := setupKeeper(t)
 	addrs := registerN(t, k, ctx, 3)
-	_, _, _ = k.SubmitEvaluation(ctx, addrs[0], "claim1", "true", 8000, "first")
-	_, _, err := k.SubmitEvaluation(ctx, addrs[0], "claim1", "true", 9000, "duplicate")
+	_, _, _ = k.SubmitEvaluation(ctx, addrs[0], "claim1", "true", 8000, "first", "")
+	_, _, err := k.SubmitEvaluation(ctx, addrs[0], "claim1", "true", 9000, "duplicate", "")
 	if err != types.ErrDuplicateEvaluation {
 		t.Errorf("want ErrDuplicateEvaluation, got %v", err)
 	}
@@ -387,7 +387,7 @@ func TestSubmitEvaluation_DuplicateRejected(t *testing.T) {
 func TestSubmitEvaluation_InvalidVerdict(t *testing.T) {
 	k, ctx, _ := setupKeeper(t)
 	addrs := registerN(t, k, ctx, 3)
-	_, _, err := k.SubmitEvaluation(ctx, addrs[0], "claim1", "maybe", 8000, "")
+	_, _, err := k.SubmitEvaluation(ctx, addrs[0], "claim1", "maybe", 8000, "", "")
 	if err != types.ErrInvalidVerdict {
 		t.Errorf("want ErrInvalidVerdict, got %v", err)
 	}
@@ -397,7 +397,7 @@ func TestSubmitEvaluation_InvalidVerdict(t *testing.T) {
 func TestSubmitEvaluation_ConfidenceOutOfRange(t *testing.T) {
 	k, ctx, _ := setupKeeper(t)
 	addrs := registerN(t, k, ctx, 3)
-	_, _, err := k.SubmitEvaluation(ctx, addrs[0], "claim1", "true", 10001, "")
+	_, _, err := k.SubmitEvaluation(ctx, addrs[0], "claim1", "true", 10001, "", "")
 	if err != types.ErrInvalidConfidence {
 		t.Errorf("want ErrInvalidConfidence, got %v", err)
 	}
@@ -408,10 +408,10 @@ func TestSubmitEvaluation_AfterAggregation(t *testing.T) {
 	k, ctx, _ := setupKeeper(t)
 	addrs := registerN(t, k, ctx, 3)
 	// Reach quorum.
-	_, _, _ = k.SubmitEvaluation(ctx, addrs[0], "claim1", "true", 8000, "")
-	_, _, _ = k.SubmitEvaluation(ctx, addrs[1], "claim1", "true", 9000, "")
+	_, _, _ = k.SubmitEvaluation(ctx, addrs[0], "claim1", "true", 8000, "", "")
+	_, _, _ = k.SubmitEvaluation(ctx, addrs[1], "claim1", "true", 9000, "", "")
 	// Third operator tries to submit after aggregation exists.
-	_, _, err := k.SubmitEvaluation(ctx, addrs[2], "claim1", "true", 7000, "")
+	_, _, err := k.SubmitEvaluation(ctx, addrs[2], "claim1", "true", 7000, "", "")
 	if err != types.ErrAggregationExists {
 		t.Errorf("want ErrAggregationExists, got %v", err)
 	}
@@ -422,7 +422,7 @@ func TestSubmitEvaluation_InactiveOperator(t *testing.T) {
 	k, ctx, _ := setupKeeper(t)
 	addrs := registerN(t, k, ctx, 3)
 	_ = k.DeregisterOperator(ctx, addrs[0])
-	_, _, err := k.SubmitEvaluation(ctx, addrs[0], "claim1", "true", 8000, "")
+	_, _, err := k.SubmitEvaluation(ctx, addrs[0], "claim1", "true", 8000, "", "")
 	if err != types.ErrOperatorNotFound {
 		t.Errorf("want ErrOperatorNotFound for deregistered operator, got %v", err)
 	}
@@ -435,13 +435,13 @@ func TestQuorum_ExactlyAtThreshold(t *testing.T) {
 	k, ctx, _ := setupKeeper(t)
 	addrs := registerN(t, k, ctx, 5)
 	// Submit 2 (not enough).
-	_, q1, _ := k.SubmitEvaluation(ctx, addrs[0], "claim5", "true", 8000, "")
-	_, q2, _ := k.SubmitEvaluation(ctx, addrs[1], "claim5", "true", 8000, "")
+	_, q1, _ := k.SubmitEvaluation(ctx, addrs[0], "claim5", "true", 8000, "", "")
+	_, q2, _ := k.SubmitEvaluation(ctx, addrs[1], "claim5", "true", 8000, "", "")
 	if q1 || q2 {
 		t.Error("want no quorum after 2-of-5 submissions (need ceiling(60%*5)=3)")
 	}
 	// Submit 3rd — quorum.
-	agg, q3, err := k.SubmitEvaluation(ctx, addrs[2], "claim5", "true", 8000, "")
+	agg, q3, err := k.SubmitEvaluation(ctx, addrs[2], "claim5", "true", 8000, "", "")
 	if err != nil || !q3 || agg == nil {
 		t.Errorf("want quorum at 3-of-5, q3=%v err=%v agg=%v", q3, err, agg)
 	}
@@ -458,8 +458,8 @@ func TestSlashOperator_WrongConfidentVerdict(t *testing.T) {
 	initialModuleBalance := bk.moduleBalance[types.ModuleName]
 
 	// op1 submits "true" with high confidence.
-	_, _, _ = k.SubmitEvaluation(ctx, addrs[0], "slashclaim", "true", 8000, "")
-	_, _, _ = k.SubmitEvaluation(ctx, addrs[1], "slashclaim", "true", 9000, "")
+	_, _, _ = k.SubmitEvaluation(ctx, addrs[0], "slashclaim", "true", 8000, "", "")
+	_, _, _ = k.SubmitEvaluation(ctx, addrs[1], "slashclaim", "true", 9000, "", "")
 
 	// Panel adjudicates: final verdict is "false". op1 was confident and wrong.
 	if err := k.SlashOperator(ctx, addrs[0], "slashclaim", "false", "distribution"); err != nil {
@@ -486,8 +486,8 @@ func TestSlashOperator_WrongConfidentVerdict(t *testing.T) {
 func TestSlashOperator_CorrectVerdict(t *testing.T) {
 	k, ctx, _ := setupKeeper(t)
 	addrs := registerN(t, k, ctx, 3)
-	_, _, _ = k.SubmitEvaluation(ctx, addrs[0], "slashclaim2", "true", 8000, "")
-	_, _, _ = k.SubmitEvaluation(ctx, addrs[1], "slashclaim2", "true", 9000, "")
+	_, _, _ = k.SubmitEvaluation(ctx, addrs[0], "slashclaim2", "true", 8000, "", "")
+	_, _, _ = k.SubmitEvaluation(ctx, addrs[1], "slashclaim2", "true", 9000, "", "")
 
 	// Panel verdict matches: no slash.
 	_ = k.SlashOperator(ctx, addrs[0], "slashclaim2", "true", "distribution")
@@ -505,8 +505,8 @@ func TestSlashOperator_CorrectVerdict(t *testing.T) {
 func TestSlashOperator_LowConfidenceNoSlash(t *testing.T) {
 	k, ctx, _ := setupKeeper(t)
 	addrs := registerN(t, k, ctx, 3)
-	_, _, _ = k.SubmitEvaluation(ctx, addrs[0], "slashclaim3", "true", 4000, "") // low confidence
-	_, _, _ = k.SubmitEvaluation(ctx, addrs[1], "slashclaim3", "true", 9000, "")
+	_, _, _ = k.SubmitEvaluation(ctx, addrs[0], "slashclaim3", "true", 4000, "", "") // low confidence
+	_, _, _ = k.SubmitEvaluation(ctx, addrs[1], "slashclaim3", "true", 9000, "", "")
 
 	_ = k.SlashOperator(ctx, addrs[0], "slashclaim3", "false", "distribution")
 
@@ -584,10 +584,10 @@ func TestGetEvaluationsForClaim(t *testing.T) {
 	k, ctx, _ := setupKeeper(t)
 	addrs := registerN(t, k, ctx, 5)
 	// Submit 3 evaluations for claim A, 1 for claim B.
-	_, _, _ = k.SubmitEvaluation(ctx, addrs[0], "claimA", "true", 8000, "")
-	_, _, _ = k.SubmitEvaluation(ctx, addrs[1], "claimA", "false", 7000, "")
-	_, _, _ = k.SubmitEvaluation(ctx, addrs[2], "claimA", "true", 9000, "")
-	_, _, _ = k.SubmitEvaluation(ctx, addrs[3], "claimB", "uncertain", 5000, "")
+	_, _, _ = k.SubmitEvaluation(ctx, addrs[0], "claimA", "true", 8000, "", "")
+	_, _, _ = k.SubmitEvaluation(ctx, addrs[1], "claimA", "false", 7000, "", "")
+	_, _, _ = k.SubmitEvaluation(ctx, addrs[2], "claimA", "true", 9000, "", "")
+	_, _, _ = k.SubmitEvaluation(ctx, addrs[3], "claimB", "uncertain", 5000, "", "")
 
 	evalsA := k.GetEvaluationsForClaim(ctx, "claimA")
 	if len(evalsA) != 3 {
@@ -600,5 +600,163 @@ func TestGetEvaluationsForClaim(t *testing.T) {
 	evalsC := k.GetEvaluationsForClaim(ctx, "claimC")
 	if len(evalsC) != 0 {
 		t.Errorf("want 0 evals for claimC, got %d", len(evalsC))
+	}
+}
+
+// ── Gap 4: Oracle Request freshness token tests ───────────────────
+
+// TestGenerateRequestId_Deterministic: same inputs → same nonce.
+func TestGenerateRequestId_Deterministic(t *testing.T) {
+	id1 := keeper.GenerateRequestId("zerone-1", 100, "claim42", "zrn1abc")
+	id2 := keeper.GenerateRequestId("zerone-1", 100, "claim42", "zrn1abc")
+	if id1 != id2 {
+		t.Errorf("want deterministic nonce, got %s and %s", id1, id2)
+	}
+}
+
+// TestGenerateRequestId_UniquePerClaim: different claim IDs → different nonces.
+func TestGenerateRequestId_UniquePerClaim(t *testing.T) {
+	id1 := keeper.GenerateRequestId("zerone-1", 100, "claimA", "zrn1abc")
+	id2 := keeper.GenerateRequestId("zerone-1", 100, "claimB", "zrn1abc")
+	if id1 == id2 {
+		t.Error("want distinct nonces for different claim IDs")
+	}
+}
+
+// TestGenerateRequestId_UniquePerBlock: different block heights → different nonces.
+func TestGenerateRequestId_UniquePerBlock(t *testing.T) {
+	id1 := keeper.GenerateRequestId("zerone-1", 100, "claim1", "zrn1abc")
+	id2 := keeper.GenerateRequestId("zerone-1", 101, "claim1", "zrn1abc")
+	if id1 == id2 {
+		t.Error("want distinct nonces for different block heights")
+	}
+}
+
+// TestGenerateRequestId_IsHexSHA256: nonce is a 64-char hex string (sha256 output).
+func TestGenerateRequestId_IsHexSHA256(t *testing.T) {
+	id := keeper.GenerateRequestId("zerone-1", 100, "claim1", "zrn1abc")
+	if len(id) != 64 {
+		t.Errorf("want 64-char hex (sha256), got len=%d val=%s", len(id), id)
+	}
+	for _, c := range id {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+			t.Errorf("nonce contains non-hex character: %c", c)
+			break
+		}
+	}
+}
+
+// TestOpenOracleRequest_StoresNonce: opened request is retrievable.
+func TestOpenOracleRequest_StoresNonce(t *testing.T) {
+	k, ctx, _ := setupKeeper(t)
+	requestor := validOperatorAddr(t, 1)
+	nonce, err := k.OpenOracleRequest(ctx, "claim99", requestor)
+	if err != nil {
+		t.Fatalf("OpenOracleRequest: %v", err)
+	}
+	if nonce == "" {
+		t.Fatal("want non-empty nonce")
+	}
+
+	req, found := k.GetOracleRequest(ctx, "claim99")
+	if !found {
+		t.Fatal("request not found after open")
+	}
+	if req.Nonce != nonce {
+		t.Errorf("stored nonce %s != returned nonce %s", req.Nonce, nonce)
+	}
+	if req.ClaimId != "claim99" {
+		t.Errorf("want claim_id 'claim99', got %s", req.ClaimId)
+	}
+	if req.OpenedAtBlock != 100 {
+		t.Errorf("want opened_at_block 100, got %d", req.OpenedAtBlock)
+	}
+}
+
+// TestOpenOracleRequest_DuplicateRejected: opening twice for the same claim fails.
+func TestOpenOracleRequest_DuplicateRejected(t *testing.T) {
+	k, ctx, _ := setupKeeper(t)
+	requestor := validOperatorAddr(t, 1)
+	_, _ = k.OpenOracleRequest(ctx, "claimDup", requestor)
+	_, err := k.OpenOracleRequest(ctx, "claimDup", requestor)
+	if err == nil {
+		t.Error("want error on duplicate OpenOracleRequest")
+	}
+}
+
+// TestSubmitEvaluation_ValidNonce: when request exists, matching nonce is accepted.
+func TestSubmitEvaluation_ValidNonce(t *testing.T) {
+	k, ctx, _ := setupKeeper(t)
+	addrs := registerN(t, k, ctx, 3)
+
+	requestor := validOperatorAddr(t, 99)
+	nonce, err := k.OpenOracleRequest(ctx, "claimFresh", requestor)
+	if err != nil {
+		t.Fatalf("OpenOracleRequest: %v", err)
+	}
+
+	_, _, err = k.SubmitEvaluation(ctx, addrs[0], "claimFresh", "true", 8000, "reasoning", nonce)
+	if err != nil {
+		t.Errorf("want no error with valid nonce, got %v", err)
+	}
+}
+
+// TestSubmitEvaluation_MissingNonce: when request exists, empty nonce is rejected.
+func TestSubmitEvaluation_MissingNonce(t *testing.T) {
+	k, ctx, _ := setupKeeper(t)
+	addrs := registerN(t, k, ctx, 3)
+
+	requestor := validOperatorAddr(t, 99)
+	_, _ = k.OpenOracleRequest(ctx, "claimFresh2", requestor)
+
+	_, _, err := k.SubmitEvaluation(ctx, addrs[0], "claimFresh2", "true", 8000, "", "")
+	if err != types.ErrInvalidOracleRequestId {
+		t.Errorf("want ErrInvalidOracleRequestId for empty nonce, got %v", err)
+	}
+}
+
+// TestSubmitEvaluation_WrongNonce: when request exists, wrong nonce is rejected.
+func TestSubmitEvaluation_WrongNonce(t *testing.T) {
+	k, ctx, _ := setupKeeper(t)
+	addrs := registerN(t, k, ctx, 3)
+
+	requestor := validOperatorAddr(t, 99)
+	_, _ = k.OpenOracleRequest(ctx, "claimFresh3", requestor)
+
+	_, _, err := k.SubmitEvaluation(ctx, addrs[0], "claimFresh3", "true", 8000, "", "deadbeef")
+	if err != types.ErrInvalidOracleRequestId {
+		t.Errorf("want ErrInvalidOracleRequestId for wrong nonce, got %v", err)
+	}
+}
+
+// TestSubmitEvaluation_NoRequest_Passes: when no request exists, empty nonce is allowed
+// (backward compat — old verification paths that don't call OpenOracleRequest).
+func TestSubmitEvaluation_NoRequest_Passes(t *testing.T) {
+	k, ctx, _ := setupKeeper(t)
+	addrs := registerN(t, k, ctx, 3)
+
+	// No OpenOracleRequest call — old-style submission without nonce.
+	_, _, err := k.SubmitEvaluation(ctx, addrs[0], "claimOld", "true", 8000, "", "")
+	if err != nil {
+		t.Errorf("want no error when no request exists (backward compat), got %v", err)
+	}
+}
+
+// TestSubmitEvaluation_NoncePersisted: nonce is stored in the evaluation record.
+func TestSubmitEvaluation_NoncePersisted(t *testing.T) {
+	k, ctx, _ := setupKeeper(t)
+	addrs := registerN(t, k, ctx, 3)
+
+	requestor := validOperatorAddr(t, 99)
+	nonce, _ := k.OpenOracleRequest(ctx, "claimAudit", requestor)
+
+	_, _, _ = k.SubmitEvaluation(ctx, addrs[0], "claimAudit", "true", 8000, "reasoning", nonce)
+
+	eval, found := k.GetEvaluation(ctx, "claimAudit", addrs[0])
+	if !found {
+		t.Fatal("evaluation not found")
+	}
+	if eval.OracleRequestId != nonce {
+		t.Errorf("want nonce %s stored in record, got %s", nonce, eval.OracleRequestId)
 	}
 }

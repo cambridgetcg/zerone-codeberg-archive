@@ -10,10 +10,11 @@ const (
 
 // KV store key prefixes.
 var (
-	ParamsKey             = []byte{0x00}
-	OperatorKeyPrefix     = []byte{0x01}
-	EvaluationKeyPrefix   = []byte{0x02}
-	AggregationKeyPrefix  = []byte{0x03}
+	ParamsKey              = []byte{0x00}
+	OperatorKeyPrefix      = []byte{0x01}
+	EvaluationKeyPrefix    = []byte{0x02}
+	AggregationKeyPrefix   = []byte{0x03}
+	OracleRequestKeyPrefix = []byte{0x04}
 )
 
 // OperatorKey returns the store key for an oracle operator by address.
@@ -39,4 +40,9 @@ func EvaluationByClaimPrefix(claimID string) []byte {
 // AggregationKey returns the store key for the final aggregation of a claim.
 func AggregationKey(claimID string) []byte {
 	return append(AggregationKeyPrefix, []byte(claimID)...)
+}
+
+// OracleRequestKey returns the store key for the oracle request (freshness token) of a claim.
+func OracleRequestKey(claimID string) []byte {
+	return append(OracleRequestKeyPrefix, []byte(claimID)...)
 }

@@ -44,6 +44,7 @@ func (s *MsgServer) SubmitOracleEvaluation(goCtx context.Context, msg *types.Msg
 		msg.Verdict,
 		msg.ConfidenceBps,
 		msg.Reasoning,
+		msg.OracleRequestId,
 	)
 	if err != nil {
 		return nil, err

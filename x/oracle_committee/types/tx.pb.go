@@ -128,8 +128,13 @@ type MsgSubmitOracleEvaluation struct {
 	// 0-10000 basis points
 	ConfidenceBps uint32 `protobuf:"varint,4,opt,name=confidence_bps,json=confidenceBps,proto3" json:"confidence_bps,omitempty"`
 	Reasoning     string `protobuf:"bytes,5,opt,name=reasoning,proto3" json:"reasoning,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// oracle_request_id is the freshness nonce from the on-chain OracleRequest.
+	// Must match the nonce stored for this claim_id. Required when a request
+	// has been opened via OpenOracleRequest; empty string is rejected if a
+	// request exists.
+	OracleRequestId string `protobuf:"bytes,6,opt,name=oracle_request_id,json=oracleRequestId,proto3" json:"oracle_request_id,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *MsgSubmitOracleEvaluation) Reset() {
@@ -193,6 +198,13 @@ func (x *MsgSubmitOracleEvaluation) GetConfidenceBps() uint32 {
 func (x *MsgSubmitOracleEvaluation) GetReasoning() string {
 	if x != nil {
 		return x.Reasoning
+	}
+	return ""
+}
+
+func (x *MsgSubmitOracleEvaluation) GetOracleRequestId() string {
+	if x != nil {
+		return x.OracleRequestId
 	}
 	return ""
 }
@@ -419,13 +431,14 @@ const file_zerone_oracle_committee_v1_tx_proto_rawDesc = "" +
 	"\boperator\x18\x01 \x01(\tR\boperator\x12\x10\n" +
 	"\x03uri\x18\x02 \x01(\tR\x03uri\x12\x14\n" +
 	"\x05stake\x18\x03 \x01(\tR\x05stake:\r\x82\xe7\xb0*\boperator\"#\n" +
-	"!MsgRegisterOracleOperatorResponse\"\xc0\x01\n" +
+	"!MsgRegisterOracleOperatorResponse\"\xec\x01\n" +
 	"\x19MsgSubmitOracleEvaluation\x12\x1a\n" +
 	"\boperator\x18\x01 \x01(\tR\boperator\x12\x19\n" +
 	"\bclaim_id\x18\x02 \x01(\tR\aclaimId\x12\x18\n" +
 	"\averdict\x18\x03 \x01(\tR\averdict\x12%\n" +
 	"\x0econfidence_bps\x18\x04 \x01(\rR\rconfidenceBps\x12\x1c\n" +
-	"\treasoning\x18\x05 \x01(\tR\treasoning:\r\x82\xe7\xb0*\boperator\"J\n" +
+	"\treasoning\x18\x05 \x01(\tR\treasoning\x12*\n" +
+	"\x11oracle_request_id\x18\x06 \x01(\tR\x0foracleRequestId:\r\x82\xe7\xb0*\boperator\"J\n" +
 	"!MsgSubmitOracleEvaluationResponse\x12%\n" +
 	"\x0equorum_reached\x18\x01 \x01(\bR\rquorumReached\"H\n" +
 	"\x1bMsgDeregisterOracleOperator\x12\x1a\n" +
