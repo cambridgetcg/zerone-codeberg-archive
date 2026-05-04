@@ -25,7 +25,17 @@ message QueryQuote {
   string effective_price            = 6;  // final uzrn bigint string
 }
 
-// DynamicPricingConfig stores parameters for the 3-tier ZRN/USD oracle.
+// DynamicPricingConfig stores parameters for the ZRN/USD oracle.
+//
+// The ZRN price is derived from a weighted median of up to three independent
+// sources to prevent flash-loan and single-source manipulation attacks:
+//   1. TWAP from the ZRN AMM pool (TwapWindowBlocks)
+//   2. External price feed submitted by registered oracle operators
+//      (ExternalPriceFeedEnabled + ExternalPriceFeedAddress)
+//   3. Manual governance override (ManualZrnPriceUsd — emergency only)
+//
+// The weighted median means an attacker must corrupt >=2 sources to shift
+// the derived price, making single-source manipulation ineffective.
 message DynamicPricingConfig {
   bool   enabled              = 1;
   string target_query_cost_usd = 2;  // 6-dec USD ("10000" = $0.01)
@@ -34,6 +44,14 @@ message DynamicPricingConfig {
   uint64 staleness_blocks     = 5;
   string min_cost_per_fact    = 6;   // floor uzrn
   string max_cost_per_fact    = 7;   // ceiling uzrn
+  // external_price_feed_enabled activates the third price source.
+  // When true, the billing keeper reads from external_price_feed_address
+  // and incorporates it into the weighted median.
+  bool   external_price_feed_enabled = 8;
+  // external_price_feed_address is the feed ID used to look up the external
+  // ZRN/USD price via the ExternalPriceFeedKeeper interface.
+  // Example: "oracle_feed_zrn_usd" for a registered oracle committee feed.
+  string external_price_feed_address = 9;
 }
 
 // FactPriceBreakdown shows per-fact pricing components.

@@ -36,3 +36,16 @@ type LiquidityPoolKeeper interface {
 	GetTWAP(ctx context.Context, denom string, windowBlocks uint64) (*big.Int, error)
 	GetLastPriceUpdateHeight(ctx context.Context) uint64
 }
+
+// ExternalPriceFeedKeeper provides prices from external oracle sources.
+// Nil-safe — set post-init when an oracle feed module is wired.
+//
+// GetLatestPrice returns the current ZRN/USD price (6-decimal micro-USD)
+// for the given feed address. Returns (nil, err) if the feed is unavailable
+// or the price is stale. Implementations may include:
+//   - An oracle committee module that aggregates operator submissions
+//   - A Chainlink/Pyth adapter that reads from ABCI vote extensions
+//   - A governance-managed price store
+type ExternalPriceFeedKeeper interface {
+	GetLatestPrice(ctx context.Context, feedAddress string) (*big.Int, error)
+}

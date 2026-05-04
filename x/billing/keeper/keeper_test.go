@@ -232,6 +232,16 @@ func (m *mockLiquidityPoolKeeper) GetLastPriceUpdateHeight(_ context.Context) ui
 	return m.lastUpdateBlock
 }
 
+// mockExternalPriceFeedKeeper returns a fixed price for any feedAddress.
+type mockExternalPriceFeedKeeper struct {
+	price *big.Int
+	err   error
+}
+
+func (m *mockExternalPriceFeedKeeper) GetLatestPrice(_ context.Context, _ string) (*big.Int, error) {
+	return m.price, m.err
+}
+
 // -----------------------------------------------------------------------
 // Test Setup
 // -----------------------------------------------------------------------
@@ -1411,5 +1421,204 @@ func TestBatchQuery_PricingCorrect(t *testing.T) {
 	expectedTotal := new(big.Int).Mul(singlePrice, big.NewInt(2))
 	if totalPrice.Cmp(expectedTotal) != 0 {
 		t.Errorf("expected batch total %s, got %s", expectedTotal, totalPrice)
+	}
+}
+
+// -----------------------------------------------------------------------
+// Tests: WeightedMedianPrice (pure function)
+// -----------------------------------------------------------------------
+
+func TestWeightedMedianPrice_Empty(t *testing.T) {
+	result := keeper.WeightedMedianPrice(nil)
+	if result != nil {
+		t.Errorf("want nil for empty sources, got %s", result)
+	}
+}
+
+func TestWeightedMedianPrice_Single(t *testing.T) {
+	price := big.NewInt(1_000_000)
+	result := keeper.WeightedMedianPrice([]*big.Int{price})
+	if result.Cmp(price) != 0 {
+		t.Errorf("want %s, got %s", price, result)
+	}
+}
+
+func TestWeightedMedianPrice_TwoSources_ReturnsLower(t *testing.T) {
+	// Even count → return lower middle (conservative)
+	low := big.NewInt(800_000)
+	high := big.NewInt(1_200_000)
+	result := keeper.WeightedMedianPrice([]*big.Int{high, low}) // unsorted input
+	if result.Cmp(low) != 0 {
+		t.Errorf("want lower middle %s for 2-source even count, got %s", low, result)
+	}
+}
+
+func TestWeightedMedianPrice_ThreeSources_ReturnsMiddle(t *testing.T) {
+	// Standard case: median of 3 = middle value after sorting.
+	// sorted: [1_000_000, 1_500_000, 2_000_000] → middle (index 1) = 1_500_000
+	sources := []*big.Int{
+		big.NewInt(1_500_000),
+		big.NewInt(1_000_000),
+		big.NewInt(2_000_000),
+	}
+	result := keeper.WeightedMedianPrice(sources)
+	want := big.NewInt(1_500_000) // middle of sorted list
+	if result.Cmp(want) != 0 {
+		t.Errorf("want median %s, got %s", want, result)
+	}
+}
+
+func TestWeightedMedianPrice_AttackerManipulatesOneSource(t *testing.T) {
+	// Attacker controls TWAP (raised to 10x). External + manual are accurate.
+	// Median should return the accurate middle, not the manipulated high.
+	attackerTWAP := big.NewInt(10_000_000) // 10x normal
+	externalFeed := big.NewInt(1_000_000)  // accurate: $1.00
+	manualOverride := big.NewInt(1_050_000) // accurate: $1.05
+
+	result := keeper.WeightedMedianPrice([]*big.Int{attackerTWAP, externalFeed, manualOverride})
+	// Sorted: 1_000_000, 1_050_000, 10_000_000 → median = 1_050_000
+	want := big.NewInt(1_050_000)
+	if result.Cmp(want) != 0 {
+		t.Errorf("want unmanipulated median %s, got %s (attacker TWAP should not shift median)", want, result)
+	}
+}
+
+// -----------------------------------------------------------------------
+// Tests: external price feed integration
+// -----------------------------------------------------------------------
+
+func TestOracle_ExternalFeedOnly(t *testing.T) {
+	// No TWAP, no manual — only external feed provides price.
+	k, ctx, _, kk := setupKeeper(t)
+	kk.addFact("fact-1", 600000, 0, 1, testAddr(10))
+
+	params := types.DefaultParams()
+	params.DynamicPricing = &types.DynamicPricingConfig{
+		Enabled:                    true,
+		TargetQueryCostUsd:         "10000",
+		ManualZrnPriceUsd:          "0",
+		TwapWindowBlocks:           1000,
+		StalenessBlocks:            5000,
+		MinCostPerFact:             "1000",
+		MaxCostPerFact:             "100000000",
+		ExternalPriceFeedEnabled:   true,
+		ExternalPriceFeedAddress:   "oracle_feed_zrn_usd",
+	}
+	k.SetParams(ctx, params)
+
+	// Only external feed returns a price ($0.50 per ZRN)
+	epfk := &mockExternalPriceFeedKeeper{price: big.NewInt(500_000)}
+	k.SetExternalPriceFeedKeeper(epfk)
+
+	totalPrice, _ := k.CalculateQueryPrice(ctx, []string{"fact-1"}, 2000)
+
+	// baseCost = 10000 * 1_000_000 / 500_000 = 20000
+	want := big.NewInt(20000)
+	if totalPrice.Cmp(want) != 0 {
+		t.Errorf("want external-feed-based cost %s, got %s", want, totalPrice)
+	}
+}
+
+func TestOracle_ThreeSourceMedian(t *testing.T) {
+	// All three sources active: TWAP, external feed, manual override.
+	// Median of three prices should be computed.
+	k, ctx, _, kk := setupKeeperWithLPK(t, big.NewInt(1_000_000), 99) // TWAP $1.00
+	kk.addFact("fact-1", 600000, 0, 1, testAddr(10))
+
+	params := types.DefaultParams()
+	params.DynamicPricing = &types.DynamicPricingConfig{
+		Enabled:                    true,
+		TargetQueryCostUsd:         "10000",
+		ManualZrnPriceUsd:          "1200000", // $1.20 (governance override)
+		TwapWindowBlocks:           1000,
+		StalenessBlocks:            5000,
+		MinCostPerFact:             "1000",
+		MaxCostPerFact:             "100000000",
+		ExternalPriceFeedEnabled:   true,
+		ExternalPriceFeedAddress:   "oracle_feed_zrn_usd",
+	}
+	k.SetParams(ctx, params)
+
+	// External feed: $1.10
+	epfk := &mockExternalPriceFeedKeeper{price: big.NewInt(1_100_000)}
+	k.SetExternalPriceFeedKeeper(epfk)
+
+	// Three sources: TWAP=$1.00, external=$1.10, manual=$1.20
+	// Median = $1.10
+	totalPrice, _ := k.CalculateQueryPrice(ctx, []string{"fact-1"}, 2000)
+
+	// baseCost = 10000 * 1_000_000 / 1_100_000 ≈ 9090
+	// (The exact value depends on big.Int division, no float rounding)
+	baseUSD := big.NewInt(10000)
+	scale := big.NewInt(1_000_000)
+	medianPrice := big.NewInt(1_100_000)
+	expected := new(big.Int).Div(new(big.Int).Mul(baseUSD, scale), medianPrice)
+
+	if totalPrice.Cmp(expected) != 0 {
+		t.Errorf("want 3-source median cost %s, got %s", expected, totalPrice)
+	}
+}
+
+func TestOracle_ExternalFeedUnavailable_FallsBackToTWAP(t *testing.T) {
+	// External feed enabled but returns error. Should use TWAP alone.
+	k, ctx, _, kk := setupKeeperWithLPK(t, big.NewInt(2_000_000), 99) // TWAP $2.00
+	kk.addFact("fact-1", 600000, 0, 1, testAddr(10))
+
+	params := types.DefaultParams()
+	params.DynamicPricing = &types.DynamicPricingConfig{
+		Enabled:                    true,
+		TargetQueryCostUsd:         "10000",
+		ManualZrnPriceUsd:          "0",
+		TwapWindowBlocks:           1000,
+		StalenessBlocks:            5000,
+		MinCostPerFact:             "1000",
+		MaxCostPerFact:             "100000000",
+		ExternalPriceFeedEnabled:   true,
+		ExternalPriceFeedAddress:   "oracle_feed_zrn_usd",
+	}
+	k.SetParams(ctx, params)
+
+	// External feed fails.
+	epfk := &mockExternalPriceFeedKeeper{price: nil, err: fmt.Errorf("feed unavailable")}
+	k.SetExternalPriceFeedKeeper(epfk)
+
+	totalPrice, _ := k.CalculateQueryPrice(ctx, []string{"fact-1"}, 2000)
+
+	// Only TWAP available at $2.00: baseCost = 10000 * 1_000_000 / 2_000_000 = 5000
+	want := big.NewInt(5000)
+	if totalPrice.Cmp(want) != 0 {
+		t.Errorf("want TWAP fallback cost %s when external feed unavailable, got %s", want, totalPrice)
+	}
+}
+
+func TestOracle_ExternalFeedDisabled(t *testing.T) {
+	// ExternalPriceFeedEnabled=false: external keeper should not be consulted.
+	k, ctx, _, kk := setupKeeperWithLPK(t, big.NewInt(1_000_000), 99) // TWAP $1.00
+	kk.addFact("fact-1", 600000, 0, 1, testAddr(10))
+
+	params := types.DefaultParams()
+	params.DynamicPricing = &types.DynamicPricingConfig{
+		Enabled:                    true,
+		TargetQueryCostUsd:         "10000",
+		ManualZrnPriceUsd:          "0",
+		TwapWindowBlocks:           1000,
+		StalenessBlocks:            5000,
+		MinCostPerFact:             "1000",
+		MaxCostPerFact:             "100000000",
+		ExternalPriceFeedEnabled:   false, // disabled
+		ExternalPriceFeedAddress:   "oracle_feed_zrn_usd",
+	}
+	k.SetParams(ctx, params)
+
+	// Wire up external feed with a different price — should be ignored.
+	epfk := &mockExternalPriceFeedKeeper{price: big.NewInt(500_000)} // $0.50
+	k.SetExternalPriceFeedKeeper(epfk)
+
+	totalPrice, _ := k.CalculateQueryPrice(ctx, []string{"fact-1"}, 2000)
+
+	// Only TWAP: 10000 * 1_000_000 / 1_000_000 = 10000
+	want := big.NewInt(10000)
+	if totalPrice.Cmp(want) != 0 {
+		t.Errorf("want TWAP-only cost %s when external feed disabled, got %s", want, totalPrice)
 	}
 }

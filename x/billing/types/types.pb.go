@@ -207,7 +207,17 @@ func (x *QueryQuote) GetEffectivePrice() string {
 	return ""
 }
 
-// DynamicPricingConfig stores parameters for the 3-tier ZRN/USD oracle.
+// DynamicPricingConfig stores parameters for the ZRN/USD oracle.
+//
+// The ZRN price is derived from a weighted median of up to three independent
+// sources to prevent flash-loan and single-source manipulation attacks:
+//  1. TWAP from the ZRN AMM pool (TwapWindowBlocks)
+//  2. External price feed submitted by registered oracle operators
+//     (ExternalPriceFeedEnabled + ExternalPriceFeedAddress)
+//  3. Manual governance override (ManualZrnPriceUsd — emergency only)
+//
+// The weighted median means an attacker must corrupt >=2 sources to shift
+// the derived price, making single-source manipulation ineffective.
 type DynamicPricingConfig struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	Enabled            bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
@@ -217,8 +227,16 @@ type DynamicPricingConfig struct {
 	StalenessBlocks    uint64                 `protobuf:"varint,5,opt,name=staleness_blocks,json=stalenessBlocks,proto3" json:"staleness_blocks,omitempty"`
 	MinCostPerFact     string                 `protobuf:"bytes,6,opt,name=min_cost_per_fact,json=minCostPerFact,proto3" json:"min_cost_per_fact,omitempty"` // floor uzrn
 	MaxCostPerFact     string                 `protobuf:"bytes,7,opt,name=max_cost_per_fact,json=maxCostPerFact,proto3" json:"max_cost_per_fact,omitempty"` // ceiling uzrn
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// external_price_feed_enabled activates the third price source.
+	// When true, the billing keeper reads from external_price_feed_address
+	// and incorporates it into the weighted median.
+	ExternalPriceFeedEnabled bool `protobuf:"varint,8,opt,name=external_price_feed_enabled,json=externalPriceFeedEnabled,proto3" json:"external_price_feed_enabled,omitempty"`
+	// external_price_feed_address is the feed ID used to look up the external
+	// ZRN/USD price via the ExternalPriceFeedKeeper interface.
+	// Example: "oracle_feed_zrn_usd" for a registered oracle committee feed.
+	ExternalPriceFeedAddress string `protobuf:"bytes,9,opt,name=external_price_feed_address,json=externalPriceFeedAddress,proto3" json:"external_price_feed_address,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *DynamicPricingConfig) Reset() {
@@ -296,6 +314,20 @@ func (x *DynamicPricingConfig) GetMinCostPerFact() string {
 func (x *DynamicPricingConfig) GetMaxCostPerFact() string {
 	if x != nil {
 		return x.MaxCostPerFact
+	}
+	return ""
+}
+
+func (x *DynamicPricingConfig) GetExternalPriceFeedEnabled() bool {
+	if x != nil {
+		return x.ExternalPriceFeedEnabled
+	}
+	return false
+}
+
+func (x *DynamicPricingConfig) GetExternalPriceFeedAddress() string {
+	if x != nil {
+		return x.ExternalPriceFeedAddress
 	}
 	return ""
 }
@@ -561,7 +593,7 @@ const file_zerone_billing_v1_types_proto_rawDesc = "" +
 	"\x19confidence_multiplier_bps\x18\x03 \x01(\x04R\x17confidenceMultiplierBps\x124\n" +
 	"\x16novelty_multiplier_bps\x18\x04 \x01(\x04R\x14noveltyMultiplierBps\x128\n" +
 	"\x18freshness_multiplier_bps\x18\x05 \x01(\x04R\x16freshnessMultiplierBps\x12'\n" +
-	"\x0feffective_price\x18\x06 \x01(\tR\x0eeffectivePrice\"\xc3\x02\n" +
+	"\x0feffective_price\x18\x06 \x01(\tR\x0eeffectivePrice\"\xc1\x03\n" +
 	"\x14DynamicPricingConfig\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x121\n" +
 	"\x15target_query_cost_usd\x18\x02 \x01(\tR\x12targetQueryCostUsd\x12/\n" +
@@ -569,7 +601,9 @@ const file_zerone_billing_v1_types_proto_rawDesc = "" +
 	"\x12twap_window_blocks\x18\x04 \x01(\x04R\x10twapWindowBlocks\x12)\n" +
 	"\x10staleness_blocks\x18\x05 \x01(\x04R\x0fstalenessBlocks\x12)\n" +
 	"\x11min_cost_per_fact\x18\x06 \x01(\tR\x0eminCostPerFact\x12)\n" +
-	"\x11max_cost_per_fact\x18\a \x01(\tR\x0emaxCostPerFact\"\xee\x01\n" +
+	"\x11max_cost_per_fact\x18\a \x01(\tR\x0emaxCostPerFact\x12=\n" +
+	"\x1bexternal_price_feed_enabled\x18\b \x01(\bR\x18externalPriceFeedEnabled\x12=\n" +
+	"\x1bexternal_price_feed_address\x18\t \x01(\tR\x18externalPriceFeedAddress\"\xee\x01\n" +
 	"\x12FactPriceBreakdown\x12\x17\n" +
 	"\afact_id\x18\x01 \x01(\tR\x06factId\x12\x1b\n" +
 	"\tbase_cost\x18\x02 \x01(\tR\bbaseCost\x12-\n" +

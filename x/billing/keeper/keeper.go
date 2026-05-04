@@ -20,10 +20,11 @@ type Keeper struct {
 	cdc          codec.BinaryCodec
 	authority    string
 
-	bankKeeper            types.BankKeeper
-	knowledgeKeeper       types.KnowledgeKeeper
-	researchFundDepositor types.ResearchFundDepositor
-	liquidityPoolKeeper   types.LiquidityPoolKeeper // nil-safe, set post-init
+	bankKeeper              types.BankKeeper
+	knowledgeKeeper         types.KnowledgeKeeper
+	researchFundDepositor   types.ResearchFundDepositor
+	liquidityPoolKeeper     types.LiquidityPoolKeeper     // nil-safe, set post-init
+	externalPriceFeedKeeper types.ExternalPriceFeedKeeper // nil-safe, set post-init
 }
 
 // NewKeeper creates a new billing module Keeper.
@@ -62,6 +63,13 @@ func (k Keeper) GetAuthority() string {
 // SetLiquidityPoolKeeper sets the liquidity pool keeper post-initialization.
 func (k *Keeper) SetLiquidityPoolKeeper(lpk types.LiquidityPoolKeeper) {
 	k.liquidityPoolKeeper = lpk
+}
+
+// SetExternalPriceFeedKeeper sets the external price feed keeper post-initialization.
+// When set and ExternalPriceFeedEnabled is true in DynamicPricingConfig, this
+// keeper is consulted as the third source in the 3-source weighted median.
+func (k *Keeper) SetExternalPriceFeedKeeper(epfk types.ExternalPriceFeedKeeper) {
+	k.externalPriceFeedKeeper = epfk
 }
 
 // GetZRNPriceUSD returns the current ZRN price in micro-USD (6-decimal).

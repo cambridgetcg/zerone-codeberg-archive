@@ -19,36 +19,106 @@ var uzrnPerZRN = big.NewInt(1_000_000)
 // required to emit a new oracle_price_update event. 50_000 = 5%.
 const priceChangeThresholdBps = 50_000
 
-// getZRNPriceUSD returns the ZRN price in 6-decimal USD using a 3-tier oracle:
-//  1. Manual governance override (ManualZrnPriceUsd if non-empty and non-"0")
-//  2. TWAP from liquidity pool keeper (if available, non-zero, and not stale)
-//  3. Returns zero → caller falls back to fixed BaseQueryPrice
+// getZRNPriceUSD returns the ZRN price in 6-decimal USD using a weighted median
+// of up to three independent sources:
+//
+//  1. TWAP from the liquidity pool keeper (manipulation-resistant but ZRN-circular)
+//  2. External price feed (independent off-chain oracle, reduces circular dependency)
+//  3. Manual governance override (emergency fallback, full governance control)
+//
+// The weighted median is computed from whichever sources return valid prices.
+// With all three sources active, single-source manipulation cannot shift the
+// median — an attacker must corrupt 2/3 sources simultaneously.
+//
+// Returns zero when no source is available → caller falls back to fixed BaseQueryPrice.
 func (k Keeper) getZRNPriceUSD(ctx context.Context, cfg *types.DynamicPricingConfig) *big.Int {
-	// Tier 1: Manual governance override
-	if cfg.ManualZrnPriceUsd != "" && cfg.ManualZrnPriceUsd != "0" {
-		manual := new(big.Int)
-		if _, ok := manual.SetString(cfg.ManualZrnPriceUsd, 10); ok && manual.Sign() > 0 {
-			k.maybeEmitPriceEvent(ctx, manual, "manual")
-			return manual
-		}
-	}
+	var sources []*big.Int
 
-	// Tier 2: TWAP from liquidity pool
+	// Source 1: TWAP from liquidity pool
 	if k.liquidityPoolKeeper != nil {
 		twap, err := k.liquidityPoolKeeper.GetTWAP(ctx, "uzrn", cfg.TwapWindowBlocks)
 		if err == nil && twap != nil && twap.Sign() > 0 {
-			// Check staleness
 			lastUpdate := k.liquidityPoolKeeper.GetLastPriceUpdateHeight(ctx)
 			sdkCtx := extractBlockHeight(ctx)
 			if sdkCtx <= lastUpdate+cfg.StalenessBlocks {
-				k.maybeEmitPriceEvent(ctx, twap, "twap")
-				return twap
+				sources = append(sources, twap)
 			}
 		}
 	}
 
-	// Tier 3: No price available → signal fallback
-	return big.NewInt(0)
+	// Source 2: External price feed (when enabled and keeper wired)
+	if cfg.ExternalPriceFeedEnabled && cfg.ExternalPriceFeedAddress != "" && k.externalPriceFeedKeeper != nil {
+		extPrice, err := k.externalPriceFeedKeeper.GetLatestPrice(ctx, cfg.ExternalPriceFeedAddress)
+		if err == nil && extPrice != nil && extPrice.Sign() > 0 {
+			sources = append(sources, extPrice)
+		}
+	}
+
+	// Source 3: Manual governance override
+	if cfg.ManualZrnPriceUsd != "" && cfg.ManualZrnPriceUsd != "0" {
+		manual := new(big.Int)
+		if _, ok := manual.SetString(cfg.ManualZrnPriceUsd, 10); ok && manual.Sign() > 0 {
+			sources = append(sources, manual)
+		}
+	}
+
+	price := WeightedMedianPrice(sources)
+	if price == nil || price.Sign() <= 0 {
+		return big.NewInt(0)
+	}
+
+	// Determine source label for events.
+	var sourceLabel string
+	switch len(sources) {
+	case 1:
+		if cfg.ManualZrnPriceUsd != "" && cfg.ManualZrnPriceUsd != "0" {
+			sourceLabel = "manual"
+		} else if cfg.ExternalPriceFeedEnabled && len(sources) > 0 {
+			sourceLabel = "external"
+		} else {
+			sourceLabel = "twap"
+		}
+	default:
+		sourceLabel = "median"
+	}
+	k.maybeEmitPriceEvent(ctx, price, sourceLabel)
+	return price
+}
+
+// WeightedMedianPrice returns the median of the provided price sources.
+//
+// Exported for testing and future calibration. With equal weights
+// (current implementation), the median is the middle value when sorted.
+// For even-count slices, the lower of the two middle values is returned
+// (conservative: errs toward lower prices, protecting buyers).
+//
+// The median of N values requires an attacker to corrupt ceil(N/2) sources —
+// with N=3, two sources must be compromised simultaneously.
+func WeightedMedianPrice(sources []*big.Int) *big.Int {
+	if len(sources) == 0 {
+		return nil
+	}
+	if len(sources) == 1 {
+		return sources[0]
+	}
+
+	// Sort ascending (simple insertion sort — N is always ≤3 in practice).
+	sorted := make([]*big.Int, len(sources))
+	copy(sorted, sources)
+	for i := 0; i < len(sorted); i++ {
+		for j := i + 1; j < len(sorted); j++ {
+			if sorted[i].Cmp(sorted[j]) > 0 {
+				sorted[i], sorted[j] = sorted[j], sorted[i]
+			}
+		}
+	}
+
+	// Middle value. For even count, use lower middle (conservative).
+	mid := len(sorted) / 2
+	if len(sorted)%2 == 0 {
+		mid-- // lower of the two middle values
+	}
+	return sorted[mid]
 }
 
 // calculateDynamicBaseCost computes the per-fact base cost in uzrn using
