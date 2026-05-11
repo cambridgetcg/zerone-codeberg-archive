@@ -48,6 +48,9 @@ func DefaultParams() *Params {
 		// 10% per proposal — governance can spend up to 10% of development_fund balance
 		// in a single MsgDevelopmentFundSpend. Prevents single-block drain.
 		DevelopmentFundSpendingLimitBps: 100000,
+		// 0 = disabled. When non-zero, spending is frozen if protocol treasury
+		// balance falls below this fraction of combined (protocol + development) funds.
+		MinProtocolReserveBps: 0,
 	}
 }
 
@@ -84,6 +87,9 @@ func (p *Params) Validate() error {
 	}
 	if p.DevelopmentFundSpendingLimitBps > 1000000 {
 		return fmt.Errorf("development_fund_spending_limit_bps must be <= 1000000 bps")
+	}
+	if p.MinProtocolReserveBps > 1000000 {
+		return fmt.Errorf("min_protocol_reserve_bps must be <= 1000000 bps")
 	}
 	return nil
 }

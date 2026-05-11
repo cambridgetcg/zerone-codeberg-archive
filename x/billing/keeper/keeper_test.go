@@ -2,6 +2,7 @@ package keeper_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"testing"
@@ -1862,5 +1863,145 @@ func TestDevelopmentFundSpend_EmptyFund(t *testing.T) {
 	})
 	if err == nil {
 		t.Error("expected error when development fund is empty")
+	}
+}
+
+// -----------------------------------------------------------------------
+// Tests: MinProtocolReserveBps (Gap 4 — treasury reserve floor)
+// -----------------------------------------------------------------------
+
+// seedProtocolTreasury seeds the protocol treasury module account balance.
+func seedProtocolTreasury(bk *mockBankKeeper, amount sdkmath.Int) {
+	bk.balances[keeper.ProtocolTreasury+"/uzrn"] = amount
+}
+
+func TestDevelopmentFundSpend_ReserveAboveMinimum_Allowed(t *testing.T) {
+	// protocol=8M, devfund=10M → combined=18M, ratio=444_444 bps > min=200_000 → allowed.
+	k, ctx, bk, _ := setupKeeper(t)
+	authority := k.GetAuthority()
+	srv := keeper.NewMsgServerImpl(k)
+
+	seedDevFund(bk, sdkmath.NewInt(10_000_000))
+	seedProtocolTreasury(bk, sdkmath.NewInt(8_000_000))
+
+	params := types.DefaultParams()
+	params.DevelopmentFundSpendingLimitBps = 1_000_000 // 100% — don't let limit interfere
+	params.MinProtocolReserveBps = 200_000             // require ≥20% of combined
+	k.SetParams(ctx, params)
+
+	_, err := srv.DevelopmentFundSpend(ctx, &types.MsgDevelopmentFundSpend{
+		Authority:   authority,
+		Recipient:   testAddr(5),
+		Amount:      "1000000",
+		Description: "reserve adequate",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestDevelopmentFundSpend_ReserveBelowMinimum_Blocked(t *testing.T) {
+	// protocol=1M, devfund=10M → combined=11M, ratio=90_909 bps < min=200_000 → blocked.
+	k, ctx, bk, _ := setupKeeper(t)
+	authority := k.GetAuthority()
+	srv := keeper.NewMsgServerImpl(k)
+
+	seedDevFund(bk, sdkmath.NewInt(10_000_000))
+	seedProtocolTreasury(bk, sdkmath.NewInt(1_000_000))
+
+	params := types.DefaultParams()
+	params.DevelopmentFundSpendingLimitBps = 1_000_000
+	params.MinProtocolReserveBps = 200_000 // require ≥20% of combined
+	k.SetParams(ctx, params)
+
+	_, err := srv.DevelopmentFundSpend(ctx, &types.MsgDevelopmentFundSpend{
+		Authority:   authority,
+		Recipient:   testAddr(5),
+		Amount:      "1000000",
+		Description: "reserve breach",
+	})
+	if err == nil {
+		t.Error("expected ErrProtocolReserveBreach")
+	}
+	if !errors.Is(err, types.ErrProtocolReserveBreach) {
+		t.Errorf("expected ErrProtocolReserveBreach, got: %v", err)
+	}
+}
+
+func TestDevelopmentFundSpend_MinReserveZero_Disabled(t *testing.T) {
+	// MinProtocolReserveBps=0 disables the check entirely — spend allowed even with empty protocol treasury.
+	k, ctx, bk, _ := setupKeeper(t)
+	authority := k.GetAuthority()
+	srv := keeper.NewMsgServerImpl(k)
+
+	seedDevFund(bk, sdkmath.NewInt(10_000_000))
+	// Do NOT seed protocol treasury — balance is zero.
+
+	params := types.DefaultParams()
+	params.DevelopmentFundSpendingLimitBps = 1_000_000
+	params.MinProtocolReserveBps = 0 // disabled
+	k.SetParams(ctx, params)
+
+	_, err := srv.DevelopmentFundSpend(ctx, &types.MsgDevelopmentFundSpend{
+		Authority:   authority,
+		Recipient:   testAddr(5),
+		Amount:      "1000000",
+		Description: "reserve check off",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error when reserve check disabled: %v", err)
+	}
+}
+
+func TestDevelopmentFundSpend_ReserveAtExactMinimum_Allowed(t *testing.T) {
+	// protocol=2M, devfund=8M → combined=10M, ratio=200_000 bps = min=200_000 → passes (≥ not >).
+	k, ctx, bk, _ := setupKeeper(t)
+	authority := k.GetAuthority()
+	srv := keeper.NewMsgServerImpl(k)
+
+	seedDevFund(bk, sdkmath.NewInt(8_000_000))
+	seedProtocolTreasury(bk, sdkmath.NewInt(2_000_000))
+
+	params := types.DefaultParams()
+	params.DevelopmentFundSpendingLimitBps = 1_000_000
+	params.MinProtocolReserveBps = 200_000 // require exactly 20%
+	k.SetParams(ctx, params)
+
+	_, err := srv.DevelopmentFundSpend(ctx, &types.MsgDevelopmentFundSpend{
+		Authority:   authority,
+		Recipient:   testAddr(5),
+		Amount:      "100000", // small spend
+		Description: "exact boundary",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error at exact boundary: %v", err)
+	}
+}
+
+func TestDevelopmentFundSpend_ProtocolTreasuryEmpty_Blocked(t *testing.T) {
+	// protocol=0, devfund=10M → ratio=0 < min=100_000 → blocked.
+	k, ctx, bk, _ := setupKeeper(t)
+	authority := k.GetAuthority()
+	srv := keeper.NewMsgServerImpl(k)
+
+	seedDevFund(bk, sdkmath.NewInt(10_000_000))
+	// Protocol treasury is empty (not seeded).
+
+	params := types.DefaultParams()
+	params.DevelopmentFundSpendingLimitBps = 1_000_000
+	params.MinProtocolReserveBps = 100_000 // require ≥10% of combined
+	k.SetParams(ctx, params)
+
+	_, err := srv.DevelopmentFundSpend(ctx, &types.MsgDevelopmentFundSpend{
+		Authority:   authority,
+		Recipient:   testAddr(5),
+		Amount:      "1000000",
+		Description: "protocol drained",
+	})
+	if err == nil {
+		t.Error("expected ErrProtocolReserveBreach when protocol treasury is empty")
+	}
+	if !errors.Is(err, types.ErrProtocolReserveBreach) {
+		t.Errorf("expected ErrProtocolReserveBreach, got: %v", err)
 	}
 }

@@ -22,6 +22,12 @@ message Params {
   // spendable in a single MsgDevelopmentFundSpend. 1M bps scale — default 100_000 (10%).
   // Set to 0 to block all spending until governance changes the param.
   uint64 development_fund_spending_limit_bps = 11;
+  // min_protocol_reserve_bps enforces a minimum reserve ratio for the protocol treasury
+  // before any MsgDevelopmentFundSpend is allowed. The ratio is:
+  //   protocol_treasury.balance * 1_000_000 / (protocol_treasury + development_fund)
+  // If this ratio falls below min_protocol_reserve_bps, discretionary spending is frozen.
+  // Set to 0 (default) to disable the check. 1M bps scale.
+  uint64 min_protocol_reserve_bps = 12;
 }
 
 // GenesisState defines the billing module genesis state.

@@ -345,6 +345,27 @@ func (k msgServer) DevelopmentFundSpend(goCtx context.Context, msg *types.MsgDev
 		)
 	}
 
+	// Enforce protocol treasury reserve floor before spending.
+	// If MinProtocolReserveBps == 0 the check is disabled.
+	if params.MinProtocolReserveBps > 0 {
+		protocolBal := k.bankKeeper.GetModuleBalance(ctx, ProtocolTreasury, "uzrn")
+		protocolBig := protocolBal.Amount.BigInt()
+		// combined = protocol_treasury + development_fund (current, before the spend)
+		combined := new(big.Int).Add(protocolBig, balanceBig)
+		if combined.Sign() > 0 {
+			// ratio = protocolBig * 1_000_000 / combined
+			ratioBig := new(big.Int).Mul(protocolBig, big.NewInt(1_000_000))
+			ratioBig.Div(ratioBig, combined)
+			minReserve := big.NewInt(int64(params.MinProtocolReserveBps))
+			if ratioBig.Cmp(minReserve) < 0 {
+				return nil, types.ErrProtocolReserveBreach.Wrapf(
+					"protocol treasury is %s uzrn (%s bps of combined %s uzrn); minimum is %d bps",
+					protocolBig, ratioBig, combined, params.MinProtocolReserveBps,
+				)
+			}
+		}
+	}
+
 	// Transfer from development_fund to recipient.
 	recipientAddr, err := sdk.AccAddressFromBech32(msg.Recipient)
 	if err != nil {

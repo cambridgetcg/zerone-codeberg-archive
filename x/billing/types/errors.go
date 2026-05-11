@@ -18,4 +18,5 @@ var (
 	ErrSpendingLimitExceeded        = errors.Register(ModuleName, 14, "amount exceeds development fund spending limit")
 	ErrSpendingDisabled             = errors.Register(ModuleName, 15, "development fund spending is disabled (limit is 0)")
 	ErrInsufficientDevelopmentFund  = errors.Register(ModuleName, 16, "development fund has insufficient balance")
+	ErrProtocolReserveBreach        = errors.Register(ModuleName, 17, "protocol treasury reserve below minimum — spending frozen")
 )
