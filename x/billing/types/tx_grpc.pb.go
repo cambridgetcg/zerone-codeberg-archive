@@ -19,11 +19,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Msg_RegisterProvider_FullMethodName   = "/zerone.billing.v1.Msg/RegisterProvider"
-	Msg_DeregisterProvider_FullMethodName = "/zerone.billing.v1.Msg/DeregisterProvider"
-	Msg_QueryFact_FullMethodName          = "/zerone.billing.v1.Msg/QueryFact"
-	Msg_BatchQueryFacts_FullMethodName    = "/zerone.billing.v1.Msg/BatchQueryFacts"
-	Msg_UpdateParams_FullMethodName       = "/zerone.billing.v1.Msg/UpdateParams"
+	Msg_RegisterProvider_FullMethodName     = "/zerone.billing.v1.Msg/RegisterProvider"
+	Msg_DeregisterProvider_FullMethodName   = "/zerone.billing.v1.Msg/DeregisterProvider"
+	Msg_QueryFact_FullMethodName            = "/zerone.billing.v1.Msg/QueryFact"
+	Msg_BatchQueryFacts_FullMethodName      = "/zerone.billing.v1.Msg/BatchQueryFacts"
+	Msg_UpdateParams_FullMethodName         = "/zerone.billing.v1.Msg/UpdateParams"
+	Msg_DevelopmentFundSpend_FullMethodName = "/zerone.billing.v1.Msg/DevelopmentFundSpend"
 )
 
 // MsgClient is the client API for Msg service.
@@ -37,6 +38,9 @@ type MsgClient interface {
 	QueryFact(ctx context.Context, in *MsgQueryFact, opts ...grpc.CallOption) (*MsgQueryFactResponse, error)
 	BatchQueryFacts(ctx context.Context, in *MsgBatchQueryFacts, opts ...grpc.CallOption) (*MsgBatchQueryFactsResponse, error)
 	UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error)
+	// DevelopmentFundSpend gates development_fund disbursements behind governance authority.
+	// Enforces DevelopmentFundSpendingLimitBps to prevent single-block drain.
+	DevelopmentFundSpend(ctx context.Context, in *MsgDevelopmentFundSpend, opts ...grpc.CallOption) (*MsgDevelopmentFundSpendResponse, error)
 }
 
 type msgClient struct {
@@ -97,6 +101,16 @@ func (c *msgClient) UpdateParams(ctx context.Context, in *MsgUpdateParams, opts 
 	return out, nil
 }
 
+func (c *msgClient) DevelopmentFundSpend(ctx context.Context, in *MsgDevelopmentFundSpend, opts ...grpc.CallOption) (*MsgDevelopmentFundSpendResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgDevelopmentFundSpendResponse)
+	err := c.cc.Invoke(ctx, Msg_DevelopmentFundSpend_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MsgServer is the server API for Msg service.
 // All implementations must embed UnimplementedMsgServer
 // for forward compatibility.
@@ -108,6 +122,9 @@ type MsgServer interface {
 	QueryFact(context.Context, *MsgQueryFact) (*MsgQueryFactResponse, error)
 	BatchQueryFacts(context.Context, *MsgBatchQueryFacts) (*MsgBatchQueryFactsResponse, error)
 	UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error)
+	// DevelopmentFundSpend gates development_fund disbursements behind governance authority.
+	// Enforces DevelopmentFundSpendingLimitBps to prevent single-block drain.
+	DevelopmentFundSpend(context.Context, *MsgDevelopmentFundSpend) (*MsgDevelopmentFundSpendResponse, error)
 	mustEmbedUnimplementedMsgServer()
 }
 
@@ -132,6 +149,9 @@ func (UnimplementedMsgServer) BatchQueryFacts(context.Context, *MsgBatchQueryFac
 }
 func (UnimplementedMsgServer) UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateParams not implemented")
+}
+func (UnimplementedMsgServer) DevelopmentFundSpend(context.Context, *MsgDevelopmentFundSpend) (*MsgDevelopmentFundSpendResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DevelopmentFundSpend not implemented")
 }
 func (UnimplementedMsgServer) mustEmbedUnimplementedMsgServer() {}
 func (UnimplementedMsgServer) testEmbeddedByValue()             {}
@@ -244,6 +264,24 @@ func _Msg_UpdateParams_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Msg_DevelopmentFundSpend_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgDevelopmentFundSpend)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).DevelopmentFundSpend(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_DevelopmentFundSpend_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).DevelopmentFundSpend(ctx, req.(*MsgDevelopmentFundSpend))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Msg_ServiceDesc is the grpc.ServiceDesc for Msg service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -270,6 +308,10 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateParams",
 			Handler:    _Msg_UpdateParams_Handler,
+		},
+		{
+			MethodName: "DevelopmentFundSpend",
+			Handler:    _Msg_DevelopmentFundSpend_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

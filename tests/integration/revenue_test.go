@@ -122,7 +122,7 @@ func TestCompleteRevenueMap(t *testing.T) {
 
 	// Verify full accounting: all components sum to total payment
 	devAmt := new(big.Int)
-	devAmt.SetString(billingDist.ProtocolBurn, 10) // field still named ProtocolBurn in proto
+	devAmt.SetString(billingDist.DevelopmentFund, 10) 
 	treasuryAmt := new(big.Int)
 	treasuryAmt.SetString(billingDist.ProtocolTreasury, 10)
 	protocolTotal := new(big.Int).Add(devAmt, treasuryAmt)
@@ -320,7 +320,7 @@ func TestServiceRevenueDevelopmentFund(t *testing.T) {
 		dist := h.billingKeeper.CalculateDistribution(h.ctx, payment, []string{"fact-1"})
 
 		devAmt := new(big.Int)
-		devAmt.SetString(dist.ProtocolBurn, 10) // field still named ProtocolBurn in proto
+		devAmt.SetString(dist.DevelopmentFund, 10) 
 
 		providerAmt := new(big.Int)
 		providerAmt.SetString(dist.ProviderShare, 10)
@@ -644,7 +644,7 @@ func TestFullRevenueFlow_WithVerificationPool(t *testing.T) {
 	researchAmt := new(big.Int)
 	researchAmt.SetString(billingDist.ResearchShare, 10)
 	burnAmt := new(big.Int)
-	burnAmt.SetString(billingDist.ProtocolBurn, 10)
+	burnAmt.SetString(billingDist.DevelopmentFund, 10)
 	treasuryAmt := new(big.Int)
 	treasuryAmt.SetString(billingDist.ProtocolTreasury, 10)
 

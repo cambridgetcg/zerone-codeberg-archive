@@ -65,13 +65,18 @@ message FactPriceBreakdown {
 }
 
 // PaymentDistribution shows how a payment is split.
+//
+// Field 5 was previously named `protocol_burn` (misleading — this is the
+// development fund allocation, not a burn). Renamed to `development_fund`
+// in Treasury Foundation Gap 3.
 message PaymentDistribution {
   string total_payment                       = 1;
   string provider_share                      = 2;
   string research_share                      = 3;
   repeated KnowledgePoolEntry knowledge_pool = 4;
-  string protocol_burn                       = 5;
+  string development_fund                    = 5;  // development_bps allocation (bug bounties, protocol dev)
   string protocol_treasury                   = 6;
+  string rounding_dust                       = 7;  // true integer remainder after all 4 first-class shares
 }
 
 // KnowledgePoolEntry is a weighted citation reward for a fact submitter.

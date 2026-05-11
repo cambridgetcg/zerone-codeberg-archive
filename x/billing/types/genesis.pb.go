@@ -35,8 +35,12 @@ type Params struct {
 	ConfidenceThreshold   uint64                 `protobuf:"varint,8,opt,name=confidence_threshold,json=confidenceThreshold,proto3" json:"confidence_threshold,omitempty"`         // below this = surcharge (1M bps scale)
 	FreshnessWindowBlocks uint64                 `protobuf:"varint,9,opt,name=freshness_window_blocks,json=freshnessWindowBlocks,proto3" json:"freshness_window_blocks,omitempty"` // blocks within which facts are "fresh"
 	QuoteValidityBlocks   uint64                 `protobuf:"varint,10,opt,name=quote_validity_blocks,json=quoteValidityBlocks,proto3" json:"quote_validity_blocks,omitempty"`      // blocks a quote remains valid
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// development_fund_spending_limit_bps caps the fraction of development_fund balance
+	// spendable in a single MsgDevelopmentFundSpend. 1M bps scale — default 100_000 (10%).
+	// Set to 0 to block all spending until governance changes the param.
+	DevelopmentFundSpendingLimitBps uint64 `protobuf:"varint,11,opt,name=development_fund_spending_limit_bps,json=developmentFundSpendingLimitBps,proto3" json:"development_fund_spending_limit_bps,omitempty"`
+	unknownFields                   protoimpl.UnknownFields
+	sizeCache                       protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -139,6 +143,13 @@ func (x *Params) GetQuoteValidityBlocks() uint64 {
 	return 0
 }
 
+func (x *Params) GetDevelopmentFundSpendingLimitBps() uint64 {
+	if x != nil {
+		return x.DevelopmentFundSpendingLimitBps
+	}
+	return 0
+}
+
 // GenesisState defines the billing module genesis state.
 type GenesisState struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -196,7 +207,7 @@ var File_zerone_billing_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_billing_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"\x1fzerone/billing/v1/genesis.proto\x12\x11zerone.billing.v1\x1a\x1dzerone/billing/v1/types.proto\x1a\x1dzerone/common/v1/common.proto\"\xaa\x04\n" +
+	"\x1fzerone/billing/v1/genesis.proto\x12\x11zerone.billing.v1\x1a\x1dzerone/billing/v1/types.proto\x1a\x1dzerone/common/v1/common.proto\"\xf8\x04\n" +
 	"\x06Params\x12(\n" +
 	"\x10base_query_price\x18\x01 \x01(\tR\x0ebaseQueryPrice\x122\n" +
 	"\x15confidence_weight_bps\x18\x02 \x01(\x04R\x13confidenceWeightBps\x12,\n" +
@@ -208,7 +219,8 @@ const file_zerone_billing_v1_genesis_proto_rawDesc = "" +
 	"\x14confidence_threshold\x18\b \x01(\x04R\x13confidenceThreshold\x126\n" +
 	"\x17freshness_window_blocks\x18\t \x01(\x04R\x15freshnessWindowBlocks\x122\n" +
 	"\x15quote_validity_blocks\x18\n" +
-	" \x01(\x04R\x13quoteValidityBlocks\"|\n" +
+	" \x01(\x04R\x13quoteValidityBlocks\x12L\n" +
+	"#development_fund_spending_limit_bps\x18\v \x01(\x04R\x1fdevelopmentFundSpendingLimitBps\"|\n" +
 	"\fGenesisState\x121\n" +
 	"\x06params\x18\x01 \x01(\v2\x19.zerone.billing.v1.ParamsR\x06params\x129\n" +
 	"\tproviders\x18\x02 \x03(\v2\x1b.zerone.billing.v1.ProviderR\tprovidersB0Z.github.com/zerone-chain/zerone/x/billing/typesb\x06proto3"

@@ -45,6 +45,9 @@ func DefaultParams() *Params {
 		ConfidenceThreshold:  500000,      // 50% on 1M scale
 		FreshnessWindowBlocks: 1000,
 		QuoteValidityBlocks:  100,
+		// 10% per proposal — governance can spend up to 10% of development_fund balance
+		// in a single MsgDevelopmentFundSpend. Prevents single-block drain.
+		DevelopmentFundSpendingLimitBps: 100000,
 	}
 }
 
@@ -78,6 +81,9 @@ func (p *Params) Validate() error {
 		if sum != 1000000 {
 			return fmt.Errorf("revenue_split bps must sum to 1000000, got %d", sum)
 		}
+	}
+	if p.DevelopmentFundSpendingLimitBps > 1000000 {
+		return fmt.Errorf("development_fund_spending_limit_bps must be <= 1000000 bps")
 	}
 	return nil
 }
@@ -210,4 +216,29 @@ func (msg *MsgUpdateParams) ValidateBasic() error {
 		return fmt.Errorf("params cannot be nil")
 	}
 	return msg.Params.Validate()
+}
+
+func (msg *MsgDevelopmentFundSpend) GetSigners() []sdk.AccAddress {
+	addr, _ := sdk.AccAddressFromBech32(msg.Authority)
+	return []sdk.AccAddress{addr}
+}
+
+func (msg *MsgDevelopmentFundSpend) ValidateBasic() error {
+	if msg.Authority == "" {
+		return fmt.Errorf("authority cannot be empty")
+	}
+	if _, err := sdk.AccAddressFromBech32(msg.Authority); err != nil {
+		return fmt.Errorf("invalid authority address: %w", err)
+	}
+	if msg.Recipient == "" {
+		return fmt.Errorf("recipient cannot be empty")
+	}
+	if _, err := sdk.AccAddressFromBech32(msg.Recipient); err != nil {
+		return fmt.Errorf("invalid recipient address: %w", err)
+	}
+	amt := new(big.Int)
+	if _, ok := amt.SetString(msg.Amount, 10); !ok || amt.Sign() <= 0 {
+		return fmt.Errorf("amount must be a positive integer, got %q", msg.Amount)
+	}
+	return nil
 }

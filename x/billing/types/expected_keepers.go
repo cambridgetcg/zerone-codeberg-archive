@@ -9,6 +9,9 @@ import (
 
 // BankKeeper defines the expected bank module interface.
 type BankKeeper interface {
+	// GetModuleBalance returns the balance of a module account by module name.
+	// Using module name (not address) avoids address-derivation complexity in tests.
+	GetModuleBalance(ctx context.Context, moduleName string, denom string) sdk.Coin
 	SendCoins(ctx context.Context, fromAddr sdk.AccAddress, toAddr sdk.AccAddress, amt sdk.Coins) error
 	SendCoinsFromAccountToModule(ctx context.Context, senderAddr sdk.AccAddress, recipientModule string, amt sdk.Coins) error
 	SendCoinsFromModuleToAccount(ctx context.Context, senderModule string, recipientAddr sdk.AccAddress, amt sdk.Coins) error

@@ -418,14 +418,19 @@ func (x *FactPriceBreakdown) GetTotalPrice() string {
 }
 
 // PaymentDistribution shows how a payment is split.
+//
+// Field 5 was previously named `protocol_burn` (misleading — this is the
+// development fund allocation, not a burn). Renamed to `development_fund`
+// in Treasury Foundation Gap 3.
 type PaymentDistribution struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	TotalPayment     string                 `protobuf:"bytes,1,opt,name=total_payment,json=totalPayment,proto3" json:"total_payment,omitempty"`
 	ProviderShare    string                 `protobuf:"bytes,2,opt,name=provider_share,json=providerShare,proto3" json:"provider_share,omitempty"`
 	ResearchShare    string                 `protobuf:"bytes,3,opt,name=research_share,json=researchShare,proto3" json:"research_share,omitempty"`
 	KnowledgePool    []*KnowledgePoolEntry  `protobuf:"bytes,4,rep,name=knowledge_pool,json=knowledgePool,proto3" json:"knowledge_pool,omitempty"`
-	ProtocolBurn     string                 `protobuf:"bytes,5,opt,name=protocol_burn,json=protocolBurn,proto3" json:"protocol_burn,omitempty"`
+	DevelopmentFund  string                 `protobuf:"bytes,5,opt,name=development_fund,json=developmentFund,proto3" json:"development_fund,omitempty"` // development_bps allocation (bug bounties, protocol dev)
 	ProtocolTreasury string                 `protobuf:"bytes,6,opt,name=protocol_treasury,json=protocolTreasury,proto3" json:"protocol_treasury,omitempty"`
+	RoundingDust     string                 `protobuf:"bytes,7,opt,name=rounding_dust,json=roundingDust,proto3" json:"rounding_dust,omitempty"` // true integer remainder after all 4 first-class shares
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -488,9 +493,9 @@ func (x *PaymentDistribution) GetKnowledgePool() []*KnowledgePoolEntry {
 	return nil
 }
 
-func (x *PaymentDistribution) GetProtocolBurn() string {
+func (x *PaymentDistribution) GetDevelopmentFund() string {
 	if x != nil {
-		return x.ProtocolBurn
+		return x.DevelopmentFund
 	}
 	return ""
 }
@@ -498,6 +503,13 @@ func (x *PaymentDistribution) GetProtocolBurn() string {
 func (x *PaymentDistribution) GetProtocolTreasury() string {
 	if x != nil {
 		return x.ProtocolTreasury
+	}
+	return ""
+}
+
+func (x *PaymentDistribution) GetRoundingDust() string {
+	if x != nil {
+		return x.RoundingDust
 	}
 	return ""
 }
@@ -611,14 +623,15 @@ const file_zerone_billing_v1_types_proto_rawDesc = "" +
 	"\rnovelty_bonus\x18\x04 \x01(\tR\fnoveltyBonus\x12-\n" +
 	"\x12freshness_discount\x18\x05 \x01(\tR\x11freshnessDiscount\x12\x1f\n" +
 	"\vtotal_price\x18\x06 \x01(\tR\n" +
-	"totalPrice\"\xa8\x02\n" +
+	"totalPrice\"\xd3\x02\n" +
 	"\x13PaymentDistribution\x12#\n" +
 	"\rtotal_payment\x18\x01 \x01(\tR\ftotalPayment\x12%\n" +
 	"\x0eprovider_share\x18\x02 \x01(\tR\rproviderShare\x12%\n" +
 	"\x0eresearch_share\x18\x03 \x01(\tR\rresearchShare\x12L\n" +
-	"\x0eknowledge_pool\x18\x04 \x03(\v2%.zerone.billing.v1.KnowledgePoolEntryR\rknowledgePool\x12#\n" +
-	"\rprotocol_burn\x18\x05 \x01(\tR\fprotocolBurn\x12+\n" +
-	"\x11protocol_treasury\x18\x06 \x01(\tR\x10protocolTreasury\"{\n" +
+	"\x0eknowledge_pool\x18\x04 \x03(\v2%.zerone.billing.v1.KnowledgePoolEntryR\rknowledgePool\x12)\n" +
+	"\x10development_fund\x18\x05 \x01(\tR\x0fdevelopmentFund\x12+\n" +
+	"\x11protocol_treasury\x18\x06 \x01(\tR\x10protocolTreasury\x12#\n" +
+	"\rrounding_dust\x18\a \x01(\tR\froundingDust\"{\n" +
 	"\x12KnowledgePoolEntry\x12\x17\n" +
 	"\afact_id\x18\x01 \x01(\tR\x06factId\x12\x1c\n" +
 	"\tsubmitter\x18\x02 \x01(\tR\tsubmitter\x12\x16\n" +

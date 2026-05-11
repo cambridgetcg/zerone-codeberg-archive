@@ -509,6 +509,120 @@ func (*MsgUpdateParamsResponse) Descriptor() ([]byte, []int) {
 	return file_zerone_billing_v1_tx_proto_rawDescGZIP(), []int{9}
 }
 
+// MsgDevelopmentFundSpend requests a governed disbursement from the development_fund.
+// Requires governance authority. Enforces per-block spending rate limit.
+type MsgDevelopmentFundSpend struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Authority     string                 `protobuf:"bytes,1,opt,name=authority,proto3" json:"authority,omitempty"`     // governance authority address (x/gov)
+	Recipient     string                 `protobuf:"bytes,2,opt,name=recipient,proto3" json:"recipient,omitempty"`     // destination address (bech32)
+	Amount        string                 `protobuf:"bytes,3,opt,name=amount,proto3" json:"amount,omitempty"`           // uzrn bigint string
+	Description   string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"` // human-readable purpose (for event emission)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MsgDevelopmentFundSpend) Reset() {
+	*x = MsgDevelopmentFundSpend{}
+	mi := &file_zerone_billing_v1_tx_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MsgDevelopmentFundSpend) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MsgDevelopmentFundSpend) ProtoMessage() {}
+
+func (x *MsgDevelopmentFundSpend) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_billing_v1_tx_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MsgDevelopmentFundSpend.ProtoReflect.Descriptor instead.
+func (*MsgDevelopmentFundSpend) Descriptor() ([]byte, []int) {
+	return file_zerone_billing_v1_tx_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *MsgDevelopmentFundSpend) GetAuthority() string {
+	if x != nil {
+		return x.Authority
+	}
+	return ""
+}
+
+func (x *MsgDevelopmentFundSpend) GetRecipient() string {
+	if x != nil {
+		return x.Recipient
+	}
+	return ""
+}
+
+func (x *MsgDevelopmentFundSpend) GetAmount() string {
+	if x != nil {
+		return x.Amount
+	}
+	return ""
+}
+
+func (x *MsgDevelopmentFundSpend) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+type MsgDevelopmentFundSpendResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AmountSpent   string                 `protobuf:"bytes,1,opt,name=amount_spent,json=amountSpent,proto3" json:"amount_spent,omitempty"` // actual amount transferred (uzrn bigint string)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MsgDevelopmentFundSpendResponse) Reset() {
+	*x = MsgDevelopmentFundSpendResponse{}
+	mi := &file_zerone_billing_v1_tx_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MsgDevelopmentFundSpendResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MsgDevelopmentFundSpendResponse) ProtoMessage() {}
+
+func (x *MsgDevelopmentFundSpendResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_billing_v1_tx_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MsgDevelopmentFundSpendResponse.ProtoReflect.Descriptor instead.
+func (*MsgDevelopmentFundSpendResponse) Descriptor() ([]byte, []int) {
+	return file_zerone_billing_v1_tx_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *MsgDevelopmentFundSpendResponse) GetAmountSpent() string {
+	if x != nil {
+		return x.AmountSpent
+	}
+	return ""
+}
+
 var File_zerone_billing_v1_tx_proto protoreflect.FileDescriptor
 
 const file_zerone_billing_v1_tx_proto_rawDesc = "" +
@@ -540,13 +654,21 @@ const file_zerone_billing_v1_tx_proto_rawDesc = "" +
 	"\x0fMsgUpdateParams\x12\x1c\n" +
 	"\tauthority\x18\x01 \x01(\tR\tauthority\x121\n" +
 	"\x06params\x18\x02 \x01(\v2\x19.zerone.billing.v1.ParamsR\x06params\"\x19\n" +
-	"\x17MsgUpdateParamsResponse2\x83\x04\n" +
+	"\x17MsgUpdateParamsResponse\"\x8f\x01\n" +
+	"\x17MsgDevelopmentFundSpend\x12\x1c\n" +
+	"\tauthority\x18\x01 \x01(\tR\tauthority\x12\x1c\n" +
+	"\trecipient\x18\x02 \x01(\tR\trecipient\x12\x16\n" +
+	"\x06amount\x18\x03 \x01(\tR\x06amount\x12 \n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescription\"D\n" +
+	"\x1fMsgDevelopmentFundSpendResponse\x12!\n" +
+	"\famount_spent\x18\x01 \x01(\tR\vamountSpent2\xfb\x04\n" +
 	"\x03Msg\x12j\n" +
 	"\x10RegisterProvider\x12&.zerone.billing.v1.MsgRegisterProvider\x1a..zerone.billing.v1.MsgRegisterProviderResponse\x12p\n" +
 	"\x12DeregisterProvider\x12(.zerone.billing.v1.MsgDeregisterProvider\x1a0.zerone.billing.v1.MsgDeregisterProviderResponse\x12U\n" +
 	"\tQueryFact\x12\x1f.zerone.billing.v1.MsgQueryFact\x1a'.zerone.billing.v1.MsgQueryFactResponse\x12g\n" +
 	"\x0fBatchQueryFacts\x12%.zerone.billing.v1.MsgBatchQueryFacts\x1a-.zerone.billing.v1.MsgBatchQueryFactsResponse\x12^\n" +
-	"\fUpdateParams\x12\".zerone.billing.v1.MsgUpdateParams\x1a*.zerone.billing.v1.MsgUpdateParamsResponseB0Z.github.com/zerone-chain/zerone/x/billing/typesb\x06proto3"
+	"\fUpdateParams\x12\".zerone.billing.v1.MsgUpdateParams\x1a*.zerone.billing.v1.MsgUpdateParamsResponse\x12v\n" +
+	"\x14DevelopmentFundSpend\x12*.zerone.billing.v1.MsgDevelopmentFundSpend\x1a2.zerone.billing.v1.MsgDevelopmentFundSpendResponseB0Z.github.com/zerone-chain/zerone/x/billing/typesb\x06proto3"
 
 var (
 	file_zerone_billing_v1_tx_proto_rawDescOnce sync.Once
@@ -560,37 +682,41 @@ func file_zerone_billing_v1_tx_proto_rawDescGZIP() []byte {
 	return file_zerone_billing_v1_tx_proto_rawDescData
 }
 
-var file_zerone_billing_v1_tx_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_zerone_billing_v1_tx_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_zerone_billing_v1_tx_proto_goTypes = []any{
-	(*MsgRegisterProvider)(nil),           // 0: zerone.billing.v1.MsgRegisterProvider
-	(*MsgRegisterProviderResponse)(nil),   // 1: zerone.billing.v1.MsgRegisterProviderResponse
-	(*MsgDeregisterProvider)(nil),         // 2: zerone.billing.v1.MsgDeregisterProvider
-	(*MsgDeregisterProviderResponse)(nil), // 3: zerone.billing.v1.MsgDeregisterProviderResponse
-	(*MsgQueryFact)(nil),                  // 4: zerone.billing.v1.MsgQueryFact
-	(*MsgQueryFactResponse)(nil),          // 5: zerone.billing.v1.MsgQueryFactResponse
-	(*MsgBatchQueryFacts)(nil),            // 6: zerone.billing.v1.MsgBatchQueryFacts
-	(*MsgBatchQueryFactsResponse)(nil),    // 7: zerone.billing.v1.MsgBatchQueryFactsResponse
-	(*MsgUpdateParams)(nil),               // 8: zerone.billing.v1.MsgUpdateParams
-	(*MsgUpdateParamsResponse)(nil),       // 9: zerone.billing.v1.MsgUpdateParamsResponse
-	(*QueryQuote)(nil),                    // 10: zerone.billing.v1.QueryQuote
-	(*Params)(nil),                        // 11: zerone.billing.v1.Params
+	(*MsgRegisterProvider)(nil),             // 0: zerone.billing.v1.MsgRegisterProvider
+	(*MsgRegisterProviderResponse)(nil),     // 1: zerone.billing.v1.MsgRegisterProviderResponse
+	(*MsgDeregisterProvider)(nil),           // 2: zerone.billing.v1.MsgDeregisterProvider
+	(*MsgDeregisterProviderResponse)(nil),   // 3: zerone.billing.v1.MsgDeregisterProviderResponse
+	(*MsgQueryFact)(nil),                    // 4: zerone.billing.v1.MsgQueryFact
+	(*MsgQueryFactResponse)(nil),            // 5: zerone.billing.v1.MsgQueryFactResponse
+	(*MsgBatchQueryFacts)(nil),              // 6: zerone.billing.v1.MsgBatchQueryFacts
+	(*MsgBatchQueryFactsResponse)(nil),      // 7: zerone.billing.v1.MsgBatchQueryFactsResponse
+	(*MsgUpdateParams)(nil),                 // 8: zerone.billing.v1.MsgUpdateParams
+	(*MsgUpdateParamsResponse)(nil),         // 9: zerone.billing.v1.MsgUpdateParamsResponse
+	(*MsgDevelopmentFundSpend)(nil),         // 10: zerone.billing.v1.MsgDevelopmentFundSpend
+	(*MsgDevelopmentFundSpendResponse)(nil), // 11: zerone.billing.v1.MsgDevelopmentFundSpendResponse
+	(*QueryQuote)(nil),                      // 12: zerone.billing.v1.QueryQuote
+	(*Params)(nil),                          // 13: zerone.billing.v1.Params
 }
 var file_zerone_billing_v1_tx_proto_depIdxs = []int32{
-	10, // 0: zerone.billing.v1.MsgQueryFactResponse.quote:type_name -> zerone.billing.v1.QueryQuote
-	10, // 1: zerone.billing.v1.MsgBatchQueryFactsResponse.quotes:type_name -> zerone.billing.v1.QueryQuote
-	11, // 2: zerone.billing.v1.MsgUpdateParams.params:type_name -> zerone.billing.v1.Params
+	12, // 0: zerone.billing.v1.MsgQueryFactResponse.quote:type_name -> zerone.billing.v1.QueryQuote
+	12, // 1: zerone.billing.v1.MsgBatchQueryFactsResponse.quotes:type_name -> zerone.billing.v1.QueryQuote
+	13, // 2: zerone.billing.v1.MsgUpdateParams.params:type_name -> zerone.billing.v1.Params
 	0,  // 3: zerone.billing.v1.Msg.RegisterProvider:input_type -> zerone.billing.v1.MsgRegisterProvider
 	2,  // 4: zerone.billing.v1.Msg.DeregisterProvider:input_type -> zerone.billing.v1.MsgDeregisterProvider
 	4,  // 5: zerone.billing.v1.Msg.QueryFact:input_type -> zerone.billing.v1.MsgQueryFact
 	6,  // 6: zerone.billing.v1.Msg.BatchQueryFacts:input_type -> zerone.billing.v1.MsgBatchQueryFacts
 	8,  // 7: zerone.billing.v1.Msg.UpdateParams:input_type -> zerone.billing.v1.MsgUpdateParams
-	1,  // 8: zerone.billing.v1.Msg.RegisterProvider:output_type -> zerone.billing.v1.MsgRegisterProviderResponse
-	3,  // 9: zerone.billing.v1.Msg.DeregisterProvider:output_type -> zerone.billing.v1.MsgDeregisterProviderResponse
-	5,  // 10: zerone.billing.v1.Msg.QueryFact:output_type -> zerone.billing.v1.MsgQueryFactResponse
-	7,  // 11: zerone.billing.v1.Msg.BatchQueryFacts:output_type -> zerone.billing.v1.MsgBatchQueryFactsResponse
-	9,  // 12: zerone.billing.v1.Msg.UpdateParams:output_type -> zerone.billing.v1.MsgUpdateParamsResponse
-	8,  // [8:13] is the sub-list for method output_type
-	3,  // [3:8] is the sub-list for method input_type
+	10, // 8: zerone.billing.v1.Msg.DevelopmentFundSpend:input_type -> zerone.billing.v1.MsgDevelopmentFundSpend
+	1,  // 9: zerone.billing.v1.Msg.RegisterProvider:output_type -> zerone.billing.v1.MsgRegisterProviderResponse
+	3,  // 10: zerone.billing.v1.Msg.DeregisterProvider:output_type -> zerone.billing.v1.MsgDeregisterProviderResponse
+	5,  // 11: zerone.billing.v1.Msg.QueryFact:output_type -> zerone.billing.v1.MsgQueryFactResponse
+	7,  // 12: zerone.billing.v1.Msg.BatchQueryFacts:output_type -> zerone.billing.v1.MsgBatchQueryFactsResponse
+	9,  // 13: zerone.billing.v1.Msg.UpdateParams:output_type -> zerone.billing.v1.MsgUpdateParamsResponse
+	11, // 14: zerone.billing.v1.Msg.DevelopmentFundSpend:output_type -> zerone.billing.v1.MsgDevelopmentFundSpendResponse
+	9,  // [9:15] is the sub-list for method output_type
+	3,  // [3:9] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
 	3,  // [3:3] is the sub-list for extension extendee
 	0,  // [0:3] is the sub-list for field type_name
@@ -609,7 +735,7 @@ func file_zerone_billing_v1_tx_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_zerone_billing_v1_tx_proto_rawDesc), len(file_zerone_billing_v1_tx_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -13,6 +13,9 @@ service Msg {
   rpc QueryFact(MsgQueryFact) returns (MsgQueryFactResponse);
   rpc BatchQueryFacts(MsgBatchQueryFacts) returns (MsgBatchQueryFactsResponse);
   rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
+  // DevelopmentFundSpend gates development_fund disbursements behind governance authority.
+  // Enforces DevelopmentFundSpendingLimitBps to prevent single-block drain.
+  rpc DevelopmentFundSpend(MsgDevelopmentFundSpend) returns (MsgDevelopmentFundSpendResponse);
 }
 
 message MsgRegisterProvider {
@@ -52,3 +55,15 @@ message MsgUpdateParams {
   Params params    = 2;
 }
 message MsgUpdateParamsResponse {}
+
+// MsgDevelopmentFundSpend requests a governed disbursement from the development_fund.
+// Requires governance authority. Enforces per-block spending rate limit.
+message MsgDevelopmentFundSpend {
+  string authority    = 1;  // governance authority address (x/gov)
+  string recipient    = 2;  // destination address (bech32)
+  string amount       = 3;  // uzrn bigint string
+  string description  = 4;  // human-readable purpose (for event emission)
+}
+message MsgDevelopmentFundSpendResponse {
+  string amount_spent = 1;  // actual amount transferred (uzrn bigint string)
+}

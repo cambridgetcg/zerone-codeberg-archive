@@ -130,6 +130,16 @@ func (m *mockBankKeeper) SendCoinsFromModuleToModule(_ context.Context, senderMo
 	return nil
 }
 
+// GetModuleBalance returns the balance of a module account keyed by module name.
+// Matches the BankKeeper interface used by DevelopmentFundSpend.
+func (m *mockBankKeeper) GetModuleBalance(_ context.Context, moduleName string, denom string) sdk.Coin {
+	key := moduleName + "/" + denom
+	if bal, ok := m.balances[key]; ok {
+		return sdk.NewCoin(denom, bal)
+	}
+	return sdk.NewCoin(denom, sdkmath.ZeroInt())
+}
+
 // -----------------------------------------------------------------------
 // Mock KnowledgeKeeper
 // -----------------------------------------------------------------------
@@ -416,7 +426,7 @@ func TestDistribution_RevenueSplit(t *testing.T) {
 	}
 
 	devAmt := new(big.Int)
-	devAmt.SetString(distribution.ProtocolBurn, 10)
+	devAmt.SetString(distribution.DevelopmentFund, 10)
 	expectedDev := big.NewInt(1967000) // 19.67% development fund
 	if devAmt.Cmp(expectedDev) != 0 {
 		t.Errorf("expected development fund %s, got %s", expectedDev, devAmt)
@@ -1620,5 +1630,237 @@ func TestOracle_ExternalFeedDisabled(t *testing.T) {
 	want := big.NewInt(10000)
 	if totalPrice.Cmp(want) != 0 {
 		t.Errorf("want TWAP-only cost %s when external feed disabled, got %s", want, totalPrice)
+	}
+}
+
+// -----------------------------------------------------------------------
+// Tests: DevelopmentFundSpend
+// -----------------------------------------------------------------------
+
+// seedDevFund seeds the development_fund module account balance in the mock.
+func seedDevFund(bk *mockBankKeeper, amount sdkmath.Int) {
+	bk.balances[keeper.DevelopmentFund+"/uzrn"] = amount
+}
+
+func TestDevelopmentFundSpend_Success(t *testing.T) {
+	k, ctx, bk, _ := setupKeeper(t)
+	authority := k.GetAuthority()
+	srv := keeper.NewMsgServerImpl(k)
+
+	// Seed development fund with 10M uzrn, limit is 10% = 1M max per proposal.
+	seedDevFund(bk, sdkmath.NewInt(10_000_000))
+
+	params := types.DefaultParams()
+	params.DevelopmentFundSpendingLimitBps = 100_000 // 10%
+	k.SetParams(ctx, params)
+
+	recipientAddr := testAddr(5)
+
+	resp, err := srv.DevelopmentFundSpend(ctx, &types.MsgDevelopmentFundSpend{
+		Authority:   authority,
+		Recipient:   recipientAddr,
+		Amount:      "1000000", // exactly 10% of 10M — at the limit
+		Description: "test spend",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.AmountSpent != "1000000" {
+		t.Errorf("expected AmountSpent 1000000, got %s", resp.AmountSpent)
+	}
+
+	// Development fund balance should decrease.
+	devBal := bk.balances[keeper.DevelopmentFund+"/uzrn"]
+	expectedDevBal := sdkmath.NewInt(9_000_000) // 10M - 1M
+	if !devBal.Equal(expectedDevBal) {
+		t.Errorf("expected dev fund balance %s after spend, got %s", expectedDevBal, devBal)
+	}
+
+	// Recipient should have received funds.
+	recipientAccAddr, _ := sdk.AccAddressFromBech32(recipientAddr)
+	recipientBal := bk.balances[recipientAccAddr.String()+"/uzrn"]
+	expectedRecipient := sdkmath.NewInt(1_000_000)
+	if !recipientBal.Equal(expectedRecipient) {
+		t.Errorf("expected recipient balance %s, got %s", expectedRecipient, recipientBal)
+	}
+}
+
+func TestDevelopmentFundSpend_BelowLimit(t *testing.T) {
+	k, ctx, bk, _ := setupKeeper(t)
+	authority := k.GetAuthority()
+	srv := keeper.NewMsgServerImpl(k)
+
+	// Seed development fund with 10M uzrn.
+	seedDevFund(bk, sdkmath.NewInt(10_000_000))
+
+	params := types.DefaultParams()
+	params.DevelopmentFundSpendingLimitBps = 100_000 // 10% = 1M max
+	k.SetParams(ctx, params)
+
+	// Spend 500k — well under 10% limit.
+	_, err := srv.DevelopmentFundSpend(ctx, &types.MsgDevelopmentFundSpend{
+		Authority:   authority,
+		Recipient:   testAddr(5),
+		Amount:      "500000",
+		Description: "small spend",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error for amount within limit: %v", err)
+	}
+}
+
+func TestDevelopmentFundSpend_Unauthorized(t *testing.T) {
+	k, ctx, bk, _ := setupKeeper(t)
+	srv := keeper.NewMsgServerImpl(k)
+
+	seedDevFund(bk, sdkmath.NewInt(10_000_000))
+
+	_, err := srv.DevelopmentFundSpend(ctx, &types.MsgDevelopmentFundSpend{
+		Authority:   testAddr(99), // not governance authority
+		Recipient:   testAddr(5),
+		Amount:      "1000000",
+		Description: "unauthorized",
+	})
+	if err == nil {
+		t.Error("expected unauthorized error")
+	}
+}
+
+func TestDevelopmentFundSpend_SpendingDisabled(t *testing.T) {
+	k, ctx, bk, _ := setupKeeper(t)
+	authority := k.GetAuthority()
+	srv := keeper.NewMsgServerImpl(k)
+
+	seedDevFund(bk, sdkmath.NewInt(10_000_000))
+
+	// Disable spending by setting limit to 0.
+	params := types.DefaultParams()
+	params.DevelopmentFundSpendingLimitBps = 0
+	k.SetParams(ctx, params)
+
+	_, err := srv.DevelopmentFundSpend(ctx, &types.MsgDevelopmentFundSpend{
+		Authority:   authority,
+		Recipient:   testAddr(5),
+		Amount:      "1000000",
+		Description: "blocked",
+	})
+	if err == nil {
+		t.Error("expected ErrSpendingDisabled")
+	}
+}
+
+func TestDevelopmentFundSpend_ExceedsSpendingLimit(t *testing.T) {
+	k, ctx, bk, _ := setupKeeper(t)
+	authority := k.GetAuthority()
+	srv := keeper.NewMsgServerImpl(k)
+
+	// 10M uzrn, 10% limit = 1M max.
+	seedDevFund(bk, sdkmath.NewInt(10_000_000))
+
+	params := types.DefaultParams()
+	params.DevelopmentFundSpendingLimitBps = 100_000 // 10%
+	k.SetParams(ctx, params)
+
+	// Try to spend 1.1M (11% of 10M — over the 10% limit).
+	_, err := srv.DevelopmentFundSpend(ctx, &types.MsgDevelopmentFundSpend{
+		Authority:   authority,
+		Recipient:   testAddr(5),
+		Amount:      "1100000",
+		Description: "over limit",
+	})
+	if err == nil {
+		t.Error("expected ErrSpendingLimitExceeded")
+	}
+}
+
+func TestDevelopmentFundSpend_InsufficientFund(t *testing.T) {
+	k, ctx, bk, _ := setupKeeper(t)
+	authority := k.GetAuthority()
+	srv := keeper.NewMsgServerImpl(k)
+
+	// Fund has 500k, limit is 100% — but still can't spend 1M.
+	seedDevFund(bk, sdkmath.NewInt(500_000))
+
+	params := types.DefaultParams()
+	params.DevelopmentFundSpendingLimitBps = 1_000_000 // 100%
+	k.SetParams(ctx, params)
+
+	_, err := srv.DevelopmentFundSpend(ctx, &types.MsgDevelopmentFundSpend{
+		Authority:   authority,
+		Recipient:   testAddr(5),
+		Amount:      "1000000", // more than the 500k in fund
+		Description: "overdraft",
+	})
+	if err == nil {
+		t.Error("expected ErrInsufficientDevelopmentFund")
+	}
+}
+
+func TestDevelopmentFundSpend_InvalidAmount(t *testing.T) {
+	k, ctx, bk, _ := setupKeeper(t)
+	authority := k.GetAuthority()
+	srv := keeper.NewMsgServerImpl(k)
+
+	seedDevFund(bk, sdkmath.NewInt(10_000_000))
+
+	// Zero amount.
+	_, err := srv.DevelopmentFundSpend(ctx, &types.MsgDevelopmentFundSpend{
+		Authority:   authority,
+		Recipient:   testAddr(5),
+		Amount:      "0",
+		Description: "zero spend",
+	})
+	if err == nil {
+		t.Error("expected ErrInvalidAmount for zero amount")
+	}
+
+	// Non-numeric amount.
+	_, err = srv.DevelopmentFundSpend(ctx, &types.MsgDevelopmentFundSpend{
+		Authority:   authority,
+		Recipient:   testAddr(5),
+		Amount:      "not-a-number",
+		Description: "bad amount",
+	})
+	if err == nil {
+		t.Error("expected ErrInvalidAmount for non-numeric amount")
+	}
+}
+
+func TestDevelopmentFundSpend_InvalidRecipient(t *testing.T) {
+	k, ctx, bk, _ := setupKeeper(t)
+	authority := k.GetAuthority()
+	srv := keeper.NewMsgServerImpl(k)
+
+	seedDevFund(bk, sdkmath.NewInt(10_000_000))
+
+	_, err := srv.DevelopmentFundSpend(ctx, &types.MsgDevelopmentFundSpend{
+		Authority:   authority,
+		Recipient:   "not-a-valid-address",
+		Amount:      "1000000",
+		Description: "bad recipient",
+	})
+	if err == nil {
+		t.Error("expected error for invalid recipient address")
+	}
+}
+
+func TestDevelopmentFundSpend_EmptyFund(t *testing.T) {
+	k, ctx, _, _ := setupKeeper(t)
+	authority := k.GetAuthority()
+	srv := keeper.NewMsgServerImpl(k)
+
+	// No balance seeded — fund is empty.
+	params := types.DefaultParams()
+	params.DevelopmentFundSpendingLimitBps = 100_000
+	k.SetParams(ctx, params)
+
+	_, err := srv.DevelopmentFundSpend(ctx, &types.MsgDevelopmentFundSpend{
+		Authority:   authority,
+		Recipient:   testAddr(5),
+		Amount:      "1000000",
+		Description: "empty fund",
+	})
+	if err == nil {
+		t.Error("expected error when development fund is empty")
 	}
 }

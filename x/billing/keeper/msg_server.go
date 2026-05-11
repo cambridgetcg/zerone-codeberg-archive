@@ -297,3 +297,76 @@ func (k msgServer) UpdateParams(goCtx context.Context, msg *types.MsgUpdateParam
 
 	return &types.MsgUpdateParamsResponse{}, nil
 }
+
+// DevelopmentFundSpend handles governance-gated disbursement from the development_fund.
+//
+// Security invariants enforced:
+//  1. Only governance authority may call (prevents arbitrary account drain).
+//  2. DevelopmentFundSpendingLimitBps caps the fraction of current balance per proposal
+//     (prevents single-proposal drain even if governance is captured briefly).
+//  3. Amount must not exceed current fund balance (no overdraft).
+func (k msgServer) DevelopmentFundSpend(goCtx context.Context, msg *types.MsgDevelopmentFundSpend) (*types.MsgDevelopmentFundSpendResponse, error) {
+	if k.GetAuthority() != msg.Authority {
+		return nil, types.ErrUnauthorized.Wrapf("expected %s, got %s", k.GetAuthority(), msg.Authority)
+	}
+
+	ctx := sdk.UnwrapSDKContext(goCtx)
+	params := k.GetParams(ctx)
+
+	// Enforce spending gate: limit of 0 means spending is disabled.
+	if params.DevelopmentFundSpendingLimitBps == 0 {
+		return nil, types.ErrSpendingDisabled
+	}
+
+	// Parse requested amount.
+	amtBig := new(big.Int)
+	if _, ok := amtBig.SetString(msg.Amount, 10); !ok || amtBig.Sign() <= 0 {
+		return nil, types.ErrInvalidAmount.Wrapf("amount %q is not a positive integer", msg.Amount)
+	}
+
+	// Get current development_fund balance.
+	fundBalance := k.bankKeeper.GetModuleBalance(ctx, DevelopmentFund, "uzrn")
+	balanceBig := fundBalance.Amount.BigInt()
+
+	// Check balance sufficiency.
+	if amtBig.Cmp(balanceBig) > 0 {
+		return nil, types.ErrInsufficientDevelopmentFund.Wrapf(
+			"requested %s uzrn but fund holds %s uzrn", amtBig, balanceBig,
+		)
+	}
+
+	// Enforce per-proposal spending limit: amount <= balance * limitBps / 1_000_000.
+	limitNumerator := new(big.Int).Mul(balanceBig, big.NewInt(int64(params.DevelopmentFundSpendingLimitBps)))
+	limitBig := new(big.Int).Div(limitNumerator, big.NewInt(1_000_000))
+	if amtBig.Cmp(limitBig) > 0 {
+		return nil, types.ErrSpendingLimitExceeded.Wrapf(
+			"requested %s uzrn exceeds limit %s uzrn (%d bps of %s balance)",
+			amtBig, limitBig, params.DevelopmentFundSpendingLimitBps, balanceBig,
+		)
+	}
+
+	// Transfer from development_fund to recipient.
+	recipientAddr, err := sdk.AccAddressFromBech32(msg.Recipient)
+	if err != nil {
+		return nil, types.ErrInvalidAmount.Wrapf("invalid recipient address: %s", err)
+	}
+
+	coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(amtBig)))
+	if err := k.bankKeeper.SendCoinsFromModuleToAccount(ctx, DevelopmentFund, recipientAddr, coins); err != nil {
+		return nil, fmt.Errorf("development fund transfer failed: %w", err)
+	}
+
+	ctx.EventManager().EmitEvent(
+		sdk.NewEvent(
+			"zerone.billing.development_fund_spend",
+			sdk.NewAttribute("authority", msg.Authority),
+			sdk.NewAttribute("recipient", msg.Recipient),
+			sdk.NewAttribute("amount", msg.Amount),
+			sdk.NewAttribute("description", msg.Description),
+			sdk.NewAttribute("fund_balance_before", balanceBig.String()),
+			sdk.NewAttribute("spending_limit_bps", fmt.Sprintf("%d", params.DevelopmentFundSpendingLimitBps)),
+		),
+	)
+
+	return &types.MsgDevelopmentFundSpendResponse{AmountSpent: msg.Amount}, nil
+}

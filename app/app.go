@@ -890,11 +890,12 @@ func NewZeroneApp(
 
 	billingKnowledgeAdapter := zeroneknowledgekeeper.NewBillingKnowledgeAdapter(app.KnowledgeKeeper)
 	vestingRFDAdapter := vestingrewardskeeper.NewResearchFundDepositorAdapter(app.VestingRewardsKeeper)
+	billingBankAdapter := zeronebillingkeeper.NewBillingBankAdapter(app.BankKeeper)
 	app.BillingKeeper = zeronebillingkeeper.NewKeeper(
 		sdkruntime.NewKVStoreService(keys[zeronebillingtypes.StoreKey]),
 		appCodec,
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
-		app.BankKeeper,
+		billingBankAdapter,
 		billingKnowledgeAdapter,
 		vestingRFDAdapter,
 	)

@@ -33,7 +33,9 @@ func (k Keeper) CalculateDistribution(ctx context.Context, totalPayment *big.Int
 		split = types.DefaultRevenueSplit()
 	}
 
-	// Top-level split using 1M bps basis
+	// Top-level split — four first-class allocations using 1M bps basis.
+	// Each share is computed directly from DevelopmentBps, not as a remainder,
+	// so the development_fund allocation is explicit and auditable on-chain.
 	providerShare := new(big.Int).Mul(totalPayment, big.NewInt(int64(split.ContributorBps)))
 	providerShare.Div(providerShare, bpsBasis)
 
@@ -43,11 +45,19 @@ func (k Keeper) CalculateDistribution(ctx context.Context, totalPayment *big.Int
 	researchShare := new(big.Int).Mul(totalPayment, big.NewInt(int64(split.ResearchBps)))
 	researchShare.Div(researchShare, bpsBasis)
 
-	// Burn = remainder (absorbs rounding dust)
-	burnTotal := new(big.Int).Set(totalPayment)
-	burnTotal.Sub(burnTotal, providerShare)
-	burnTotal.Sub(burnTotal, protocolAllocation)
-	burnTotal.Sub(burnTotal, researchShare)
+	// Development fund: computed directly from DevelopmentBps (previously computed as
+	// remainder — that obscured the allocation intent and made it look like a burn).
+	developmentFundShare := new(big.Int).Mul(totalPayment, big.NewInt(int64(split.DevelopmentBps)))
+	developmentFundShare.Div(developmentFundShare, bpsBasis)
+
+	// Rounding dust: true integer remainder after all four first-class shares.
+	// This is always ≤ 3 uzrn for typical payments. Not routed to any module — absorbed
+	// by the protocol treasury as part of its sub-allocation rounding below.
+	roundingDust := new(big.Int).Set(totalPayment)
+	roundingDust.Sub(roundingDust, providerShare)
+	roundingDust.Sub(roundingDust, protocolAllocation)
+	roundingDust.Sub(roundingDust, researchShare)
+	roundingDust.Sub(roundingDust, developmentFundShare)
 
 	// Split protocol allocation into 3 sub-pools
 	citationPoolTotal := new(big.Int).Mul(protocolAllocation, big.NewInt(KnowledgePoolShareOfProtocolBps))
@@ -56,20 +66,23 @@ func (k Keeper) CalculateDistribution(ctx context.Context, totalPayment *big.Int
 	verificationPoolTotal := new(big.Int).Mul(protocolAllocation, big.NewInt(VerificationPoolShareOfProtocolBps))
 	verificationPoolTotal.Div(verificationPoolTotal, bpsBasis)
 
+	// Protocol treasury gets remaining 20% of protocol allocation + rounding dust
 	protocolTreasury := new(big.Int).Set(protocolAllocation)
 	protocolTreasury.Sub(protocolTreasury, citationPoolTotal)
 	protocolTreasury.Sub(protocolTreasury, verificationPoolTotal)
+	protocolTreasury.Add(protocolTreasury, roundingDust) // dust absorbed here
 
 	// Knowledge pool (citation rewards) weighted by confidence * log2(citations+1)
 	knowledgePool := k.calculateKnowledgePoolDistribution(ctx, citationPoolTotal, factIds)
 
 	return &types.PaymentDistribution{
-		TotalPayment:     totalPayment.String(),
-		ResearchShare:    researchShare.String(),
-		ProviderShare:    providerShare.String(),
-		KnowledgePool:    knowledgePool,
-		ProtocolBurn:     burnTotal.String(),
+		TotalPayment:    totalPayment.String(),
+		ResearchShare:   researchShare.String(),
+		ProviderShare:   providerShare.String(),
+		KnowledgePool:   knowledgePool,
+		DevelopmentFund: developmentFundShare.String(),
 		ProtocolTreasury: protocolTreasury.String(),
+		RoundingDust:    roundingDust.String(),
 	}
 }
 
@@ -196,9 +209,9 @@ func (k Keeper) ExecuteDistribution(ctx context.Context, callerAddr sdk.AccAddre
 		}
 	}
 
-	// 4. Development fund
+	// 4. Development fund — explicit DevelopmentBps allocation (not rounding dust).
 	devAmt := new(big.Int)
-	devAmt.SetString(distribution.ProtocolBurn, 10)
+	devAmt.SetString(distribution.DevelopmentFund, 10)
 	if devAmt.Sign() > 0 {
 		coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(devAmt)))
 		if err := k.bankKeeper.SendCoinsFromAccountToModule(ctx, callerAddr, types.ModuleName, coins); err != nil {
