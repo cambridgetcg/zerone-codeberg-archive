@@ -13,6 +13,7 @@ func RegisterCodec(cdc *codec.LegacyAmino) {
 	cdc.RegisterConcrete(&MsgQueryFact{}, "zerone_billing/QueryFact", nil)
 	cdc.RegisterConcrete(&MsgBatchQueryFacts{}, "zerone_billing/BatchQueryFacts", nil)
 	cdc.RegisterConcrete(&MsgUpdateParams{}, "zerone_billing/UpdateParams", nil)
+	cdc.RegisterConcrete(&MsgDevelopmentFundSpend{}, "zerone_billing/DevelopmentFundSpend", nil)
 }
 
 // RegisterInterfaces registers the billing module interface implementations.
@@ -23,5 +24,6 @@ func RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
 		&MsgQueryFact{},
 		&MsgBatchQueryFacts{},
 		&MsgUpdateParams{},
+		&MsgDevelopmentFundSpend{},
 	)
 }
