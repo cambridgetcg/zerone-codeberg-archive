@@ -289,6 +289,16 @@ Oracle price feed changed significantly (>5%).
 - `price_usd` -- new USD price
 - `source` -- price source
 
+### zerone.billing.development_fund_spend
+Governance-approved disbursement from the development_fund module account.
+Emitted by `MsgDevelopmentFundSpend` after successful transfer.
+- `authority` -- governance address that submitted the proposal
+- `recipient` -- destination address for the funds
+- `amount` -- uzrn amount transferred (bigint string)
+- `description` -- human-readable purpose of the spend
+- `fund_balance_before` -- development_fund balance before the transfer (uzrn bigint string)
+- `spending_limit_bps` -- per-proposal spending limit in effect at time of transfer (1M bps)
+
 ---
 
 ## bvm

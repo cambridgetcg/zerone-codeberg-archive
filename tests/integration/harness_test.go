@@ -112,6 +112,17 @@ func (m *mockBankKeeper) GetBalance(_ context.Context, addr sdk.AccAddress, deno
 	return sdk.NewCoin(denom, sdkmath.ZeroInt())
 }
 
+// GetModuleBalance returns the balance of a module account by module name.
+// Required by billing.BankKeeper interface for DevelopmentFundSpend governance gate.
+func (m *mockBankKeeper) GetModuleBalance(_ context.Context, moduleName string, denom string) sdk.Coin {
+	// Module accounts are stored under the computed module address in this harness.
+	// Use the sentinel key pattern: module accounts have a special key prefix.
+	if coins, ok := m.sentToModule[moduleName]; ok {
+		return sdk.NewCoin(denom, coins.AmountOf(denom))
+	}
+	return sdk.NewCoin(denom, sdkmath.ZeroInt())
+}
+
 func (m *mockBankKeeper) SendCoinsFromAccountToModule(_ context.Context, senderAddr sdk.AccAddress, recipientModule string, amt sdk.Coins) error {
 	key := senderAddr.String()
 	m.sentFromAcct[key] = m.sentFromAcct[key].Add(amt...)
