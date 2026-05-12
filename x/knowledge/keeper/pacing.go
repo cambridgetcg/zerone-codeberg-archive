@@ -46,33 +46,93 @@ func (k Keeper) GetEffectiveCooldown(ctx context.Context, domain string) uint64 
 	return effectiveCooldown
 }
 
-// GetEffectiveMinReviewFee returns the minimum review fee adjusted by pacing.
+// GetEffectiveMinReviewFee returns the minimum review fee adjusted by pacing
+// and congestion.
 //
-// When the network is degraded (creationBps < 1,000,000), the fee increases to
-// discourage low-value submissions during constrained periods.
+// Two independent adjustments may increase the fee above the base MinReviewFee:
+//
+//  1. Pacing: when the network is degraded (creationBps < 1,000,000), the fee
+//     rises inversely to discourage low-value submissions during constrained
+//     periods. Example: 75% pacing → 133% of base fee.
+//
+//  2. Congestion: when active verification rounds exceed CongestionThresholdRounds,
+//     each excess round adds CongestionMultiplierBps/1M to the fee multiplier.
+//     Applied on top of the pacing-adjusted fee. Example: threshold=100,
+//     active=150, multiplierBps=10_000 → excess=50, +50% of pacing-adjusted fee.
+//     Disabled when CongestionMultiplierBps == 0 or CongestionThresholdRounds == 0.
 func (k Keeper) GetEffectiveMinReviewFee(ctx context.Context) string {
 	params, err := k.GetParams(ctx)
 	if err != nil {
 		return "100000" // safe fallback
 	}
 	baseStr := params.MinReviewFee
-	baseFee, ok := new(big.Int).SetString(baseStr, 10)
-	if !ok || baseFee.Sign() <= 0 {
+	fee, ok := new(big.Int).SetString(baseStr, 10)
+	if !ok || fee.Sign() <= 0 {
 		return baseStr
 	}
 
+	// Layer 1: pacing adjustment (existing behaviour).
 	if k.pacingKeeper != nil {
 		creationPacing, _ := k.pacingKeeper.GetGlobalPacingMultiplier(ctx)
 		if creationPacing > 0 && creationPacing < pacingBPS {
 			// Inverse relationship: lower pacing → higher fee.
-			// e.g. creationPacing = 750_000 → fee = base * 1_000_000 / 750_000 ≈ 133%
-			adjusted := new(big.Int).Mul(baseFee, new(big.Int).SetUint64(pacingBPS))
+			adjusted := new(big.Int).Mul(fee, new(big.Int).SetUint64(pacingBPS))
 			adjusted.Div(adjusted, new(big.Int).SetUint64(creationPacing))
-			return adjusted.String()
+			fee = adjusted
 		}
 	}
 
-	return baseStr
+	// Layer 2: congestion adjustment (EIP-1559-style backpressure).
+	if params.CongestionMultiplierBps > 0 && params.CongestionThresholdRounds > 0 {
+		activeRounds := k.GetActiveRoundsCount(ctx)
+		if activeRounds > params.CongestionThresholdRounds {
+			excess := activeRounds - params.CongestionThresholdRounds
+			// effectiveFee = fee × (1 + excess × multiplierBps / 1_000_000)
+			// Rearranged to avoid float: fee + fee×excess×multiplierBps/1_000_000
+			addend := new(big.Int).SetUint64(excess)
+			addend.Mul(addend, new(big.Int).SetUint64(params.CongestionMultiplierBps))
+			addend.Mul(addend, fee)
+			addend.Div(addend, new(big.Int).SetUint64(1_000_000))
+			fee = new(big.Int).Add(fee, addend)
+		}
+	}
+
+	return fee.String()
+}
+
+// GetActiveRoundsCount returns the number of currently active verification
+// rounds. Used by congestion-based fee backpressure.
+func (k Keeper) GetActiveRoundsCount(ctx context.Context) uint64 {
+	kvStore := k.storeService.OpenKVStore(ctx)
+	bz, err := kvStore.Get(types.ActiveRoundsCountKey)
+	if err != nil || len(bz) != 8 {
+		return 0
+	}
+	return binary.BigEndian.Uint64(bz)
+}
+
+// SetActiveRoundsCount writes the active-rounds counter to state.
+func (k Keeper) SetActiveRoundsCount(ctx context.Context, count uint64) {
+	kvStore := k.storeService.OpenKVStore(ctx)
+	bz := make([]byte, 8)
+	binary.BigEndian.PutUint64(bz, count)
+	_ = kvStore.Set(types.ActiveRoundsCountKey, bz)
+}
+
+// IncrementActiveRoundsCount increments the active-rounds counter by 1.
+// Called when a new verification round is created.
+func (k Keeper) IncrementActiveRoundsCount(ctx context.Context) {
+	k.SetActiveRoundsCount(ctx, k.GetActiveRoundsCount(ctx)+1)
+}
+
+// DecrementActiveRoundsCount decrements the active-rounds counter by 1,
+// saturating at 0 to prevent underflow.
+// Called when a verification round is completed.
+func (k Keeper) DecrementActiveRoundsCount(ctx context.Context) {
+	current := k.GetActiveRoundsCount(ctx)
+	if current > 0 {
+		k.SetActiveRoundsCount(ctx, current-1)
+	}
 }
 
 // GetLastClaimHeight returns the block height at which a submitter last submitted a claim.

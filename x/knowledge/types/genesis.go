@@ -321,8 +321,23 @@ func DefaultParams() Params {
 		// chain insists that adding a fact is a public, observable, and
 		// reversible-during-window action. The privileged-action log fires
 		// regardless — that part is non-optional.
-		GuardianAddresses:           []string{},
-		AddFactVetoWindowBlocks:     0,
+		GuardianAddresses:       []string{},
+		AddFactVetoWindowBlocks: 0,
+
+		// ─── Fee markets: congestion-based backpressure ─────────────────
+		// Gap 1 from fee-markets-brief.md: when verifier bandwidth thins
+		// under heavy submission load, the effective minimum review fee rises
+		// so low-value claims price themselves out before degrading verification
+		// quality for high-value ones. EIP-1559-style dynamic pricing applied
+		// to the knowledge-submission market.
+		//
+		// Default: disabled (multiplierBps=0). Governance can activate by
+		// setting CongestionMultiplierBps > 0 and choosing a threshold that
+		// matches observed network capacity. A reasonable starting point for
+		// a live chain might be threshold=50, multiplierBps=20_000 (2% per
+		// excess round — 50 excess rounds doubles the minimum fee).
+		CongestionMultiplierBps:   0,   // 0 = disabled; set > 0 to activate
+		CongestionThresholdRounds: 100, // active rounds above which backpressure fires
 	}
 }
 
@@ -759,6 +774,14 @@ func (p *Params) Validate() error {
 	// Wave 15 probe invitation parameters.
 	if p.ProbeInvitationMinConfidenceBps > 1_000_000 {
 		return fmt.Errorf("probe_invitation_min_confidence_bps must be <= 1,000,000")
+	}
+
+	// ─── Fee markets: congestion-based backpressure ──────────────────────────
+	// CongestionMultiplierBps > 0 activates backpressure. A threshold of 0
+	// would trigger it at 0 active rounds (i.e., always) — clearly not the
+	// intent. Enforce that governance must supply a meaningful threshold.
+	if p.CongestionMultiplierBps > 0 && p.CongestionThresholdRounds == 0 {
+		return fmt.Errorf("congestion_threshold_rounds must be > 0 when congestion_multiplier_bps is set")
 	}
 
 	return nil

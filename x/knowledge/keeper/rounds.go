@@ -37,6 +37,9 @@ func (k Keeper) CreateVerificationRound(ctx context.Context, claim *types.Claim)
 		return nil, err
 	}
 
+	// Track active rounds for congestion-based fee backpressure.
+	k.IncrementActiveRoundsCount(ctx)
+
 	// Update claim with round reference
 	claim.VerificationRoundId = roundID
 	claim.Status = types.ClaimStatus_CLAIM_STATUS_IN_VERIFICATION
@@ -268,6 +271,9 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 	if idxErr := k.IndexCompletedRound(ctx, height, round.Id, completionMeta); idxErr != nil {
 		k.Logger(ctx).Debug("failed to index completed round", "round", round.Id, "error", idxErr)
 	}
+
+	// Track active rounds for congestion-based fee backpressure.
+	k.DecrementActiveRoundsCount(ctx)
 
 	sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
 		"zerone.knowledge.verification_round_completed",

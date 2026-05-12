@@ -288,8 +288,25 @@ type Params struct {
 	// "no individual can unilaterally inject untruth."
 	GuardianAddresses       []string `protobuf:"bytes,159,rep,name=guardian_addresses,json=guardianAddresses,proto3" json:"guardian_addresses,omitempty"`                          // veto-eligible addresses; empty = no guardian set, immediate execution
 	AddFactVetoWindowBlocks uint64   `protobuf:"varint,160,opt,name=add_fact_veto_window_blocks,json=addFactVetoWindowBlocks,proto3" json:"add_fact_veto_window_blocks,omitempty"` // default 0 (immediate); set > 0 to enable veto window
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// ─── Fee markets: congestion-based backpressure (Gap 1) ───────────────
+	// When the number of active verification rounds exceeds
+	// congestion_threshold_rounds, the effective minimum review fee is
+	// scaled up by congestion_multiplier_bps per excess round (BPS scale,
+	// 1,000,000 = 100%). This is EIP-1559-style backpressure applied to
+	// claim submission: the price to enter verification rises as verifier
+	// bandwidth thins, preventing quality degradation under heavy load.
+	//
+	// Formula:
+	//
+	//	excess = active_rounds_count - congestion_threshold_rounds
+	//	effectiveMinFee = baseMinFee × (1 + excess × multiplierBps / 1,000,000)
+	//
+	// Setting congestion_multiplier_bps = 0 disables congestion pricing
+	// entirely (default). congestion_threshold_rounds = 0 also disables it.
+	CongestionMultiplierBps   uint64 `protobuf:"varint,161,opt,name=congestion_multiplier_bps,json=congestionMultiplierBps,proto3" json:"congestion_multiplier_bps,omitempty"`       // default: 0 (disabled) — BPS increase per excess active round
+	CongestionThresholdRounds uint64 `protobuf:"varint,162,opt,name=congestion_threshold_rounds,json=congestionThresholdRounds,proto3" json:"congestion_threshold_rounds,omitempty"` // default: 100 — active rounds above which backpressure activates
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -1442,6 +1459,20 @@ func (x *Params) GetAddFactVetoWindowBlocks() uint64 {
 	return 0
 }
 
+func (x *Params) GetCongestionMultiplierBps() uint64 {
+	if x != nil {
+		return x.CongestionMultiplierBps
+	}
+	return 0
+}
+
+func (x *Params) GetCongestionThresholdRounds() uint64 {
+	if x != nil {
+		return x.CongestionThresholdRounds
+	}
+	return 0
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -1679,7 +1710,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xdaO\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xd8P\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -1841,7 +1872,9 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\x1aprobe_bounty_max_pool_size\x18\x9d\x01 \x01(\tR\x16probeBountyMaxPoolSize\x127\n" +
 	"\x17invitation_bonus_amount\x18\x9e\x01 \x01(\tR\x15invitationBonusAmount\x12.\n" +
 	"\x12guardian_addresses\x18\x9f\x01 \x03(\tR\x11guardianAddresses\x12=\n" +
-	"\x1badd_fact_veto_window_blocks\x18\xa0\x01 \x01(\x04R\x17addFactVetoWindowBlocks\x1aN\n" +
+	"\x1badd_fact_veto_window_blocks\x18\xa0\x01 \x01(\x04R\x17addFactVetoWindowBlocks\x12;\n" +
+	"\x19congestion_multiplier_bps\x18\xa1\x01 \x01(\x04R\x17congestionMultiplierBps\x12?\n" +
+	"\x1bcongestion_threshold_rounds\x18\xa2\x01 \x01(\x04R\x19congestionThresholdRounds\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xe5\x0e\n" +

@@ -307,6 +307,23 @@ message Params {
   // "no individual can unilaterally inject untruth."
   repeated string guardian_addresses              = 159; // veto-eligible addresses; empty = no guardian set, immediate execution
   uint64 add_fact_veto_window_blocks              = 160; // default 0 (immediate); set > 0 to enable veto window
+
+  // ─── Fee markets: congestion-based backpressure (Gap 1) ───────────────
+  // When the number of active verification rounds exceeds
+  // congestion_threshold_rounds, the effective minimum review fee is
+  // scaled up by congestion_multiplier_bps per excess round (BPS scale,
+  // 1,000,000 = 100%). This is EIP-1559-style backpressure applied to
+  // claim submission: the price to enter verification rises as verifier
+  // bandwidth thins, preventing quality degradation under heavy load.
+  //
+  // Formula:
+  //   excess = active_rounds_count - congestion_threshold_rounds
+  //   effectiveMinFee = baseMinFee × (1 + excess × multiplierBps / 1,000,000)
+  //
+  // Setting congestion_multiplier_bps = 0 disables congestion pricing
+  // entirely (default). congestion_threshold_rounds = 0 also disables it.
+  uint64 congestion_multiplier_bps    = 161; // default: 0 (disabled) — BPS increase per excess active round
+  uint64 congestion_threshold_rounds  = 162; // default: 100 — active rounds above which backpressure activates
 }
 
 // GenesisState is the genesis state of the knowledge module.

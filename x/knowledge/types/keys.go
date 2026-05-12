@@ -205,6 +205,9 @@ var (
 	// ─── Wave 16: guardian-veto pending fact-injection queue ────────
 	PendingFactInjectionKeyPrefix          = []byte{0x7A} // 0x7A | id → PendingFactInjection
 	PendingFactInjectionByExecuteKeyPrefix = []byte{0x7B} // 0x7B | be64(execute_at) | id → 1 (time index for BeginBlocker scan)
+
+	// ─── Fee markets: congestion counter ────────────────────────────
+	ActiveRoundsCountKey = []byte{0x7C} // singleton: number of currently active verification rounds (uint64, big-endian)
 )
 
 // PendingFactInjectionKey returns the store key for a pending injection.
