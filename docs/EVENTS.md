@@ -1102,8 +1102,10 @@ Knowledge claim submitted for verification.
 - `claim_id` -- claim identifier
 - `submitter` -- submitter address
 - `domain` -- knowledge domain
-- `stake` -- bonded stake
+- `review_fee` -- bonded stake (review fee amount, in uzrn)
 - `content_hash` -- claim content hash
+- `claim_type` -- claim type enum string (e.g. `CLAIM_TYPE_ASSERTION`)
+- `sponsored` -- `"true"` if the bootstrap fund covered the fee, `"false"` otherwise
 
 ### zerone.knowledge.submit_commitment
 Verifier commitment submitted (commit-reveal).
@@ -1408,13 +1410,15 @@ Insufficient qualified verifiers for a domain; fallback used.
 - `qualified_count` -- number of qualified verifiers found
 
 ### zerone.knowledge.review_fee_distributed
-Claim review fee split across protocol components.
+Claim review fee split across protocol components using governance-configured BPS params.
+All share amounts are computed at submission time from the current `Params` values;
+a governance vote changing the split takes effect on the next claim submission.
 - `claim_id` -- claim identifier
-- `development` -- development fund share
-- `fee_amount` -- total fee
-- `protocol` -- protocol share
-- `research` -- research fund share
-- `verifier_pool` -- verifier pool share
+- `development` -- development fund share (computed as `stake × DevelopmentFundBps / 1_000_000`)
+- `fee_amount` -- total review fee (the claim stake, in uzrn)
+- `protocol` -- protocol treasury share (computed as `stake × ProtocolTreasuryBps / 1_000_000`)
+- `research` -- research fund share (the rounding remainder after burn + verifier pool + protocol + development)
+- `verifier_pool` -- verifier pool share (computed as `stake × VerifierPoolBps / 1_000_000`; held in knowledge module account and distributed to correct verifiers at round completion)
 
 ### zerone.knowledge.role_elasticity_updated
 Human/agent role elasticity recalculated for a domain.
