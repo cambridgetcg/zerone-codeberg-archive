@@ -65,6 +65,7 @@ func (k Keeper) InitGenesis(ctx context.Context, gs *types.GenesisState) error {
 		}
 	}
 
+	var importedRoundCount uint64
 	for _, round := range gs.ActiveRounds {
 		if round == nil {
 			continue
@@ -72,7 +73,14 @@ func (k Keeper) InitGenesis(ctx context.Context, gs *types.GenesisState) error {
 		if err := k.SetVerificationRound(ctx, round); err != nil {
 			return err
 		}
+		importedRoundCount++
 	}
+	// Seed the ActiveRoundsCount singleton from the number of non-nil rounds
+	// imported. Without this, congestion-based fee backpressure reads 0 after
+	// a chain restart even though real active rounds exist in state — the
+	// counter would then undercount as old rounds complete and new rounds push
+	// it above 0, producing a permanently depressed reading.
+	k.SetActiveRoundsCount(ctx, importedRoundCount)
 
 	// Seed common knowledge registry
 	ckEntries := gs.CommonKnowledge

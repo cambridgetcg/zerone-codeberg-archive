@@ -224,3 +224,84 @@ func TestGenesisValidate_ValidReferences(t *testing.T) {
 	}
 	require.NoError(t, gs.Validate())
 }
+
+// ─── ActiveRoundsCount genesis seeding ──────────────────────────────────────
+
+func TestInitGenesis_ActiveRoundsCount_SeededFromImport(t *testing.T) {
+	k, ctx := setupKnowledgeTest(t)
+
+	// Import a genesis state with 3 explicit active rounds.
+	gs := &types.GenesisState{
+		Params:  func() *types.Params { p := types.DefaultParams(); return &p }(),
+		Domains: types.DefaultDomains(),
+		ActiveRounds: []*types.VerificationRound{
+			makeRoundInPhase("cong-r1", "c1", types.VerificationPhase_VERIFICATION_PHASE_COMMIT, 50),
+			makeRoundInPhase("cong-r2", "c2", types.VerificationPhase_VERIFICATION_PHASE_COMMIT, 60),
+			makeRoundInPhase("cong-r3", "c3", types.VerificationPhase_VERIFICATION_PHASE_REVEAL, 70),
+		},
+	}
+	require.NoError(t, k.InitGenesis(ctx, gs))
+
+	// The counter must reflect the 3 non-nil rounds — not 0.
+	require.Equal(t, uint64(3), k.GetActiveRoundsCount(ctx),
+		"ActiveRoundsCount must be seeded from imported active rounds")
+}
+
+func TestInitGenesis_ActiveRoundsCount_NilRoundsNotCounted(t *testing.T) {
+	k, ctx := setupKnowledgeTest(t)
+
+	gs := &types.GenesisState{
+		Params:  func() *types.Params { p := types.DefaultParams(); return &p }(),
+		Domains: types.DefaultDomains(),
+		ActiveRounds: []*types.VerificationRound{
+			nil, // nil — must be skipped
+			makeRoundInPhase("cong-r1", "c1", types.VerificationPhase_VERIFICATION_PHASE_COMMIT, 50),
+			nil, // nil — must be skipped
+		},
+	}
+	require.NoError(t, k.InitGenesis(ctx, gs))
+
+	// Only 1 non-nil round — counter must be 1, not 3.
+	require.Equal(t, uint64(1), k.GetActiveRoundsCount(ctx),
+		"nil active rounds must not inflate the ActiveRoundsCount")
+}
+
+func TestInitGenesis_ActiveRoundsCount_EmptyRounds(t *testing.T) {
+	k, ctx := setupKnowledgeTest(t)
+
+	gs := &types.GenesisState{
+		Params:       func() *types.Params { p := types.DefaultParams(); return &p }(),
+		Domains:      types.DefaultDomains(),
+		ActiveRounds: []*types.VerificationRound{}, // empty
+	}
+	require.NoError(t, k.InitGenesis(ctx, gs))
+
+	require.Equal(t, uint64(0), k.GetActiveRoundsCount(ctx),
+		"empty active rounds slice should seed counter to 0")
+}
+
+// ─── Params validation: congestion ───────────────────────────────────────────
+
+func TestGenesisValidate_CongestionMultiplierWithZeroThreshold(t *testing.T) {
+	gs := types.DefaultGenesis()
+	gs.Params.CongestionMultiplierBps = 10_000   // enabled
+	gs.Params.CongestionThresholdRounds = 0      // zero threshold — must be rejected
+	require.Error(t, gs.Validate(),
+		"non-zero multiplier with zero threshold must fail validation")
+}
+
+func TestGenesisValidate_CongestionMultiplierWithNonZeroThreshold(t *testing.T) {
+	gs := types.DefaultGenesis()
+	gs.Params.CongestionMultiplierBps = 10_000
+	gs.Params.CongestionThresholdRounds = 100
+	require.NoError(t, gs.Validate(),
+		"non-zero multiplier with non-zero threshold must pass validation")
+}
+
+func TestGenesisValidate_CongestionDisabled_ZeroThresholdOK(t *testing.T) {
+	gs := types.DefaultGenesis()
+	gs.Params.CongestionMultiplierBps = 0   // disabled
+	gs.Params.CongestionThresholdRounds = 0 // zero threshold is fine when multiplier is 0
+	require.NoError(t, gs.Validate(),
+		"zero multiplier with zero threshold must pass validation (disabled state)")
+}
