@@ -21,23 +21,35 @@ const (
 // distributeReviewFee distributes a non-refundable review fee using the governance-configured
 // revenue split from params. The split is stored as BPS values (1,000,000 = 100%):
 //
+//	params.BurnBps              → burned (removed from supply) — EIP-1559 analogue for knowledge fees
 //	params.VerifierPoolBps      → held in knowledge module account, paid to verifiers on round completion
 //	params.ProtocolTreasuryBps  → protocol_treasury module account
 //	params.DevelopmentFundBps   → development_fund module account
 //	remainder                   → research fund (absorbs rounding dust)
 //
-// Default split: 55% / 22% / 19.67% / ~3.33%.
+// Default split: 0% burn / 55% verifiers / 22% protocol / 19.67% dev / ~3.33% research.
+// Burn is disabled by default (BurnBps=0); governance activates via MsgUpdateParams.
 func (k Keeper) distributeReviewFee(ctx context.Context, feeAmount uint64, params *types.Params) error {
 	if k.bankKeeper == nil || feeAmount == 0 {
 		return nil
 	}
 
+	burnAmt := safeMulDiv(feeAmount, params.BurnBps, 1_000_000)
 	verifierPool := safeMulDiv(feeAmount, params.VerifierPoolBps, 1_000_000)
 	protocolAmt := safeMulDiv(feeAmount, params.ProtocolTreasuryBps, 1_000_000)
 	devAmt := safeMulDiv(feeAmount, params.DevelopmentFundBps, 1_000_000)
-	researchAmt := feeAmount - verifierPool - protocolAmt - devAmt // remainder absorbs rounding dust
+	researchAmt := feeAmount - burnAmt - verifierPool - protocolAmt - devAmt // remainder absorbs rounding dust
 
-	// verifierPool (55%) stays in knowledge module account — distributed to verifiers on round completion.
+	// Burn the configured fraction (EIP-1559 analogue for the knowledge fee market).
+	// BurnBps=0 (default) skips this entirely — no behaviour change until governance enables it.
+	if burnAmt > 0 {
+		coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(new(big.Int).SetUint64(burnAmt))))
+		if err := k.bankKeeper.BurnCoins(ctx, types.ModuleName, coins); err != nil {
+			return fmt.Errorf("review fee → burn: %w", err)
+		}
+	}
+
+	// verifierPool stays in knowledge module account — distributed to verifiers on round completion.
 
 	// Send protocol share to treasury.
 	if protocolAmt > 0 {

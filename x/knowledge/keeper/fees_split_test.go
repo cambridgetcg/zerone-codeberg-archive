@@ -293,3 +293,177 @@ func TestSplit_RoundCompletionUsesGovernanceSplit(t *testing.T) {
 		"verifier should receive 70%% of stake (700_000 uzrn) per governance-configured split")
 	_ = sk
 }
+
+// ─── Fee Markets Gap 4: Fee Burn ─────────────────────────────────────────────
+//
+// Tests that when BurnBps > 0, distributeReviewFee burns the configured fraction
+// before distributing the remainder. BurnBps=0 (default) must not burn anything —
+// no behaviour change until governance enables it.
+
+// TestBurn_DefaultZeroNoBurn verifies that BurnBps=0 (default) does not trigger
+// any BurnCoins call. Existing behaviour is fully preserved.
+func TestBurn_DefaultZeroNoBurn(t *testing.T) {
+	k, ctx, bk := setupKnowledgeTestWithBank(t)
+	ms := keeper.NewMsgServerImpl(k)
+
+	// Default params: BurnBps = 0.
+	_, err := ms.SubmitClaim(ctx, &types.MsgSubmitClaim{
+		Submitter:   makeValidBech32Addr("burn-default-zero"),
+		FactContent: "Default burn=0: no coins burned, existing split unchanged",
+		Domain:      "mathematics",
+		Category:    "formal",
+		Stake:       "1000000",
+	})
+	require.NoError(t, err)
+
+	// No burn should have occurred.
+	require.True(t, bk.burned.IsZero(), "BurnBps=0 must not burn any coins; got %s", bk.burned)
+}
+
+// TestBurn_GovernanceEnablesBurn verifies that setting BurnBps=50_000 (5%) causes
+// exactly 5% of the fee to be burned and the research remainder to shrink accordingly.
+func TestBurn_GovernanceEnablesBurn(t *testing.T) {
+	k, ctx, bk := setupKnowledgeTestWithBank(t)
+	ms := keeper.NewMsgServerImpl(k)
+
+	// Governance enables 5% burn. Remaining split: verifier=55%, protocol=22%, dev=19.67%, research=~(100-5-55-22-19.67)%=-1.67%
+	// That's invalid. Use valid split: burn=5%, verifier=50%, protocol=20%, dev=15% → research=10%.
+	p, _ := k.GetParams(ctx)
+	p.BurnBps = 50_000      // 5%
+	p.VerifierPoolBps = 500_000 // 50%
+	p.ProtocolTreasuryBps = 200_000 // 20%
+	p.DevelopmentFundBps = 150_000  // 15%
+	// research = 1_000_000 - 50_000 - 500_000 - 200_000 - 150_000 = 100_000 (10%)
+	_ = k.SetParams(ctx, p)
+
+	_, err := ms.SubmitClaim(ctx, &types.MsgSubmitClaim{
+		Submitter:   makeValidBech32Addr("burn-governance-5pct"),
+		FactContent: "Governance burn 5%: EIP-1559 analogue applied to knowledge fee market",
+		Domain:      "physics",
+		Category:    "empirical",
+		Stake:       "1000000", // 1 ZRN = 1_000_000 uzrn
+	})
+	require.NoError(t, err)
+
+	// burn = 50_000 uzrn (5% of 1_000_000)
+	burnedAmt := bk.burned.AmountOf("uzrn").Int64()
+	require.Equal(t, int64(50_000), burnedAmt, "5%% of 1_000_000 must be burned")
+
+	// protocol = 200_000, dev = 150_000, research = remainder
+	var protocolAmt, devAmt, researchAmt int64
+	for _, call := range bk.sendCalls {
+		switch call.to {
+		case "protocol_treasury":
+			protocolAmt = call.coins.AmountOf("uzrn").Int64()
+		case "development_fund":
+			devAmt = call.coins.AmountOf("uzrn").Int64()
+		case "research_fund":
+			researchAmt = call.coins.AmountOf("uzrn").Int64()
+		}
+	}
+	require.Equal(t, int64(200_000), protocolAmt, "protocol: 20%% of 1_000_000")
+	require.Equal(t, int64(150_000), devAmt, "development: 15%% of 1_000_000")
+	require.Equal(t, int64(100_000), researchAmt, "research: remainder 10%% after burn")
+}
+
+// TestBurn_TotalConserved verifies that burn + verifierPool + protocol + dev + research
+// sums to exactly feeAmount — no coins created or destroyed beyond the burn intent.
+func TestBurn_TotalConserved(t *testing.T) {
+	k, ctx, bk := setupKnowledgeTestWithBank(t)
+	ms := keeper.NewMsgServerImpl(k)
+
+	// burn=3%, verifier=55%, protocol=20%, dev=15% → research=7%.
+	p, _ := k.GetParams(ctx)
+	p.BurnBps = 30_000       // 3%
+	p.VerifierPoolBps = 550_000
+	p.ProtocolTreasuryBps = 200_000
+	p.DevelopmentFundBps = 150_000
+	// sum check: 30_000+550_000+200_000+150_000 = 930_000 < 1_000_000 ✓
+	_ = k.SetParams(ctx, p)
+
+	const feeAmount = int64(2_500_000) // 2.5 ZRN — non-round to expose rounding issues
+
+	_, err := ms.SubmitClaim(ctx, &types.MsgSubmitClaim{
+		Submitter:   makeValidBech32Addr("burn-conservation"),
+		FactContent: "Burn conservation: all coins accounted for across burn+split+research",
+		Domain:      "biology",
+		Category:    "empirical",
+		Stake:       "2500000",
+	})
+	require.NoError(t, err)
+
+	burnedAmt := bk.burned.AmountOf("uzrn").Int64()
+
+	var protocolAmt, devAmt, researchAmt int64
+	for _, call := range bk.sendCalls {
+		switch call.to {
+		case "protocol_treasury":
+			protocolAmt += call.coins.AmountOf("uzrn").Int64()
+		case "development_fund":
+			devAmt += call.coins.AmountOf("uzrn").Int64()
+		case "research_fund":
+			researchAmt += call.coins.AmountOf("uzrn").Int64()
+		}
+	}
+
+	// verifierPool stays in module (no send), so total sent+burned = feeAmount.
+	// verifierPool = 55% of 2_500_000 = 1_375_000
+	verifierPool := int64(2_500_000) * 550_000 / 1_000_000
+
+	total := burnedAmt + verifierPool + protocolAmt + devAmt + researchAmt
+	require.Equal(t, feeAmount, total,
+		"burn(%d)+verifier(%d)+protocol(%d)+dev(%d)+research(%d) must equal fee(%d)",
+		burnedAmt, verifierPool, protocolAmt, devAmt, researchAmt, feeAmount)
+}
+
+// TestBurn_ValidationRejectsOverflow verifies that Params.Validate() rejects
+// a BurnBps value that would push the total sum ≥ 1_000_000 (leaving no remainder
+// for the research fund).
+func TestBurn_ValidationRejectsOverflow(t *testing.T) {
+	p := types.DefaultParams()
+	// Default split: verifier=55%, protocol=22%, dev=19.67%, research=~3.33%.
+	// Set burn=4% → total = 4+55+22+19.67 = 100.67% > 100% → invalid.
+	p.BurnBps = 40_000 // 4%
+	// sum: 40_000 + 550_000 + 220_000 + 196_700 = 1_006_700 ≥ 1_000_000
+	err := p.Validate()
+	require.Error(t, err, "BurnBps that overflows the 1_000_000 invariant must be rejected")
+	require.Contains(t, err.Error(), "burn_bps")
+}
+
+// TestBurn_ValidationAcceptsValidBurnBps verifies that a valid BurnBps (within invariant)
+// is accepted by Params.Validate().
+func TestBurn_ValidationAcceptsValidBurnBps(t *testing.T) {
+	p := types.DefaultParams()
+	// Reduce verifier share to make room for burn.
+	p.BurnBps = 30_000       // 3%
+	p.VerifierPoolBps = 520_000  // 52%  (was 55%)
+	p.ProtocolTreasuryBps = 220_000
+	p.DevelopmentFundBps = 196_700
+	// sum: 30_000+520_000+220_000+196_700 = 966_700 < 1_000_000 ✓
+	require.NoError(t, p.Validate())
+}
+
+// TestBurn_MaxLegal verifies the boundary: sum == 999_999 is legal (1 uzrn goes to research).
+func TestBurn_MaxLegalBurnBps(t *testing.T) {
+	p := types.DefaultParams()
+	// burn=100_000, verifier=400_000, protocol=200_000, dev=299_999 → sum=999_999 → research=1
+	p.BurnBps = 100_000
+	p.VerifierPoolBps = 400_000
+	p.ProtocolTreasuryBps = 200_000
+	p.DevelopmentFundBps = 299_999
+	// sum: 100_000+400_000+200_000+299_999 = 999_999 < 1_000_000 ✓
+	require.NoError(t, p.Validate(), "sum=999_999 is the maximum legal configuration")
+}
+
+// TestBurn_ExactlyOneMillion verifies the boundary: sum == 1_000_000 is rejected
+// (research fund would receive nothing).
+func TestBurn_ExactlyOneMillion(t *testing.T) {
+	p := types.DefaultParams()
+	p.BurnBps = 100_000
+	p.VerifierPoolBps = 400_000
+	p.ProtocolTreasuryBps = 200_000
+	p.DevelopmentFundBps = 300_000
+	// sum: 100_000+400_000+200_000+300_000 = 1_000_000 — invalid
+	err := p.Validate()
+	require.Error(t, err, "sum=1_000_000 must be rejected")
+}

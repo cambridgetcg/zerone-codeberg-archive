@@ -30,6 +30,7 @@ import (
 type trackingBankKeeper struct {
 	balances map[string]sdk.Coins // addr → coins
 	minted   sdk.Coins
+	burned   sdk.Coins
 	// Module account balances
 	moduleBalances map[string]sdk.Coins
 	// Track calls for assertions
@@ -77,6 +78,14 @@ func (bk *trackingBankKeeper) SendCoinsFromModuleToModule(_ context.Context, sen
 func (bk *trackingBankKeeper) MintCoins(_ context.Context, moduleName string, amt sdk.Coins) error {
 	bk.minted = bk.minted.Add(amt...)
 	bk.moduleBalances[moduleName] = bk.moduleBalances[moduleName].Add(amt...)
+	return nil
+}
+
+func (bk *trackingBankKeeper) BurnCoins(_ context.Context, moduleName string, amt sdk.Coins) error {
+	bk.burned = bk.burned.Add(amt...)
+	if bal, ok := bk.moduleBalances[moduleName]; ok {
+		bk.moduleBalances[moduleName] = bal.Sub(amt...)
+	}
 	return nil
 }
 

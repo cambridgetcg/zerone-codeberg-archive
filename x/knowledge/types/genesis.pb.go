@@ -320,8 +320,26 @@ type Params struct {
 	VerifierPoolBps     uint64 `protobuf:"varint,163,opt,name=verifier_pool_bps,json=verifierPoolBps,proto3" json:"verifier_pool_bps,omitempty"`             // default: 550_000 (55%) — knowledge module holds for verifiers
 	ProtocolTreasuryBps uint64 `protobuf:"varint,164,opt,name=protocol_treasury_bps,json=protocolTreasuryBps,proto3" json:"protocol_treasury_bps,omitempty"` // default: 220_000 (22%) → protocol_treasury module account
 	DevelopmentFundBps  uint64 `protobuf:"varint,165,opt,name=development_fund_bps,json=developmentFundBps,proto3" json:"development_fund_bps,omitempty"`    // default: 196_700 (19.67%) → development_fund module account
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// ─── Fee markets: fee burn (Gap 4) ────────────────────────────────────────
+	// burn_bps sets the fraction of every review fee that is permanently burned
+	// (removed from supply) before the remainder is split among verifiers,
+	// protocol treasury, development fund, and research fund.
+	//
+	// This is the knowledge-market analogue of EIP-1559's base-fee burn:
+	// the highest-volume fee collection point in the protocol now contributes
+	// to supply contraction, complementing the MaxSupplyUzrn cap already enforced
+	// for block rewards.
+	//
+	// Invariant: burn_bps + verifier_pool_bps + protocol_treasury_bps +
+	//
+	//	development_fund_bps < 1_000_000
+	//
+	// (research fund always receives a non-zero remainder)
+	//
+	// Default 0 = disabled. Governance activates by setting a non-zero value.
+	BurnBps       uint64 `protobuf:"varint,166,opt,name=burn_bps,json=burnBps,proto3" json:"burn_bps,omitempty"` // default: 0 (disabled) — fraction of review fee burned
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -1509,6 +1527,13 @@ func (x *Params) GetDevelopmentFundBps() uint64 {
 	return 0
 }
 
+func (x *Params) GetBurnBps() uint64 {
+	if x != nil {
+		return x.BurnBps
+	}
+	return 0
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -1746,7 +1771,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xedQ\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\x89R\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -1913,7 +1938,8 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\x1bcongestion_threshold_rounds\x18\xa2\x01 \x01(\x04R\x19congestionThresholdRounds\x12+\n" +
 	"\x11verifier_pool_bps\x18\xa3\x01 \x01(\x04R\x0fverifierPoolBps\x123\n" +
 	"\x15protocol_treasury_bps\x18\xa4\x01 \x01(\x04R\x13protocolTreasuryBps\x121\n" +
-	"\x14development_fund_bps\x18\xa5\x01 \x01(\x04R\x12developmentFundBps\x1aN\n" +
+	"\x14development_fund_bps\x18\xa5\x01 \x01(\x04R\x12developmentFundBps\x12\x1a\n" +
+	"\bburn_bps\x18\xa6\x01 \x01(\x04R\aburnBps\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xe5\x0e\n" +

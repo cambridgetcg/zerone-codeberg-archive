@@ -348,6 +348,11 @@ func DefaultParams() Params {
 		ProtocolTreasuryBps: 220_000, // 22%  → protocol_treasury
 		DevelopmentFundBps:  196_700, // 19.67% → development_fund
 		// research fund receives remainder: ~33,300 uzrn per 1,000,000 (3.33%)
+
+		// Fee burn (Gap 4): fraction of every review fee permanently burned before
+		// the split. Default 0 = disabled; governance activates via MsgUpdateParams.
+		// Invariant: BurnBps + VerifierPoolBps + ProtocolTreasuryBps + DevelopmentFundBps < 1_000_000.
+		BurnBps: 0, // disabled — governance must explicitly enable
 	}
 }
 
@@ -794,11 +799,14 @@ func (p *Params) Validate() error {
 		return fmt.Errorf("congestion_threshold_rounds must be > 0 when congestion_multiplier_bps is set")
 	}
 
-	// ─── Fee markets: governance-adjustable revenue split (Gap 3) ────────────
-	// Each component must be < 1,000,000 (BPS scale). The three together must
-	// leave room for the research fund remainder — i.e. their sum must be
-	// < 1,000,000. Sum == 1,000,000 would send 0 to research, violating the
-	// intent that research always receives something.
+	// ─── Fee markets: governance-adjustable revenue split + burn (Gaps 3+4) ──
+	// Each component must be < 1,000,000 (BPS scale). All four together
+	// (burn + the three split components) must leave room for the research fund
+	// remainder — i.e. their sum must be < 1,000,000. Sum == 1,000,000 would
+	// send 0 to research, violating the intent that research always receives something.
+	if p.BurnBps >= 1_000_000 {
+		return fmt.Errorf("burn_bps must be < 1,000,000")
+	}
 	if p.VerifierPoolBps >= 1_000_000 {
 		return fmt.Errorf("verifier_pool_bps must be < 1,000,000")
 	}
@@ -808,9 +816,9 @@ func (p *Params) Validate() error {
 	if p.DevelopmentFundBps >= 1_000_000 {
 		return fmt.Errorf("development_fund_bps must be < 1,000,000")
 	}
-	splitSum := p.VerifierPoolBps + p.ProtocolTreasuryBps + p.DevelopmentFundBps
+	splitSum := p.BurnBps + p.VerifierPoolBps + p.ProtocolTreasuryBps + p.DevelopmentFundBps
 	if splitSum >= 1_000_000 {
-		return fmt.Errorf("verifier_pool_bps + protocol_treasury_bps + development_fund_bps (%d) must be < 1,000,000 so research fund receives a non-zero remainder", splitSum)
+		return fmt.Errorf("burn_bps + verifier_pool_bps + protocol_treasury_bps + development_fund_bps (%d) must be < 1,000,000 so research fund receives a non-zero remainder", splitSum)
 	}
 
 	return nil

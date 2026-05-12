@@ -339,7 +339,24 @@ message Params {
   uint64 verifier_pool_bps      = 163; // default: 550_000 (55%) — knowledge module holds for verifiers
   uint64 protocol_treasury_bps  = 164; // default: 220_000 (22%) → protocol_treasury module account
   uint64 development_fund_bps   = 165; // default: 196_700 (19.67%) → development_fund module account
-  // research fund receives remainder (1_000_000 - the three above)
+  // research fund receives remainder (1_000_000 - burn_bps - the three above)
+
+  // ─── Fee markets: fee burn (Gap 4) ────────────────────────────────────────
+  // burn_bps sets the fraction of every review fee that is permanently burned
+  // (removed from supply) before the remainder is split among verifiers,
+  // protocol treasury, development fund, and research fund.
+  //
+  // This is the knowledge-market analogue of EIP-1559's base-fee burn:
+  // the highest-volume fee collection point in the protocol now contributes
+  // to supply contraction, complementing the MaxSupplyUzrn cap already enforced
+  // for block rewards.
+  //
+  // Invariant: burn_bps + verifier_pool_bps + protocol_treasury_bps +
+  //            development_fund_bps < 1_000_000
+  // (research fund always receives a non-zero remainder)
+  //
+  // Default 0 = disabled. Governance activates by setting a non-zero value.
+  uint64 burn_bps = 166; // default: 0 (disabled) — fraction of review fee burned
 }
 
 // GenesisState is the genesis state of the knowledge module.
