@@ -305,8 +305,23 @@ type Params struct {
 	// entirely (default). congestion_threshold_rounds = 0 also disables it.
 	CongestionMultiplierBps   uint64 `protobuf:"varint,161,opt,name=congestion_multiplier_bps,json=congestionMultiplierBps,proto3" json:"congestion_multiplier_bps,omitempty"`       // default: 0 (disabled) — BPS increase per excess active round
 	CongestionThresholdRounds uint64 `protobuf:"varint,162,opt,name=congestion_threshold_rounds,json=congestionThresholdRounds,proto3" json:"congestion_threshold_rounds,omitempty"` // default: 100 — active rounds above which backpressure activates
-	unknownFields             protoimpl.UnknownFields
-	sizeCache                 protoimpl.SizeCache
+	// ─── Fee markets: governance-adjustable revenue split (Gap 3) ────────────
+	// The review fee split was previously hardcoded in fees.go as compile-time
+	// constants. Moving it into Params allows governance to adjust verifier
+	// incentives without a code upgrade — for example, to increase verifier
+	// share during bootstrap to attract more validators.
+	//
+	// Invariant: verifier_pool_bps + protocol_treasury_bps + development_fund_bps
+	//
+	//	< 1,000,000 (so research fund always receives the remainder > 0).
+	//
+	// Default split (unchanged from hardcoded): 55% / 22% / 19.67% / ~3.33%.
+	// Setting verifier_pool_bps = 0 disables the pool entirely (not recommended).
+	VerifierPoolBps     uint64 `protobuf:"varint,163,opt,name=verifier_pool_bps,json=verifierPoolBps,proto3" json:"verifier_pool_bps,omitempty"`             // default: 550_000 (55%) — knowledge module holds for verifiers
+	ProtocolTreasuryBps uint64 `protobuf:"varint,164,opt,name=protocol_treasury_bps,json=protocolTreasuryBps,proto3" json:"protocol_treasury_bps,omitempty"` // default: 220_000 (22%) → protocol_treasury module account
+	DevelopmentFundBps  uint64 `protobuf:"varint,165,opt,name=development_fund_bps,json=developmentFundBps,proto3" json:"development_fund_bps,omitempty"`    // default: 196_700 (19.67%) → development_fund module account
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -1473,6 +1488,27 @@ func (x *Params) GetCongestionThresholdRounds() uint64 {
 	return 0
 }
 
+func (x *Params) GetVerifierPoolBps() uint64 {
+	if x != nil {
+		return x.VerifierPoolBps
+	}
+	return 0
+}
+
+func (x *Params) GetProtocolTreasuryBps() uint64 {
+	if x != nil {
+		return x.ProtocolTreasuryBps
+	}
+	return 0
+}
+
+func (x *Params) GetDevelopmentFundBps() uint64 {
+	if x != nil {
+		return x.DevelopmentFundBps
+	}
+	return 0
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -1710,7 +1746,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xd8P\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xedQ\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -1874,7 +1910,10 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\x12guardian_addresses\x18\x9f\x01 \x03(\tR\x11guardianAddresses\x12=\n" +
 	"\x1badd_fact_veto_window_blocks\x18\xa0\x01 \x01(\x04R\x17addFactVetoWindowBlocks\x12;\n" +
 	"\x19congestion_multiplier_bps\x18\xa1\x01 \x01(\x04R\x17congestionMultiplierBps\x12?\n" +
-	"\x1bcongestion_threshold_rounds\x18\xa2\x01 \x01(\x04R\x19congestionThresholdRounds\x1aN\n" +
+	"\x1bcongestion_threshold_rounds\x18\xa2\x01 \x01(\x04R\x19congestionThresholdRounds\x12+\n" +
+	"\x11verifier_pool_bps\x18\xa3\x01 \x01(\x04R\x0fverifierPoolBps\x123\n" +
+	"\x15protocol_treasury_bps\x18\xa4\x01 \x01(\x04R\x13protocolTreasuryBps\x121\n" +
+	"\x14development_fund_bps\x18\xa5\x01 \x01(\x04R\x12developmentFundBps\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xe5\x0e\n" +

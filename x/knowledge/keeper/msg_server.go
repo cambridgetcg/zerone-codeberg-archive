@@ -179,7 +179,7 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 		}
 
 		// Distribute fee via revenue split (same path regardless of who paid)
-		if err := m.keeper.distributeReviewFee(ctx, feeAmount); err != nil {
+		if err := m.keeper.distributeReviewFee(ctx, feeAmount, params); err != nil {
 			m.keeper.Logger(ctx).Error("failed to distribute review fee", "error", err)
 		}
 	}
@@ -251,10 +251,10 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 		sdk.NewEvent("zerone.knowledge.review_fee_distributed",
 			sdk.NewAttribute("claim_id", claimID),
 			sdk.NewAttribute("fee_amount", msg.Stake),
-			sdk.NewAttribute("verifier_pool", fmt.Sprintf("%d", verifierPoolFromFee(feeAmount))),
-			sdk.NewAttribute("protocol", fmt.Sprintf("%d", safeMulDiv(feeAmount, reviewFeeProtocolBps, 1_000_000))),
-			sdk.NewAttribute("development", fmt.Sprintf("%d", safeMulDiv(feeAmount, reviewFeeDevelopmentBps, 1_000_000))),
-			sdk.NewAttribute("research", fmt.Sprintf("%d", feeAmount-verifierPoolFromFee(feeAmount)-safeMulDiv(feeAmount, reviewFeeProtocolBps, 1_000_000)-safeMulDiv(feeAmount, reviewFeeDevelopmentBps, 1_000_000))),
+			sdk.NewAttribute("verifier_pool", fmt.Sprintf("%d", verifierPoolFromFee(feeAmount, params))),
+			sdk.NewAttribute("protocol", fmt.Sprintf("%d", safeMulDiv(feeAmount, params.ProtocolTreasuryBps, 1_000_000))),
+			sdk.NewAttribute("development", fmt.Sprintf("%d", safeMulDiv(feeAmount, params.DevelopmentFundBps, 1_000_000))),
+			sdk.NewAttribute("research", fmt.Sprintf("%d", feeAmount-verifierPoolFromFee(feeAmount, params)-safeMulDiv(feeAmount, params.ProtocolTreasuryBps, 1_000_000)-safeMulDiv(feeAmount, params.DevelopmentFundBps, 1_000_000))),
 		),
 	)
 

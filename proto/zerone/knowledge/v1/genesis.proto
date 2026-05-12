@@ -324,6 +324,22 @@ message Params {
   // entirely (default). congestion_threshold_rounds = 0 also disables it.
   uint64 congestion_multiplier_bps    = 161; // default: 0 (disabled) — BPS increase per excess active round
   uint64 congestion_threshold_rounds  = 162; // default: 100 — active rounds above which backpressure activates
+
+  // ─── Fee markets: governance-adjustable revenue split (Gap 3) ────────────
+  // The review fee split was previously hardcoded in fees.go as compile-time
+  // constants. Moving it into Params allows governance to adjust verifier
+  // incentives without a code upgrade — for example, to increase verifier
+  // share during bootstrap to attract more validators.
+  //
+  // Invariant: verifier_pool_bps + protocol_treasury_bps + development_fund_bps
+  //            < 1,000,000 (so research fund always receives the remainder > 0).
+  //
+  // Default split (unchanged from hardcoded): 55% / 22% / 19.67% / ~3.33%.
+  // Setting verifier_pool_bps = 0 disables the pool entirely (not recommended).
+  uint64 verifier_pool_bps      = 163; // default: 550_000 (55%) — knowledge module holds for verifiers
+  uint64 protocol_treasury_bps  = 164; // default: 220_000 (22%) → protocol_treasury module account
+  uint64 development_fund_bps   = 165; // default: 196_700 (19.67%) → development_fund module account
+  // research fund receives remainder (1_000_000 - the three above)
 }
 
 // GenesisState is the genesis state of the knowledge module.

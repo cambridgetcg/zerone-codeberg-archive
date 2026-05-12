@@ -294,17 +294,17 @@ func (k Keeper) distributeVerifierRewardsFromPool(ctx context.Context, claim *ty
 		return
 	}
 
-	// Calculate pool: 55% of the original review fee
+	params, _ := k.GetParams(ctx)
+
+	// Calculate pool: verifierPoolBps% of the original review fee (governance-configurable via params).
 	feeAmt, ok := new(big.Int).SetString(claim.Stake, 10)
 	if !ok || feeAmt.Sign() <= 0 {
 		return
 	}
-	poolAmount := verifierPoolFromFee(feeAmt.Uint64())
+	poolAmount := verifierPoolFromFee(feeAmt.Uint64(), params)
 	if poolAmount == 0 {
 		return
 	}
-
-	params, _ := k.GetParams(ctx)
 
 	// Divide pool equally among rewarded verifiers
 	perVerifier := poolAmount / uint64(len(result.Rewards))
@@ -865,9 +865,9 @@ func (k Keeper) settleChallengeStake(ctx context.Context, claim *types.Claim, ve
 	if !ok || stakeAmt.Sign() <= 0 {
 		return
 	}
-	// Verifier pool consumed reviewFeeContributorBps of the stake. Remainder
+	// Verifier pool consumed params.VerifierPoolBps of the stake. Remainder
 	// is what the module still holds for this challenge.
-	verifierPool := safeMulDiv(stakeAmt.Uint64(), reviewFeeContributorBps, 1_000_000)
+	verifierPool := safeMulDiv(stakeAmt.Uint64(), params.VerifierPoolBps, 1_000_000)
 	remainder := new(big.Int).Sub(stakeAmt, new(big.Int).SetUint64(verifierPool))
 	if remainder.Sign() <= 0 {
 		return

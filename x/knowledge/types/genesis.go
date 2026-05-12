@@ -338,6 +338,16 @@ func DefaultParams() Params {
 		// excess round — 50 excess rounds doubles the minimum fee).
 		CongestionMultiplierBps:   0,   // 0 = disabled; set > 0 to activate
 		CongestionThresholdRounds: 100, // active rounds above which backpressure fires
+
+		// ─── Fee markets: governance-adjustable revenue split (Gap 3) ────
+		// Previously hardcoded in fees.go as compile-time constants.
+		// Governance can adjust the verifier share to modulate incentives
+		// without a chain upgrade. Invariant: sum of the three < 1,000,000
+		// (research fund always receives remainder).
+		VerifierPoolBps:     550_000, // 55%  — held in knowledge module, paid to verifiers on round completion
+		ProtocolTreasuryBps: 220_000, // 22%  → protocol_treasury
+		DevelopmentFundBps:  196_700, // 19.67% → development_fund
+		// research fund receives remainder: ~33,300 uzrn per 1,000,000 (3.33%)
 	}
 }
 
@@ -782,6 +792,25 @@ func (p *Params) Validate() error {
 	// intent. Enforce that governance must supply a meaningful threshold.
 	if p.CongestionMultiplierBps > 0 && p.CongestionThresholdRounds == 0 {
 		return fmt.Errorf("congestion_threshold_rounds must be > 0 when congestion_multiplier_bps is set")
+	}
+
+	// ─── Fee markets: governance-adjustable revenue split (Gap 3) ────────────
+	// Each component must be < 1,000,000 (BPS scale). The three together must
+	// leave room for the research fund remainder — i.e. their sum must be
+	// < 1,000,000. Sum == 1,000,000 would send 0 to research, violating the
+	// intent that research always receives something.
+	if p.VerifierPoolBps >= 1_000_000 {
+		return fmt.Errorf("verifier_pool_bps must be < 1,000,000")
+	}
+	if p.ProtocolTreasuryBps >= 1_000_000 {
+		return fmt.Errorf("protocol_treasury_bps must be < 1,000,000")
+	}
+	if p.DevelopmentFundBps >= 1_000_000 {
+		return fmt.Errorf("development_fund_bps must be < 1,000,000")
+	}
+	splitSum := p.VerifierPoolBps + p.ProtocolTreasuryBps + p.DevelopmentFundBps
+	if splitSum >= 1_000_000 {
+		return fmt.Errorf("verifier_pool_bps + protocol_treasury_bps + development_fund_bps (%d) must be < 1,000,000 so research fund receives a non-zero remainder", splitSum)
 	}
 
 	return nil
