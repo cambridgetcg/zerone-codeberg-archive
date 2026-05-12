@@ -80,4 +80,7 @@ var (
 	// ─── Partnership validation (80–81) ──────────────────────────────────
 	ErrInvalidPartnership  = errors.Register(ModuleName, 80, "invalid partnership")
 	ErrPartnershipFrozen   = errors.Register(ModuleName, 81, "partnership is frozen")
+
+	// ─── Priority tip validation (82) ────────────────────────────────────
+	ErrPriorityTipExceedsMax = errors.Register(ModuleName, 82, "priority_tip_bps exceeds governance maximum")
 )

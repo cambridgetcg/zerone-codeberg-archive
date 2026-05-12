@@ -4558,8 +4558,12 @@ type VerificationRound struct {
 	CommitDeadline      uint64                 `protobuf:"varint,10,opt,name=commit_deadline,json=commitDeadline,proto3" json:"commit_deadline,omitempty"`
 	RevealDeadline      uint64                 `protobuf:"varint,11,opt,name=reveal_deadline,json=revealDeadline,proto3" json:"reveal_deadline,omitempty"`
 	AggregationDeadline uint64                 `protobuf:"varint,12,opt,name=aggregation_deadline,json=aggregationDeadline,proto3" json:"aggregation_deadline,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// priority_tip_bps is the fraction (in BPS, 1_000_000 = 100%) of the verifier
+	// pool earmarked as a priority tip for early committers. Copied from the
+	// MsgSubmitClaim at round creation. 0 = no tip (default, backward-compatible).
+	PriorityTipBps uint64 `protobuf:"varint,13,opt,name=priority_tip_bps,json=priorityTipBps,proto3" json:"priority_tip_bps,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *VerificationRound) Reset() {
@@ -4672,6 +4676,13 @@ func (x *VerificationRound) GetRevealDeadline() uint64 {
 func (x *VerificationRound) GetAggregationDeadline() uint64 {
 	if x != nil {
 		return x.AggregationDeadline
+	}
+	return 0
+}
+
+func (x *VerificationRound) GetPriorityTipBps() uint64 {
+	if x != nil {
+		return x.PriorityTipBps
 	}
 	return 0
 }
@@ -8627,7 +8638,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\tmethod_id\x18\x14 \x01(\tR\bmethodId\x12'\n" +
 	"\x0freasoning_trace\x18\x15 \x01(\tR\x0ereasoningTrace\x12#\n" +
 	"\rargument_text\x18\x16 \x01(\tR\fargumentText\x12#\n" +
-	"\rrebuttal_text\x18\x17 \x01(\tR\frebuttalText\"\xaf\x04\n" +
+	"\rrebuttal_text\x18\x17 \x01(\tR\frebuttalText\"\xd9\x04\n" +
 	"\x11VerificationRound\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\bclaim_id\x18\x02 \x01(\tR\aclaimId\x12(\n" +
@@ -8641,7 +8652,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x0fcommit_deadline\x18\n" +
 	" \x01(\x04R\x0ecommitDeadline\x12'\n" +
 	"\x0freveal_deadline\x18\v \x01(\x04R\x0erevealDeadline\x121\n" +
-	"\x14aggregation_deadline\x18\f \x01(\x04R\x13aggregationDeadline\"x\n" +
+	"\x14aggregation_deadline\x18\f \x01(\x04R\x13aggregationDeadline\x12(\n" +
+	"\x10priority_tip_bps\x18\r \x01(\x04R\x0epriorityTipBps\"x\n" +
 	"\vCommitEntry\x12\x1a\n" +
 	"\bverifier\x18\x01 \x01(\tR\bverifier\x12\x1f\n" +
 	"\vcommit_hash\x18\x02 \x01(\fR\n" +

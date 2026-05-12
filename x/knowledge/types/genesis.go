@@ -353,6 +353,11 @@ func DefaultParams() Params {
 		// the split. Default 0 = disabled; governance activates via MsgUpdateParams.
 		// Invariant: BurnBps + VerifierPoolBps + ProtocolTreasuryBps + DevelopmentFundBps < 1_000_000.
 		BurnBps: 0, // disabled — governance must explicitly enable
+
+		// Priority tip (Gap 2): governance cap on how much of the verifier pool a
+		// submitter may earmark as a priority tip for early committers. Default 0 =
+		// feature disabled entirely; governance enables by setting a non-zero cap.
+		MaxPriorityTipBps: 0, // disabled — governance must explicitly enable
 	}
 }
 
@@ -819,6 +824,14 @@ func (p *Params) Validate() error {
 	splitSum := p.BurnBps + p.VerifierPoolBps + p.ProtocolTreasuryBps + p.DevelopmentFundBps
 	if splitSum >= 1_000_000 {
 		return fmt.Errorf("burn_bps + verifier_pool_bps + protocol_treasury_bps + development_fund_bps (%d) must be < 1,000,000 so research fund receives a non-zero remainder", splitSum)
+	}
+
+	// ─── Priority tip cap (Gap 2) ─────────────────────────────────────────────
+	// MaxPriorityTipBps caps what submitters may earmark as speed-premium tip.
+	// Must be ≤ 500,000 (50% of verifier pool) — a tip that exceeds half the pool
+	// would leave the base reward pathologically small for non-early committers.
+	if p.MaxPriorityTipBps > 500_000 {
+		return fmt.Errorf("max_priority_tip_bps must be ≤ 500,000 (50%% of verifier pool)")
 	}
 
 	return nil

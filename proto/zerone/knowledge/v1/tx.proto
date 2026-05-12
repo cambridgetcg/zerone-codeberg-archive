@@ -222,6 +222,11 @@ message MsgSubmitClaim {
   ClaimStructure structure = 10;  // Optional structured decomposition
   string canonical_form    = 11;  // Optional — auto-derived from structure if omitted
   bool   sponsored         = 12;  // Request bootstrap fund sponsorship for review fee
+  // priority_tip_bps: fraction of the verifier pool (BPS, 1_000_000 = 100%)
+  // earmarked as a priority tip for verifiers who commit before the commit-phase
+  // midpoint. 0 = no priority tip (default). Governance sets an upper bound via
+  // MaxPriorityTipBps in Params; submissions exceeding the bound are rejected.
+  uint64 priority_tip_bps  = 13;
 }
 
 message MsgSubmitClaimResponse {

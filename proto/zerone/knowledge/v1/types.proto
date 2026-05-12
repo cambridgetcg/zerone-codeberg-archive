@@ -733,6 +733,10 @@ message VerificationRound {
   uint64 commit_deadline          = 10;
   uint64 reveal_deadline          = 11;
   uint64 aggregation_deadline     = 12;
+  // priority_tip_bps is the fraction (in BPS, 1_000_000 = 100%) of the verifier
+  // pool earmarked as a priority tip for early committers. Copied from the
+  // MsgSubmitClaim at round creation. 0 = no tip (default, backward-compatible).
+  uint64 priority_tip_bps         = 13;
 }
 
 // CommitEntry records a validator's blinded commitment (SHA-256(vote || salt)).

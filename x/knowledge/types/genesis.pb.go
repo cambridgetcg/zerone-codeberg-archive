@@ -337,9 +337,18 @@ type Params struct {
 	// (research fund always receives a non-zero remainder)
 	//
 	// Default 0 = disabled. Governance activates by setting a non-zero value.
-	BurnBps       uint64 `protobuf:"varint,166,opt,name=burn_bps,json=burnBps,proto3" json:"burn_bps,omitempty"` // default: 0 (disabled) — fraction of review fee burned
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	BurnBps uint64 `protobuf:"varint,166,opt,name=burn_bps,json=burnBps,proto3" json:"burn_bps,omitempty"` // default: 0 (disabled) — fraction of review fee burned
+	// max_priority_tip_bps caps the priority_tip_bps a submitter may request in
+	// MsgSubmitClaim (BPS, 1_000_000 = 100% of the verifier pool). Submissions
+	// exceeding this are rejected with ErrPriorityTipExceedsMax.
+	//
+	// Default 0 = feature disabled entirely (all priority_tip_bps values are
+	// rejected unless governance enables by setting a non-zero cap).
+	// Governance can set to e.g. 100_000 (10%) to allow speed-premium bids
+	// up to 10% of the verifier pool.
+	MaxPriorityTipBps uint64 `protobuf:"varint,167,opt,name=max_priority_tip_bps,json=maxPriorityTipBps,proto3" json:"max_priority_tip_bps,omitempty"` // default: 0 (disabled)
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -1534,6 +1543,13 @@ func (x *Params) GetBurnBps() uint64 {
 	return 0
 }
 
+func (x *Params) GetMaxPriorityTipBps() uint64 {
+	if x != nil {
+		return x.MaxPriorityTipBps
+	}
+	return 0
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -1771,7 +1787,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\x89R\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xbbR\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -1939,7 +1955,8 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\x11verifier_pool_bps\x18\xa3\x01 \x01(\x04R\x0fverifierPoolBps\x123\n" +
 	"\x15protocol_treasury_bps\x18\xa4\x01 \x01(\x04R\x13protocolTreasuryBps\x121\n" +
 	"\x14development_fund_bps\x18\xa5\x01 \x01(\x04R\x12developmentFundBps\x12\x1a\n" +
-	"\bburn_bps\x18\xa6\x01 \x01(\x04R\aburnBps\x1aN\n" +
+	"\bburn_bps\x18\xa6\x01 \x01(\x04R\aburnBps\x120\n" +
+	"\x14max_priority_tip_bps\x18\xa7\x01 \x01(\x04R\x11maxPriorityTipBps\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xe5\x0e\n" +

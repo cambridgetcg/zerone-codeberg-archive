@@ -244,7 +244,7 @@ func TestCreateFactFromClaim_PropagatesRelations(t *testing.T) {
 	}
 	require.NoError(t, k.SetClaim(ctx, claim))
 
-	round, err := k.CreateVerificationRound(ctx, claim)
+	round, err := k.CreateVerificationRound(ctx, claim, 0)
 	require.NoError(t, err)
 
 	// Complete the round with ACCEPT verdict

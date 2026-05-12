@@ -231,8 +231,20 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 		}
 	}
 
-	// Create verification round
-	if _, err := m.keeper.CreateVerificationRound(ctx, claim); err != nil {
+	// Validate priority tip BPS (Gap 2): must not exceed governance cap.
+	// MaxPriorityTipBps == 0 means the feature is disabled entirely.
+	if msg.PriorityTipBps > 0 {
+		if params.MaxPriorityTipBps == 0 {
+			return nil, types.ErrPriorityTipExceedsMax.Wrap("priority tip is disabled (max_priority_tip_bps == 0)")
+		}
+		if msg.PriorityTipBps > params.MaxPriorityTipBps {
+			return nil, types.ErrPriorityTipExceedsMax.Wrapf(
+				"priority_tip_bps %d exceeds governance maximum %d", msg.PriorityTipBps, params.MaxPriorityTipBps)
+		}
+	}
+
+	// Create verification round (carries priority tip config for reward distribution).
+	if _, err := m.keeper.CreateVerificationRound(ctx, claim, msg.PriorityTipBps); err != nil {
 		return nil, fmt.Errorf("failed to create verification round: %w", err)
 	}
 
@@ -670,7 +682,7 @@ func (m *msgServer) ChallengeFact(ctx context.Context, msg *types.MsgChallengeFa
 		return nil, err
 	}
 
-	round, err := m.keeper.CreateVerificationRound(ctx, challengeClaim)
+	round, err := m.keeper.CreateVerificationRound(ctx, challengeClaim, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -733,7 +745,7 @@ func (m *msgServer) ChallengeProvisionalFact(ctx context.Context, msg *types.Msg
 		ProvisionalFactId: msg.FactId, // Track challenged fact for resolution
 	}
 	_ = m.keeper.SetClaim(ctx, challengeClaim)
-	round, err := m.keeper.CreateVerificationRound(ctx, challengeClaim)
+	round, err := m.keeper.CreateVerificationRound(ctx, challengeClaim, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -800,7 +812,7 @@ func (m *msgServer) SubmitContradiction(ctx context.Context, msg *types.MsgSubmi
 		return nil, err
 	}
 
-	if _, err := m.keeper.CreateVerificationRound(ctx, claim); err != nil {
+	if _, err := m.keeper.CreateVerificationRound(ctx, claim, 0); err != nil {
 		return nil, err
 	}
 

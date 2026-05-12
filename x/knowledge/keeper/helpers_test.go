@@ -317,7 +317,7 @@ func makeTestClaim(t *testing.T, k keeper.Keeper, ctx sdk.Context, submitter, co
 	}
 	require.NoError(t, k.SetClaim(ctx, claim))
 
-	round, err := k.CreateVerificationRound(ctx, claim)
+	round, err := k.CreateVerificationRound(ctx, claim, 0)
 	require.NoError(t, err)
 
 	return claim, round

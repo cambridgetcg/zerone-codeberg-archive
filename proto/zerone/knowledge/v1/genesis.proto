@@ -357,6 +357,16 @@ message Params {
   //
   // Default 0 = disabled. Governance activates by setting a non-zero value.
   uint64 burn_bps = 166; // default: 0 (disabled) — fraction of review fee burned
+
+  // max_priority_tip_bps caps the priority_tip_bps a submitter may request in
+  // MsgSubmitClaim (BPS, 1_000_000 = 100% of the verifier pool). Submissions
+  // exceeding this are rejected with ErrPriorityTipExceedsMax.
+  //
+  // Default 0 = feature disabled entirely (all priority_tip_bps values are
+  // rejected unless governance enables by setting a non-zero cap).
+  // Governance can set to e.g. 100_000 (10%) to allow speed-premium bids
+  // up to 10% of the verifier pool.
+  uint64 max_priority_tip_bps = 167; // default: 0 (disabled)
 }
 
 // GenesisState is the genesis state of the knowledge module.

@@ -448,7 +448,7 @@ func TestClaim_RoundIndex(t *testing.T) {
 	}
 	require.NoError(t, k.SetClaim(ctx, claim))
 
-	round, err := k.CreateVerificationRound(ctx, claim)
+	round, err := k.CreateVerificationRound(ctx, claim, 0)
 	require.NoError(t, err)
 
 	// Look up round by claim ID

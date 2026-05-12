@@ -36,7 +36,7 @@ func TestSecurity_HappyPath_CommitRevealFinalize(t *testing.T) {
 	}
 	require.NoError(t, k.SetClaim(ctx, claim))
 
-	round, err := k.CreateVerificationRound(ctx, claim)
+	round, err := k.CreateVerificationRound(ctx, claim, 0)
 	require.NoError(t, err)
 
 	// Commit phase

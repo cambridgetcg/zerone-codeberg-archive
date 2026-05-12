@@ -12,7 +12,9 @@ import (
 )
 
 // CreateVerificationRound creates a new verification round for a claim.
-func (k Keeper) CreateVerificationRound(ctx context.Context, claim *types.Claim) (*types.VerificationRound, error) {
+// priorityTipBps is the fraction of the verifier pool (BPS) earmarked as a
+// priority tip for early committers. 0 = no tip (standard behavior).
+func (k Keeper) CreateVerificationRound(ctx context.Context, claim *types.Claim, priorityTipBps uint64) (*types.VerificationRound, error) {
 	sdkCtx := sdk.UnwrapSDKContext(ctx)
 	height := uint64(sdkCtx.BlockHeight())
 
@@ -31,6 +33,7 @@ func (k Keeper) CreateVerificationRound(ctx context.Context, claim *types.Claim)
 		CommitDeadline:      height + params.CommitPhaseBlocks,
 		RevealDeadline:      height + params.CommitPhaseBlocks + params.RevealPhaseBlocks,
 		AggregationDeadline: height + params.CommitPhaseBlocks + params.RevealPhaseBlocks + params.AggregationPhaseBlocks,
+		PriorityTipBps:      priorityTipBps,
 	}
 
 	if err := k.SetVerificationRound(ctx, round); err != nil {
@@ -144,8 +147,8 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 		return err
 	}
 
-	// Distribute verifier rewards from the 55% fee pool
-	k.distributeVerifierRewardsFromPool(ctx, claim, result)
+	// Distribute verifier rewards from the verifier pool (including priority tip if set).
+	k.distributeVerifierRewardsFromPool(ctx, claim, round, result)
 
 	// Slash loop: route vindication-eligible slashes to escrow only when a fact was
 	// created (ACCEPT verdict) — non-ACCEPT verdicts have no fact that can later be
@@ -285,18 +288,31 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 	return nil
 }
 
-// distributeVerifierRewardsFromPool distributes the 55% verifier pool among correct verifiers.
-// Each verifier's share is modulated by their historical independence score (T3):
-// persistent crowd-followers receive up to IndependenceRewardStrengthBps less than
-// they otherwise would, with the withheld amount flowing to the development fund.
-func (k Keeper) distributeVerifierRewardsFromPool(ctx context.Context, claim *types.Claim, result *VerificationResult) {
+// distributeVerifierRewardsFromPool distributes the verifier pool among correct verifiers.
+//
+// Split mechanics (Gap 2 — Priority Tip Pool):
+//
+//	If round.PriorityTipBps > 0:
+//	  tipPool   = poolAmount × PriorityTipBps / 1_000_000
+//	  basePool  = poolAmount − tipPool
+//	  tipPool is shared equally among correct verifiers who committed before the
+//	  commit-phase midpoint (StartedAtBlock + CommitDeadline) / 2.
+//	  If no early correct verifiers exist, tipPool merges back into basePool.
+//	  basePool is shared equally among all correct verifiers.
+//	If PriorityTipBps == 0 (default): poolAmount is treated as basePool entirely —
+//	identical to pre-Gap-2 behavior.
+//
+// Each verifier's base-pool share is further modulated by their historical
+// independence score (T3): crowd-followers receive less, with the withheld
+// amount flowing to the development fund.
+func (k Keeper) distributeVerifierRewardsFromPool(ctx context.Context, claim *types.Claim, round *types.VerificationRound, result *VerificationResult) {
 	if k.bankKeeper == nil || len(result.Rewards) == 0 {
 		return
 	}
 
 	params, _ := k.GetParams(ctx)
 
-	// Calculate pool: verifierPoolBps% of the original review fee (governance-configurable via params).
+	// Calculate pool: verifierPoolBps% of the original review fee.
 	feeAmt, ok := new(big.Int).SetString(claim.Stake, 10)
 	if !ok || feeAmt.Sign() <= 0 {
 		return
@@ -306,9 +322,59 @@ func (k Keeper) distributeVerifierRewardsFromPool(ctx context.Context, claim *ty
 		return
 	}
 
-	// Divide pool equally among rewarded verifiers
-	perVerifier := poolAmount / uint64(len(result.Rewards))
-	remainder := poolAmount - (perVerifier * uint64(len(result.Rewards)))
+	// ── Priority tip split (Gap 2) ──────────────────────────────────────────
+	var tipPool, basePool uint64
+	if round != nil && round.PriorityTipBps > 0 {
+		tipPool = safeMulDiv(poolAmount, round.PriorityTipBps, 1_000_000)
+		basePool = poolAmount - tipPool
+	} else {
+		basePool = poolAmount
+	}
+
+	// Build early-committer set for tip eligibility.
+	// "Early" = committed at or before the commit-phase midpoint.
+	// midpoint = (round.StartedAtBlock + round.CommitDeadline) / 2
+	earlySet := map[string]struct{}{}
+	if tipPool > 0 && round != nil {
+		midpoint := (round.StartedAtBlock + round.CommitDeadline) / 2
+		for _, c := range round.Commits {
+			if c.CommittedAtBlock <= midpoint {
+				earlySet[c.Verifier] = struct{}{}
+			}
+		}
+	}
+
+	// Identify early correct verifiers (intersection of rewarded + early).
+	var earlyRewards []VerifierReward
+	if tipPool > 0 {
+		for _, r := range result.Rewards {
+			if _, ok := earlySet[r.Verifier]; ok {
+				earlyRewards = append(earlyRewards, r)
+			}
+		}
+		// If no early correct verifiers, tip merges into base pool.
+		if len(earlyRewards) == 0 {
+			basePool += tipPool
+			tipPool = 0
+		}
+	}
+
+	// Distribute tip pool equally among early correct verifiers.
+	if tipPool > 0 && len(earlyRewards) > 0 {
+		perEarly := tipPool / uint64(len(earlyRewards))
+		tipRemainder := tipPool - perEarly*uint64(len(earlyRewards))
+		for i, reward := range earlyRewards {
+			amount := perEarly
+			if i == 0 {
+				amount += tipRemainder // first early verifier absorbs dust
+			}
+			k.distributeVerifierReward(ctx, reward.Verifier, amount)
+		}
+	}
+
+	// Distribute base pool equally among all correct verifiers (existing logic).
+	perVerifier := basePool / uint64(len(result.Rewards))
+	remainder := basePool - (perVerifier * uint64(len(result.Rewards)))
 
 	var withheldTotal uint64
 	for i, reward := range result.Rewards {
@@ -323,8 +389,7 @@ func (k Keeper) distributeVerifierRewardsFromPool(ctx context.Context, claim *ty
 		k.distributeVerifierReward(ctx, reward.Verifier, modulated)
 	}
 
-	// Withheld portion flows to development fund so the budget doesn't compound
-	// for crowd-followers in the verifier pool.
+	// Withheld portion flows to development fund.
 	if withheldTotal > 0 {
 		k.forwardWithheldToDevelopmentFund(ctx, withheldTotal)
 	}

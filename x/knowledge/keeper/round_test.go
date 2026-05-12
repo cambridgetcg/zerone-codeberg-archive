@@ -57,7 +57,7 @@ func TestRound_GetByClaimID(t *testing.T) {
 	}
 	require.NoError(t, k.SetClaim(ctx, claim))
 
-	round, err := k.CreateVerificationRound(ctx, claim)
+	round, err := k.CreateVerificationRound(ctx, claim, 0)
 	require.NoError(t, err)
 
 	got, found := k.GetRoundByClaimID(ctx, "claim-for-round")
@@ -87,7 +87,7 @@ func TestCreateVerificationRound_Success(t *testing.T) {
 	}
 	require.NoError(t, k.SetClaim(ctx, claim))
 
-	round, err := k.CreateVerificationRound(ctx, claim)
+	round, err := k.CreateVerificationRound(ctx, claim, 0)
 	require.NoError(t, err)
 	require.NotEmpty(t, round.Id)
 	require.Equal(t, "claim-create-round", round.ClaimId)
@@ -120,7 +120,7 @@ func TestCreateVerificationRound_IDIsDeterministic(t *testing.T) {
 	require.NoError(t, k.SetClaim(ctx, claim))
 
 	expectedID := keeper.GenerateRoundID("claim-det", 100)
-	round, err := k.CreateVerificationRound(ctx, claim)
+	round, err := k.CreateVerificationRound(ctx, claim, 0)
 	require.NoError(t, err)
 	require.Equal(t, expectedID, round.Id)
 }
@@ -762,7 +762,7 @@ func TestRound_CommitRevealFullLifecycle(t *testing.T) {
 	}
 	require.NoError(t, k.SetClaim(ctx, claim))
 
-	round, err := k.CreateVerificationRound(ctx, claim)
+	round, err := k.CreateVerificationRound(ctx, claim, 0)
 	require.NoError(t, err)
 	require.Equal(t, types.VerificationPhase_VERIFICATION_PHASE_COMMIT, round.Phase)
 
