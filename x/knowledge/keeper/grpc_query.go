@@ -2539,3 +2539,47 @@ func (q *queryServer) IdleFacts(ctx context.Context, req *types.QueryIdleFactsRe
 	facts := q.keeper.IdleFactsForProbing(ctx, req.Domain, req.Limit)
 	return &types.QueryIdleFactsResponse{Facts: facts}, nil
 }
+
+// NetworkCapacity returns current verifier-network load metrics so that
+// submitters can make informed decisions about priority_tip_bps bids.
+//
+// active_rounds_count: direct read of the ActiveRoundsCount singleton.
+// total_active_verifiers: sum of selected_verifier counts across active rounds.
+// estimated_panel_formation_blocks: CommitPhaseBlocks × PanelSize / bondedValidatorCount.
+func (q *queryServer) NetworkCapacity(ctx context.Context, req *types.QueryNetworkCapacityRequest) (*types.QueryNetworkCapacityResponse, error) {
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+
+	activeRoundsCount := q.keeper.GetActiveRoundsCount(ctx)
+
+	// Sum selected verifiers across all active rounds.
+	var totalActiveVerifiers uint64
+	activeRounds := q.keeper.GetActiveRounds(ctx)
+	for _, r := range activeRounds {
+		totalActiveVerifiers += uint64(len(r.SelectedVerifiers))
+	}
+
+	// Estimate panel formation blocks.
+	// Formula: CommitPhaseBlocks × PanelSize / bondedValidatorCount.
+	// Returns 0 when estimation is not possible (no params, no validators).
+	var estimatedPanelBlocks uint64
+	params, err := q.keeper.GetParams(ctx)
+	if err == nil && q.keeper.GetStakingKeeper() != nil {
+		validators, vErr := q.keeper.GetStakingKeeper().GetActiveValidatorInfos(ctx)
+		bondedCount := uint64(len(validators))
+		if vErr == nil && bondedCount > 0 && params.CommitPhaseBlocks > 0 && params.MinVerifiers > 0 {
+			if bondedCount >= params.MinVerifiers {
+				estimatedPanelBlocks = params.CommitPhaseBlocks * params.MinVerifiers / bondedCount
+			} else {
+				// Fewer validators than panel size: use full commit window as estimate.
+				estimatedPanelBlocks = params.CommitPhaseBlocks
+			}
+		}
+	}
+
+	return &types.QueryNetworkCapacityResponse{
+		ActiveRoundsCount:              activeRoundsCount,
+		TotalActiveVerifiers:           totalActiveVerifiers,
+		EstimatedPanelFormationBlocks:  estimatedPanelBlocks,
+		SnapshotBlockHeight:            uint64(sdkCtx.BlockHeight()),
+	}, nil
+}

@@ -488,6 +488,12 @@ service Query {
   rpc IdleFacts(QueryIdleFactsRequest) returns (QueryIdleFactsResponse) {
     option (google.api.http).get = "/zerone/knowledge/v1/idle_facts";
   }
+
+  // NetworkCapacity returns the current verifier-network load metrics so that
+  // submitters can make informed decisions about priority_tip_bps bids.
+  rpc NetworkCapacity(QueryNetworkCapacityRequest) returns (QueryNetworkCapacityResponse) {
+    option (google.api.http).get = "/zerone/knowledge/v1/network_capacity";
+  }
 }
 
 // ─── Request / Response messages ─────────────────────────────────────────────
@@ -1570,4 +1576,32 @@ message QueryPrivilegedActionsResponse {
   repeated PrivilegedAction actions = 1;
   uint32 total                      = 2;
   uint64 snapshot_block_height      = 3;
+}
+
+// ─── Fee Markets Gap 5: Network Capacity Query ───────────────────────────
+
+message QueryNetworkCapacityRequest {}
+
+// QueryNetworkCapacityResponse surfaces verifier-network load metrics.
+// Submitters use these to calibrate priority_tip_bps bids before submitting.
+message QueryNetworkCapacityResponse {
+  // active_rounds_count is the number of verification rounds currently in
+  // progress. This is the primary congestion signal — high values mean
+  // verifier bandwidth is saturated.
+  uint64 active_rounds_count = 1;
+
+  // total_active_verifiers is the sum of selected_verifiers across all active
+  // rounds. A single validator may appear in multiple rounds simultaneously,
+  // so this is an overcount of unique verifiers — but still a useful proxy
+  // for aggregate verifier workload.
+  uint64 total_active_verifiers = 2;
+
+  // estimated_panel_formation_blocks is a rough estimate of how many blocks
+  // a new round would wait before its panel forms. Derived from:
+  //   panel_size × commit_phase_blocks / bonded_validator_count.
+  // Returns 0 if the estimate cannot be computed (no validators, etc.).
+  uint64 estimated_panel_formation_blocks = 3;
+
+  // snapshot_block_height is the block height at which these metrics were read.
+  uint64 snapshot_block_height = 4;
 }

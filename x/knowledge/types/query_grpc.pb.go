@@ -107,6 +107,7 @@ const (
 	Query_EpistemicTemperature_FullMethodName         = "/zerone.knowledge.v1.Query/EpistemicTemperature"
 	Query_RoleElasticity_FullMethodName               = "/zerone.knowledge.v1.Query/RoleElasticity"
 	Query_IdleFacts_FullMethodName                    = "/zerone.knowledge.v1.Query/IdleFacts"
+	Query_NetworkCapacity_FullMethodName              = "/zerone.knowledge.v1.Query/NetworkCapacity"
 )
 
 // QueryClient is the client API for Query service.
@@ -351,6 +352,9 @@ type QueryClient interface {
 	// prober agents can compete to probe them. Sorted by time-since-invite
 	// descending (oldest invitations first — they're the most under-tested).
 	IdleFacts(ctx context.Context, in *QueryIdleFactsRequest, opts ...grpc.CallOption) (*QueryIdleFactsResponse, error)
+	// NetworkCapacity returns the current verifier-network load metrics so that
+	// submitters can make informed decisions about priority_tip_bps bids.
+	NetworkCapacity(ctx context.Context, in *QueryNetworkCapacityRequest, opts ...grpc.CallOption) (*QueryNetworkCapacityResponse, error)
 }
 
 type queryClient struct {
@@ -1241,6 +1245,16 @@ func (c *queryClient) IdleFacts(ctx context.Context, in *QueryIdleFactsRequest, 
 	return out, nil
 }
 
+func (c *queryClient) NetworkCapacity(ctx context.Context, in *QueryNetworkCapacityRequest, opts ...grpc.CallOption) (*QueryNetworkCapacityResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(QueryNetworkCapacityResponse)
+	err := c.cc.Invoke(ctx, Query_NetworkCapacity_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // QueryServer is the server API for Query service.
 // All implementations must embed UnimplementedQueryServer
 // for forward compatibility.
@@ -1483,6 +1497,9 @@ type QueryServer interface {
 	// prober agents can compete to probe them. Sorted by time-since-invite
 	// descending (oldest invitations first — they're the most under-tested).
 	IdleFacts(context.Context, *QueryIdleFactsRequest) (*QueryIdleFactsResponse, error)
+	// NetworkCapacity returns the current verifier-network load metrics so that
+	// submitters can make informed decisions about priority_tip_bps bids.
+	NetworkCapacity(context.Context, *QueryNetworkCapacityRequest) (*QueryNetworkCapacityResponse, error)
 	mustEmbedUnimplementedQueryServer()
 }
 
@@ -1756,6 +1773,9 @@ func (UnimplementedQueryServer) RoleElasticity(context.Context, *QueryRoleElasti
 }
 func (UnimplementedQueryServer) IdleFacts(context.Context, *QueryIdleFactsRequest) (*QueryIdleFactsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method IdleFacts not implemented")
+}
+func (UnimplementedQueryServer) NetworkCapacity(context.Context, *QueryNetworkCapacityRequest) (*QueryNetworkCapacityResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method NetworkCapacity not implemented")
 }
 func (UnimplementedQueryServer) mustEmbedUnimplementedQueryServer() {}
 func (UnimplementedQueryServer) testEmbeddedByValue()               {}
@@ -3362,6 +3382,24 @@ func _Query_IdleFacts_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Query_NetworkCapacity_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryNetworkCapacityRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).NetworkCapacity(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Query_NetworkCapacity_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).NetworkCapacity(ctx, req.(*QueryNetworkCapacityRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Query_ServiceDesc is the grpc.ServiceDesc for Query service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -3720,6 +3758,10 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "IdleFacts",
 			Handler:    _Query_IdleFacts_Handler,
+		},
+		{
+			MethodName: "NetworkCapacity",
+			Handler:    _Query_NetworkCapacity_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
