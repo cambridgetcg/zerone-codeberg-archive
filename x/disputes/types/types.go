@@ -47,6 +47,10 @@ func DefaultParams() *Params {
 		SlashRateLoserBps:  500000,  // 50% — frivolous bonds burn meaningfully
 		RewardRateWinnerBps: 400000, // 40% — correct disputes pay above market
 		ArbiterRewardBps:   100000,  // 10% — adjudicators are paid for their attention
+
+		// EscrowDisputeWindowBlocks: blocks after CompleteServiceEscrow
+		// during which the payer may raise a dispute. ~10 minutes at 2.5s/block.
+		EscrowDisputeWindowBlocks: 250,
 	}
 }
 
@@ -91,6 +95,8 @@ func (p *Params) Validate() error {
 	if p.RewardRateWinnerBps+p.ArbiterRewardBps > 1000000 {
 		return fmt.Errorf("reward_rate_winner_bps + arbiter_reward_bps must be <= 1000000")
 	}
+	// EscrowDisputeWindowBlocks=0 means dispute window is disabled (payer cannot dispute after completion).
+	// Any non-zero value is valid.
 	return nil
 }
 
@@ -261,6 +267,69 @@ func (msg *MsgSettleDispute) ValidateBasic() error {
 	}
 	if msg.DisputeId == "" {
 		return fmt.Errorf("dispute_id cannot be empty")
+	}
+	return nil
+}
+
+// ---- Service Escrow Msg types ----
+
+func (msg *MsgCreateServiceEscrow) GetSigners() []sdk.AccAddress {
+	addr, _ := sdk.AccAddressFromBech32(msg.Payer)
+	return []sdk.AccAddress{addr}
+}
+
+func (msg *MsgCreateServiceEscrow) ValidateBasic() error {
+	if _, err := sdk.AccAddressFromBech32(msg.Payer); err != nil {
+		return fmt.Errorf("invalid payer address: %w", err)
+	}
+	if _, err := sdk.AccAddressFromBech32(msg.Provider); err != nil {
+		return fmt.Errorf("invalid provider address: %w", err)
+	}
+	if msg.Payer == msg.Provider {
+		return fmt.Errorf("payer and provider must be different addresses")
+	}
+	amt, ok := new(big.Int).SetString(msg.Amount, 10)
+	if !ok || amt.Sign() <= 0 {
+		return fmt.Errorf("amount must be a positive integer")
+	}
+	if msg.TermsHash == "" {
+		return fmt.Errorf("terms_hash cannot be empty")
+	}
+	if msg.Deadline == 0 {
+		return fmt.Errorf("deadline must be a positive block height")
+	}
+	return nil
+}
+
+func (msg *MsgCompleteServiceEscrow) GetSigners() []sdk.AccAddress {
+	addr, _ := sdk.AccAddressFromBech32(msg.Provider)
+	return []sdk.AccAddress{addr}
+}
+
+func (msg *MsgCompleteServiceEscrow) ValidateBasic() error {
+	if _, err := sdk.AccAddressFromBech32(msg.Provider); err != nil {
+		return fmt.Errorf("invalid provider address: %w", err)
+	}
+	if msg.EscrowId == "" {
+		return fmt.Errorf("escrow_id cannot be empty")
+	}
+	if msg.ProofHash == "" {
+		return fmt.Errorf("proof_hash cannot be empty")
+	}
+	return nil
+}
+
+func (msg *MsgDisputeServiceEscrow) GetSigners() []sdk.AccAddress {
+	addr, _ := sdk.AccAddressFromBech32(msg.Payer)
+	return []sdk.AccAddress{addr}
+}
+
+func (msg *MsgDisputeServiceEscrow) ValidateBasic() error {
+	if _, err := sdk.AccAddressFromBech32(msg.Payer); err != nil {
+		return fmt.Errorf("invalid payer address: %w", err)
+	}
+	if msg.EscrowId == "" {
+		return fmt.Errorf("escrow_id cannot be empty")
 	}
 	return nil
 }

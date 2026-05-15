@@ -3243,3 +3243,495 @@ func TestEscalateTimedOutDispute(t *testing.T) {
 		t.Fatal("expected error for escalating timed-out dispute")
 	}
 }
+
+// ============================================================
+// Service Escrow Tests
+// ============================================================
+
+// TestCreateServiceEscrow_Success verifies that a valid CreateServiceEscrow
+// locks funds in the module account and stores the escrow as PENDING.
+func TestCreateServiceEscrow_Success(t *testing.T) {
+	msgSrv, k, ctx, bk, _, _ := setupMsgServer(t)
+	payer := testAddr("se_payer1")
+	provider := testAddr("se_provider1")
+	payerAddr, _ := sdk.AccAddressFromBech32(payer)
+	bk.setBalance(payer, "uzrn", 1_000_000)
+
+	ctx = ctx.WithBlockHeight(100)
+	resp, err := msgSrv.CreateServiceEscrow(ctx, &types.MsgCreateServiceEscrow{
+		Payer:     payer,
+		Provider:  provider,
+		Amount:    "500000",
+		TermsHash: "abc123",
+		Deadline:  200,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.EscrowId == "" {
+		t.Fatal("expected non-empty escrow_id")
+	}
+
+	// Payer balance reduced by 500000.
+	if bk.balances[payerAddr.String()]["uzrn"] != 500_000 {
+		t.Errorf("payer balance: got %d, want 500000", bk.balances[payerAddr.String()]["uzrn"])
+	}
+	// Module holds 500000.
+	if bk.moduleBalances[types.ModuleName]["uzrn"] != 500_000 {
+		t.Errorf("module balance: got %d, want 500000", bk.moduleBalances[types.ModuleName]["uzrn"])
+	}
+
+	// Escrow stored as PENDING.
+	escrow, found := k.GetServiceEscrow(ctx, resp.EscrowId)
+	if !found {
+		t.Fatal("escrow not found in store")
+	}
+	if escrow.Status != types.ServiceEscrowStatus_SERVICE_ESCROW_STATUS_PENDING {
+		t.Errorf("expected PENDING, got %v", escrow.Status)
+	}
+	if escrow.Payer != payer || escrow.Provider != provider {
+		t.Errorf("escrow parties mismatch: payer=%s provider=%s", escrow.Payer, escrow.Provider)
+	}
+}
+
+// TestCreateServiceEscrow_DeadlineInPast verifies that a deadline at or before
+// the current block height is rejected.
+func TestCreateServiceEscrow_DeadlineInPast(t *testing.T) {
+	msgSrv, _, ctx, bk, _, _ := setupMsgServer(t)
+	payer := testAddr("se_payer2")
+	bk.setBalance(payer, "uzrn", 1_000_000)
+
+	ctx = ctx.WithBlockHeight(200)
+	_, err := msgSrv.CreateServiceEscrow(ctx, &types.MsgCreateServiceEscrow{
+		Payer:     payer,
+		Provider:  testAddr("se_provider2"),
+		Amount:    "100000",
+		TermsHash: "hash2",
+		Deadline:  200, // equal to current height — not in future
+	})
+	if err == nil {
+		t.Fatal("expected error for past deadline, got nil")
+	}
+}
+
+// TestCompleteServiceEscrow_Success verifies that the provider can complete
+// the escrow and receive the funds.
+func TestCompleteServiceEscrow_Success(t *testing.T) {
+	msgSrv, k, ctx, bk, _, _ := setupMsgServer(t)
+	payer := testAddr("se_payer3")
+	provider := testAddr("se_provider3")
+	providerAddr, _ := sdk.AccAddressFromBech32(provider)
+	bk.setBalance(payer, "uzrn", 1_000_000)
+
+	ctx = ctx.WithBlockHeight(100)
+	createResp, err := msgSrv.CreateServiceEscrow(ctx, &types.MsgCreateServiceEscrow{
+		Payer:     payer,
+		Provider:  provider,
+		Amount:    "750000",
+		TermsHash: "terms3",
+		Deadline:  500,
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	params := types.DefaultParams()
+	params.EscrowDisputeWindowBlocks = 50
+	k.SetParams(ctx, params)
+
+	ctx = ctx.WithBlockHeight(150)
+	_, err = msgSrv.CompleteServiceEscrow(ctx, &types.MsgCompleteServiceEscrow{
+		Provider:  provider,
+		EscrowId:  createResp.EscrowId,
+		ProofHash: "proof_of_delivery_3",
+	})
+	if err != nil {
+		t.Fatalf("complete failed: %v", err)
+	}
+
+	// Funds NOT released immediately — held during dispute window.
+	if bk.balances[providerAddr.String()]["uzrn"] != 0 {
+		t.Errorf("provider balance should be 0 before dispute window closes, got %d",
+			bk.balances[providerAddr.String()]["uzrn"])
+	}
+
+	// Escrow COMPLETED with proof; dispute window close = 150 + 50 = 200.
+	escrow, _ := k.GetServiceEscrow(ctx, createResp.EscrowId)
+	if escrow.Status != types.ServiceEscrowStatus_SERVICE_ESCROW_STATUS_COMPLETED {
+		t.Errorf("expected COMPLETED, got %v", escrow.Status)
+	}
+	if escrow.ProofHash != "proof_of_delivery_3" {
+		t.Errorf("proof_hash not stored: %s", escrow.ProofHash)
+	}
+	if escrow.Deadline != 200 {
+		t.Errorf("expected dispute deadline 200, got %d", escrow.Deadline)
+	}
+
+	// Before dispute window closes: EndBlock should NOT release.
+	ctx = ctx.WithBlockHeight(199)
+	k.ProcessExpiredEscrows(ctx)
+	if bk.balances[providerAddr.String()]["uzrn"] != 0 {
+		t.Errorf("provider balance should still be 0 before window closes, got %d",
+			bk.balances[providerAddr.String()]["uzrn"])
+	}
+
+	// After dispute window closes: EndBlock auto-releases to provider.
+	ctx = ctx.WithBlockHeight(201)
+	k.ProcessExpiredEscrows(ctx)
+	if bk.balances[providerAddr.String()]["uzrn"] != 750_000 {
+		t.Errorf("provider balance after auto-release: got %d, want 750000",
+			bk.balances[providerAddr.String()]["uzrn"])
+	}
+}
+
+// TestCompleteServiceEscrow_WrongProvider verifies that a non-provider caller
+// cannot complete the escrow.
+func TestCompleteServiceEscrow_WrongProvider(t *testing.T) {
+	msgSrv, _, ctx, bk, _, _ := setupMsgServer(t)
+	payer := testAddr("se_payer4")
+	provider := testAddr("se_provider4")
+	bk.setBalance(payer, "uzrn", 1_000_000)
+
+	ctx = ctx.WithBlockHeight(100)
+	createResp, _ := msgSrv.CreateServiceEscrow(ctx, &types.MsgCreateServiceEscrow{
+		Payer:     payer,
+		Provider:  provider,
+		Amount:    "100000",
+		TermsHash: "terms4",
+		Deadline:  500,
+	})
+
+	_, err := msgSrv.CompleteServiceEscrow(ctx, &types.MsgCompleteServiceEscrow{
+		Provider:  testAddr("se_impostor4"), // wrong
+		EscrowId:  createResp.EscrowId,
+		ProofHash: "fake_proof",
+	})
+	if err == nil {
+		t.Fatal("expected error for wrong provider, got nil")
+	}
+}
+
+// TestCompleteServiceEscrow_AfterDeadline verifies that completion is rejected
+// after the deadline block.
+func TestCompleteServiceEscrow_AfterDeadline(t *testing.T) {
+	msgSrv, _, ctx, bk, _, _ := setupMsgServer(t)
+	payer := testAddr("se_payer5")
+	provider := testAddr("se_provider5")
+	bk.setBalance(payer, "uzrn", 1_000_000)
+
+	ctx = ctx.WithBlockHeight(100)
+	createResp, _ := msgSrv.CreateServiceEscrow(ctx, &types.MsgCreateServiceEscrow{
+		Payer:     payer,
+		Provider:  provider,
+		Amount:    "100000",
+		TermsHash: "terms5",
+		Deadline:  300,
+	})
+
+	// Attempt completion after deadline.
+	ctx = ctx.WithBlockHeight(400)
+	_, err := msgSrv.CompleteServiceEscrow(ctx, &types.MsgCompleteServiceEscrow{
+		Provider:  provider,
+		EscrowId:  createResp.EscrowId,
+		ProofHash: "too_late",
+	})
+	if err == nil {
+		t.Fatal("expected error for post-deadline completion, got nil")
+	}
+}
+
+// TestDisputeServiceEscrow_Success verifies that the payer can dispute
+// within the dispute window after completion.
+func TestDisputeServiceEscrow_Success(t *testing.T) {
+	msgSrv, k, ctx, bk, _, _ := setupMsgServer(t)
+	payer := testAddr("se_payer6")
+	provider := testAddr("se_provider6")
+	bk.setBalance(payer, "uzrn", 1_000_000)
+
+	// Set a small dispute window.
+	params := types.DefaultParams()
+	params.EscrowDisputeWindowBlocks = 100
+	k.SetParams(ctx, params)
+
+	ctx = ctx.WithBlockHeight(100)
+	createResp, _ := msgSrv.CreateServiceEscrow(ctx, &types.MsgCreateServiceEscrow{
+		Payer:     payer,
+		Provider:  provider,
+		Amount:    "200000",
+		TermsHash: "terms6",
+		Deadline:  400,
+	})
+
+	// Provider completes.
+	ctx = ctx.WithBlockHeight(200)
+	_, err := msgSrv.CompleteServiceEscrow(ctx, &types.MsgCompleteServiceEscrow{
+		Provider:  provider,
+		EscrowId:  createResp.EscrowId,
+		ProofHash: "proof6",
+	})
+	if err != nil {
+		t.Fatalf("complete failed: %v", err)
+	}
+
+	// Payer disputes within window (deadline=400, window=100 → windowEnd=500; current=300).
+	ctx = ctx.WithBlockHeight(300)
+	_, err = msgSrv.DisputeServiceEscrow(ctx, &types.MsgDisputeServiceEscrow{
+		Payer:    payer,
+		EscrowId: createResp.EscrowId,
+		Reason:   "service not delivered as agreed",
+	})
+	if err != nil {
+		t.Fatalf("dispute failed: %v", err)
+	}
+
+	escrow, _ := k.GetServiceEscrow(ctx, createResp.EscrowId)
+	if escrow.Status != types.ServiceEscrowStatus_SERVICE_ESCROW_STATUS_DISPUTED {
+		t.Errorf("expected DISPUTED, got %v", escrow.Status)
+	}
+}
+
+// TestDisputeServiceEscrow_WindowExpired verifies that disputing outside
+// the window is rejected.
+func TestDisputeServiceEscrow_WindowExpired(t *testing.T) {
+	msgSrv, k, ctx, bk, _, _ := setupMsgServer(t)
+	payer := testAddr("se_payer7")
+	provider := testAddr("se_provider7")
+	bk.setBalance(payer, "uzrn", 1_000_000)
+
+	params := types.DefaultParams()
+	params.EscrowDisputeWindowBlocks = 50
+	k.SetParams(ctx, params)
+
+	ctx = ctx.WithBlockHeight(100)
+	createResp, _ := msgSrv.CreateServiceEscrow(ctx, &types.MsgCreateServiceEscrow{
+		Payer:     payer,
+		Provider:  provider,
+		Amount:    "100000",
+		TermsHash: "terms7",
+		Deadline:  300,
+	})
+
+	ctx = ctx.WithBlockHeight(200)
+	msgSrv.CompleteServiceEscrow(ctx, &types.MsgCompleteServiceEscrow{ //nolint:errcheck
+		Provider:  provider,
+		EscrowId:  createResp.EscrowId,
+		ProofHash: "proof7",
+	})
+
+	// deadline=300, window=50 → windowEnd=350; current=400 > 350 → expired.
+	ctx = ctx.WithBlockHeight(400)
+	_, err := msgSrv.DisputeServiceEscrow(ctx, &types.MsgDisputeServiceEscrow{
+		Payer:    payer,
+		EscrowId: createResp.EscrowId,
+		Reason:   "too late",
+	})
+	if err == nil {
+		t.Fatal("expected error for expired dispute window, got nil")
+	}
+}
+
+// TestDisputeServiceEscrow_NotPayer verifies that only the payer can dispute.
+func TestDisputeServiceEscrow_NotPayer(t *testing.T) {
+	msgSrv, k, ctx, bk, _, _ := setupMsgServer(t)
+	payer := testAddr("se_payer8")
+	provider := testAddr("se_provider8")
+	bk.setBalance(payer, "uzrn", 1_000_000)
+
+	params := types.DefaultParams()
+	params.EscrowDisputeWindowBlocks = 500
+	k.SetParams(ctx, params)
+
+	ctx = ctx.WithBlockHeight(100)
+	createResp, _ := msgSrv.CreateServiceEscrow(ctx, &types.MsgCreateServiceEscrow{
+		Payer:     payer,
+		Provider:  provider,
+		Amount:    "100000",
+		TermsHash: "terms8",
+		Deadline:  300,
+	})
+	msgSrv.CompleteServiceEscrow(ctx, &types.MsgCompleteServiceEscrow{ //nolint:errcheck
+		Provider:  provider,
+		EscrowId:  createResp.EscrowId,
+		ProofHash: "proof8",
+	})
+
+	_, err := msgSrv.DisputeServiceEscrow(ctx, &types.MsgDisputeServiceEscrow{
+		Payer:    testAddr("se_impostor8"), // not the payer
+		EscrowId: createResp.EscrowId,
+		Reason:   "unauthorized",
+	})
+	if err == nil {
+		t.Fatal("expected error for wrong payer, got nil")
+	}
+}
+
+// TestProcessExpiredEscrows_RefundsAfterDeadline verifies that EndBlock
+// refunds PENDING escrows whose deadline has passed.
+func TestProcessExpiredEscrows_RefundsAfterDeadline(t *testing.T) {
+	msgSrv, k, ctx, bk, _, _ := setupMsgServer(t)
+	payer := testAddr("se_payer9")
+	provider := testAddr("se_provider9")
+	payerAddr, _ := sdk.AccAddressFromBech32(payer)
+	bk.setBalance(payer, "uzrn", 1_000_000)
+
+	ctx = ctx.WithBlockHeight(100)
+	createResp, _ := msgSrv.CreateServiceEscrow(ctx, &types.MsgCreateServiceEscrow{
+		Payer:     payer,
+		Provider:  provider,
+		Amount:    "300000",
+		TermsHash: "terms9",
+		Deadline:  200,
+	})
+
+	// Before deadline: EndBlock should NOT refund.
+	ctx = ctx.WithBlockHeight(199)
+	k.ProcessExpiredEscrows(ctx)
+	escrow, _ := k.GetServiceEscrow(ctx, createResp.EscrowId)
+	if escrow.Status != types.ServiceEscrowStatus_SERVICE_ESCROW_STATUS_PENDING {
+		t.Errorf("expected still PENDING before deadline, got %v", escrow.Status)
+	}
+
+	// After deadline: EndBlock should refund.
+	ctx = ctx.WithBlockHeight(250)
+	k.ProcessExpiredEscrows(ctx)
+	escrow, _ = k.GetServiceEscrow(ctx, createResp.EscrowId)
+	if escrow.Status != types.ServiceEscrowStatus_SERVICE_ESCROW_STATUS_REFUNDED {
+		t.Errorf("expected REFUNDED after deadline, got %v", escrow.Status)
+	}
+	// Payer got funds back.
+	if bk.balances[payerAddr.String()]["uzrn"] != 1_000_000 {
+		t.Errorf("payer balance after refund: got %d, want 1000000", bk.balances[payerAddr.String()]["uzrn"])
+	}
+}
+
+// TestProcessExpiredEscrows_AutoReleasesAfterDisputeWindow verifies that
+// EndBlock releases COMPLETED escrow funds to the provider once the dispute
+// window (repurposed Deadline) has passed with no dispute raised.
+func TestProcessExpiredEscrows_AutoReleasesAfterDisputeWindow(t *testing.T) {
+	msgSrv, k, ctx, bk, _, _ := setupMsgServer(t)
+	payer := testAddr("se_payer10")
+	provider := testAddr("se_provider10")
+	providerAddr, _ := sdk.AccAddressFromBech32(provider)
+	bk.setBalance(payer, "uzrn", 1_000_000)
+
+	params := types.DefaultParams()
+	params.EscrowDisputeWindowBlocks = 100 // window = 100 blocks
+	k.SetParams(ctx, params)
+
+	ctx = ctx.WithBlockHeight(100)
+	createResp, _ := msgSrv.CreateServiceEscrow(ctx, &types.MsgCreateServiceEscrow{
+		Payer:     payer,
+		Provider:  provider,
+		Amount:    "400000",
+		TermsHash: "terms10",
+		Deadline:  300,
+	})
+
+	// Provider completes at block 200 → dispute window close = 200 + 100 = 300.
+	ctx = ctx.WithBlockHeight(200)
+	msgSrv.CompleteServiceEscrow(ctx, &types.MsgCompleteServiceEscrow{ //nolint:errcheck
+		Provider:  provider,
+		EscrowId:  createResp.EscrowId,
+		ProofHash: "proof10",
+	})
+
+	// Funds still locked immediately after completion.
+	if bk.balances[providerAddr.String()]["uzrn"] != 0 {
+		t.Errorf("provider balance right after complete: got %d, want 0 (funds still locked)",
+			bk.balances[providerAddr.String()]["uzrn"])
+	}
+
+	// Before dispute window closes (block 299): no release.
+	ctx = ctx.WithBlockHeight(299)
+	k.ProcessExpiredEscrows(ctx)
+	if bk.balances[providerAddr.String()]["uzrn"] != 0 {
+		t.Errorf("provider balance before window close: got %d, want 0",
+			bk.balances[providerAddr.String()]["uzrn"])
+	}
+
+	// After dispute window (block 301): auto-release to provider.
+	ctx = ctx.WithBlockHeight(301)
+	k.ProcessExpiredEscrows(ctx)
+
+	if bk.balances[providerAddr.String()]["uzrn"] != 400_000 {
+		t.Errorf("provider balance after auto-release: got %d, want 400000",
+			bk.balances[providerAddr.String()]["uzrn"])
+	}
+
+	// Verify sentinel: Deadline is zeroed after release to prevent double-pay.
+	escrow, _ := k.GetServiceEscrow(ctx, createResp.EscrowId)
+	if escrow.Status != types.ServiceEscrowStatus_SERVICE_ESCROW_STATUS_COMPLETED {
+		t.Errorf("expected COMPLETED after release, got %v", escrow.Status)
+	}
+	if escrow.Deadline != 0 {
+		t.Errorf("expected Deadline=0 (released sentinel) after auto-release, got %d", escrow.Deadline)
+	}
+
+	// A second ProcessExpiredEscrows run at block 302 skips (sentinel) — no double-pay.
+	ctx = ctx.WithBlockHeight(302)
+	k.ProcessExpiredEscrows(ctx)
+	if bk.balances[providerAddr.String()]["uzrn"] != 400_000 {
+		t.Errorf("provider balance after second run: got %d, want 400000 (no double-pay)",
+			bk.balances[providerAddr.String()]["uzrn"])
+	}
+}
+
+// TestProcessExpiredEscrows_DisputedImmune verifies that DISPUTED escrows are
+// never refunded or released by EndBlock — they stay locked until governance acts.
+func TestProcessExpiredEscrows_DisputedImmune(t *testing.T) {
+	msgSrv, k, ctx, bk, _, _ := setupMsgServer(t)
+	payer := testAddr("se_payer11")
+	provider := testAddr("se_provider11")
+	payerAddr, _ := sdk.AccAddressFromBech32(payer)
+	providerAddr, _ := sdk.AccAddressFromBech32(provider)
+	bk.setBalance(payer, "uzrn", 500_000)
+
+	params := types.DefaultParams()
+	params.EscrowDisputeWindowBlocks = 200
+	k.SetParams(ctx, params)
+
+	ctx = ctx.WithBlockHeight(100)
+	createResp, _ := msgSrv.CreateServiceEscrow(ctx, &types.MsgCreateServiceEscrow{
+		Payer:     payer,
+		Provider:  provider,
+		Amount:    "500000",
+		TermsHash: "terms11",
+		Deadline:  400,
+	})
+
+	// Provider completes → dispute window close = 150 + 200 = 350.
+	ctx = ctx.WithBlockHeight(150)
+	msgSrv.CompleteServiceEscrow(ctx, &types.MsgCompleteServiceEscrow{ //nolint:errcheck
+		Provider:  provider,
+		EscrowId:  createResp.EscrowId,
+		ProofHash: "proof11",
+	})
+
+	// Payer disputes within window (block 200 <= 350).
+	ctx = ctx.WithBlockHeight(200)
+	_, err := msgSrv.DisputeServiceEscrow(ctx, &types.MsgDisputeServiceEscrow{
+		Payer:    payer,
+		EscrowId: createResp.EscrowId,
+		Reason:   "service incomplete",
+	})
+	if err != nil {
+		t.Fatalf("dispute failed: %v", err)
+	}
+
+	// EndBlock far past any deadline — DISPUTED must not be auto-processed.
+	ctx = ctx.WithBlockHeight(9999)
+	k.ProcessExpiredEscrows(ctx)
+
+	// Funds still locked — neither party received anything.
+	if bk.balances[payerAddr.String()]["uzrn"] != 0 {
+		t.Errorf("payer should not receive funds (DISPUTED), got %d", bk.balances[payerAddr.String()]["uzrn"])
+	}
+	if bk.balances[providerAddr.String()]["uzrn"] != 0 {
+		t.Errorf("provider should not receive funds (DISPUTED), got %d", bk.balances[providerAddr.String()]["uzrn"])
+	}
+
+	escrow, _ := k.GetServiceEscrow(ctx, createResp.EscrowId)
+	if escrow.Status != types.ServiceEscrowStatus_SERVICE_ESCROW_STATUS_DISPUTED {
+		t.Errorf("expected DISPUTED, got %v", escrow.Status)
+	}
+}

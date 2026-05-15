@@ -24,4 +24,13 @@ var (
 	ErrNoQuorum             = errors.Register(ModuleName, 20, "quorum not reached")
 	ErrUnauthorized         = errors.Register(ModuleName, 21, "unauthorized")
 	ErrInsufficientArbiters = errors.Register(ModuleName, 22, "insufficient qualified arbiters")
+
+	// Service Escrow errors
+	ErrServiceEscrowNotFound = errors.Register(ModuleName, 23, "service escrow not found")
+	ErrEscrowExpired         = errors.Register(ModuleName, 24, "service escrow deadline has passed")
+	ErrEscrowNotPending      = errors.Register(ModuleName, 25, "service escrow is not in pending status")
+	ErrEscrowNotCompleted    = errors.Register(ModuleName, 26, "service escrow is not in completed status")
+	ErrUnauthorizedEscrow    = errors.Register(ModuleName, 27, "sender is not authorized for this escrow action")
+	ErrInvalidEscrowAmount   = errors.Register(ModuleName, 28, "invalid escrow amount")
+	ErrEscrowDisputeWindow   = errors.Register(ModuleName, 29, "dispute window has closed for this escrow")
 )

@@ -459,3 +459,141 @@ func (m msgServer) UpdateParams(goCtx context.Context, msg *types.MsgUpdateParam
 
 	return &types.MsgUpdateParamsResponse{}, nil
 }
+
+// ---------- Service Escrow handlers ----------
+
+// CreateServiceEscrow locks payer funds into the disputes module account.
+func (m msgServer) CreateServiceEscrow(goCtx context.Context, msg *types.MsgCreateServiceEscrow) (*types.MsgCreateServiceEscrowResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+	currentHeight := uint64(ctx.BlockHeight())
+
+	if msg.Deadline <= currentHeight {
+		return nil, types.ErrEscrowExpired.Wrap("deadline must be in the future")
+	}
+
+	payerAddr, err := sdk.AccAddressFromBech32(msg.Payer)
+	if err != nil {
+		return nil, types.ErrInvalidEscrowAmount.Wrap("invalid payer address")
+	}
+
+	amt, ok := new(big.Int).SetString(msg.Amount, 10)
+	if !ok || amt.Sign() <= 0 {
+		return nil, types.ErrInvalidEscrowAmount
+	}
+
+	// Lock funds: payer account → disputes module account.
+	coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(amt)))
+	if err := m.bankKeeper.SendCoinsFromAccountToModule(ctx, payerAddr, types.ModuleName, coins); err != nil {
+		return nil, fmt.Errorf("failed to lock escrow funds: %w", err)
+	}
+
+	escrowID := GenerateServiceEscrowID(msg.Payer, msg.Provider, currentHeight)
+	escrow := &types.ServiceEscrow{
+		Id:        escrowID,
+		Payer:     msg.Payer,
+		Provider:  msg.Provider,
+		Amount:    msg.Amount,
+		TermsHash: msg.TermsHash,
+		Deadline:  msg.Deadline,
+		Status:    types.ServiceEscrowStatus_SERVICE_ESCROW_STATUS_PENDING,
+		CreatedAt: currentHeight,
+	}
+	m.SetServiceEscrow(ctx, escrow)
+
+	ctx.EventManager().EmitEvent(sdk.NewEvent(
+		"zerone.disputes.service_escrow_created",
+		sdk.NewAttribute("escrow_id", escrowID),
+		sdk.NewAttribute("payer", msg.Payer),
+		sdk.NewAttribute("provider", msg.Provider),
+		sdk.NewAttribute("amount", msg.Amount),
+		sdk.NewAttribute("deadline", fmt.Sprintf("%d", msg.Deadline)),
+		sdk.NewAttribute("terms_hash", msg.TermsHash),
+	))
+
+	return &types.MsgCreateServiceEscrowResponse{EscrowId: escrowID}, nil
+}
+
+// CompleteServiceEscrow is called by the provider to submit proof of delivery.
+// Funds are NOT released immediately — they remain in the module account while the
+// payer's dispute window is open. EndBlock auto-releases to the provider once
+// the dispute window (Deadline) passes without a dispute.
+//
+// State transition: PENDING → COMPLETED
+// Deadline field is repurposed: PENDING Deadline = provider's submission deadline;
+// after COMPLETED, Deadline = dispute window close (currentBlock + EscrowDisputeWindowBlocks).
+func (m msgServer) CompleteServiceEscrow(goCtx context.Context, msg *types.MsgCompleteServiceEscrow) (*types.MsgCompleteServiceEscrowResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+	currentHeight := uint64(ctx.BlockHeight())
+
+	escrow, found := m.GetServiceEscrow(ctx, msg.EscrowId)
+	if !found {
+		return nil, types.ErrServiceEscrowNotFound
+	}
+	if escrow.Status != types.ServiceEscrowStatus_SERVICE_ESCROW_STATUS_PENDING {
+		return nil, types.ErrEscrowNotPending
+	}
+	if currentHeight > escrow.Deadline {
+		return nil, types.ErrEscrowExpired
+	}
+	if escrow.Provider != msg.Provider {
+		return nil, types.ErrUnauthorizedEscrow
+	}
+
+	params := m.GetParams(ctx)
+
+	// Record proof, advance to COMPLETED, open dispute window.
+	// Deadline is repurposed as dispute_window_close.
+	escrow.ProofHash = msg.ProofHash
+	escrow.Status = types.ServiceEscrowStatus_SERVICE_ESCROW_STATUS_COMPLETED
+	escrow.Deadline = currentHeight + params.EscrowDisputeWindowBlocks
+	m.SetServiceEscrow(ctx, escrow)
+
+	ctx.EventManager().EmitEvent(sdk.NewEvent(
+		"zerone.disputes.service_escrow_completed",
+		sdk.NewAttribute("escrow_id", escrow.Id),
+		sdk.NewAttribute("provider", msg.Provider),
+		sdk.NewAttribute("proof_hash", msg.ProofHash),
+		sdk.NewAttribute("dispute_window_closes", fmt.Sprintf("%d", escrow.Deadline)),
+	))
+
+	return &types.MsgCompleteServiceEscrowResponse{}, nil
+}
+
+// DisputeServiceEscrow is called by the payer to contest a completed escrow within
+// the dispute window. Funds remain locked in the module account pending governance
+// resolution; EndBlock will NOT auto-release a DISPUTED escrow.
+//
+// State transition: COMPLETED → DISPUTED
+func (m msgServer) DisputeServiceEscrow(goCtx context.Context, msg *types.MsgDisputeServiceEscrow) (*types.MsgDisputeServiceEscrowResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+	currentHeight := uint64(ctx.BlockHeight())
+
+	escrow, found := m.GetServiceEscrow(ctx, msg.EscrowId)
+	if !found {
+		return nil, types.ErrServiceEscrowNotFound
+	}
+	if escrow.Status != types.ServiceEscrowStatus_SERVICE_ESCROW_STATUS_COMPLETED {
+		return nil, types.ErrEscrowNotCompleted
+	}
+	if escrow.Payer != msg.Payer {
+		return nil, types.ErrUnauthorizedEscrow
+	}
+	// Deadline (after CompleteServiceEscrow) is the dispute window close block.
+	if currentHeight > escrow.Deadline {
+		return nil, types.ErrEscrowDisputeWindow
+	}
+
+	escrow.Status = types.ServiceEscrowStatus_SERVICE_ESCROW_STATUS_DISPUTED
+	m.SetServiceEscrow(ctx, escrow)
+
+	ctx.EventManager().EmitEvent(sdk.NewEvent(
+		"zerone.disputes.service_escrow_disputed",
+		sdk.NewAttribute("escrow_id", escrow.Id),
+		sdk.NewAttribute("payer", msg.Payer),
+		sdk.NewAttribute("provider", escrow.Provider),
+		sdk.NewAttribute("amount", escrow.Amount),
+		sdk.NewAttribute("reason", msg.Reason),
+	))
+
+	return &types.MsgDisputeServiceEscrowResponse{}, nil
+}

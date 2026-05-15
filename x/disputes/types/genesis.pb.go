@@ -81,8 +81,12 @@ type Params struct {
 	SlashRateLoserBps   uint64                 `protobuf:"varint,4,opt,name=slash_rate_loser_bps,json=slashRateLoserBps,proto3" json:"slash_rate_loser_bps,omitempty"`       // default: 500000 (50% of bond)
 	RewardRateWinnerBps uint64                 `protobuf:"varint,5,opt,name=reward_rate_winner_bps,json=rewardRateWinnerBps,proto3" json:"reward_rate_winner_bps,omitempty"` // default: 400000 (40% of loser's slash)
 	ArbiterRewardBps    uint64                 `protobuf:"varint,6,opt,name=arbiter_reward_bps,json=arbiterRewardBps,proto3" json:"arbiter_reward_bps,omitempty"`            // default: 100000 (10% of loser's slash)
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// escrow_dispute_window_blocks: blocks after CompleteServiceEscrow during which
+	// the payer may call DisputeServiceEscrow. After this window the escrow is
+	// considered finalised (funds already released to provider at completion).
+	EscrowDisputeWindowBlocks uint64 `protobuf:"varint,7,opt,name=escrow_dispute_window_blocks,json=escrowDisputeWindowBlocks,proto3" json:"escrow_dispute_window_blocks,omitempty"` // default: 250 (~10 minutes at 2.5s/block)
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -157,6 +161,13 @@ func (x *Params) GetArbiterRewardBps() uint64 {
 	return 0
 }
 
+func (x *Params) GetEscrowDisputeWindowBlocks() uint64 {
+	if x != nil {
+		return x.EscrowDisputeWindowBlocks
+	}
+	return 0
+}
+
 var File_zerone_disputes_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_disputes_v1_genesis_proto_rawDesc = "" +
@@ -164,14 +175,15 @@ const file_zerone_disputes_v1_genesis_proto_rawDesc = "" +
 	" zerone/disputes/v1/genesis.proto\x12\x12zerone.disputes.v1\x1a\x1ezerone/disputes/v1/types.proto\"{\n" +
 	"\fGenesisState\x122\n" +
 	"\x06params\x18\x01 \x01(\v2\x1a.zerone.disputes.v1.ParamsR\x06params\x127\n" +
-	"\bdisputes\x18\x02 \x03(\v2\x1b.zerone.disputes.v1.DisputeR\bdisputes\"\xba\x02\n" +
+	"\bdisputes\x18\x02 \x03(\v2\x1b.zerone.disputes.v1.DisputeR\bdisputes\"\xfb\x02\n" +
 	"\x06Params\x12A\n" +
 	"\ftier_configs\x18\x01 \x03(\v2\x1e.zerone.disputes.v1.TierConfigR\vtierConfigs\x12.\n" +
 	"\x13max_active_disputes\x18\x02 \x01(\rR\x11maxActiveDisputes\x12)\n" +
 	"\x10escalation_delay\x18\x03 \x01(\x04R\x0fescalationDelay\x12/\n" +
 	"\x14slash_rate_loser_bps\x18\x04 \x01(\x04R\x11slashRateLoserBps\x123\n" +
 	"\x16reward_rate_winner_bps\x18\x05 \x01(\x04R\x13rewardRateWinnerBps\x12,\n" +
-	"\x12arbiter_reward_bps\x18\x06 \x01(\x04R\x10arbiterRewardBpsB1Z/github.com/zerone-chain/zerone/x/disputes/typesb\x06proto3"
+	"\x12arbiter_reward_bps\x18\x06 \x01(\x04R\x10arbiterRewardBps\x12?\n" +
+	"\x1cescrow_dispute_window_blocks\x18\a \x01(\x04R\x19escrowDisputeWindowBlocksB1Z/github.com/zerone-chain/zerone/x/disputes/typesb\x06proto3"
 
 var (
 	file_zerone_disputes_v1_genesis_proto_rawDescOnce sync.Once

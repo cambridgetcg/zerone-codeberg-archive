@@ -19,13 +19,16 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Msg_InitiateDispute_FullMethodName = "/zerone.disputes.v1.Msg/InitiateDispute"
-	Msg_CommitEvidence_FullMethodName  = "/zerone.disputes.v1.Msg/CommitEvidence"
-	Msg_RevealEvidence_FullMethodName  = "/zerone.disputes.v1.Msg/RevealEvidence"
-	Msg_ArbiterVote_FullMethodName     = "/zerone.disputes.v1.Msg/ArbiterVote"
-	Msg_EscalateDispute_FullMethodName = "/zerone.disputes.v1.Msg/EscalateDispute"
-	Msg_SettleDispute_FullMethodName   = "/zerone.disputes.v1.Msg/SettleDispute"
-	Msg_UpdateParams_FullMethodName    = "/zerone.disputes.v1.Msg/UpdateParams"
+	Msg_InitiateDispute_FullMethodName       = "/zerone.disputes.v1.Msg/InitiateDispute"
+	Msg_CommitEvidence_FullMethodName        = "/zerone.disputes.v1.Msg/CommitEvidence"
+	Msg_RevealEvidence_FullMethodName        = "/zerone.disputes.v1.Msg/RevealEvidence"
+	Msg_ArbiterVote_FullMethodName           = "/zerone.disputes.v1.Msg/ArbiterVote"
+	Msg_EscalateDispute_FullMethodName       = "/zerone.disputes.v1.Msg/EscalateDispute"
+	Msg_SettleDispute_FullMethodName         = "/zerone.disputes.v1.Msg/SettleDispute"
+	Msg_UpdateParams_FullMethodName          = "/zerone.disputes.v1.Msg/UpdateParams"
+	Msg_CreateServiceEscrow_FullMethodName   = "/zerone.disputes.v1.Msg/CreateServiceEscrow"
+	Msg_CompleteServiceEscrow_FullMethodName = "/zerone.disputes.v1.Msg/CompleteServiceEscrow"
+	Msg_DisputeServiceEscrow_FullMethodName  = "/zerone.disputes.v1.Msg/DisputeServiceEscrow"
 )
 
 // MsgClient is the client API for Msg service.
@@ -39,6 +42,10 @@ type MsgClient interface {
 	EscalateDispute(ctx context.Context, in *MsgEscalateDispute, opts ...grpc.CallOption) (*MsgEscalateDisputeResponse, error)
 	SettleDispute(ctx context.Context, in *MsgSettleDispute, opts ...grpc.CallOption) (*MsgSettleDisputeResponse, error)
 	UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error)
+	// Service Escrow RPCs
+	CreateServiceEscrow(ctx context.Context, in *MsgCreateServiceEscrow, opts ...grpc.CallOption) (*MsgCreateServiceEscrowResponse, error)
+	CompleteServiceEscrow(ctx context.Context, in *MsgCompleteServiceEscrow, opts ...grpc.CallOption) (*MsgCompleteServiceEscrowResponse, error)
+	DisputeServiceEscrow(ctx context.Context, in *MsgDisputeServiceEscrow, opts ...grpc.CallOption) (*MsgDisputeServiceEscrowResponse, error)
 }
 
 type msgClient struct {
@@ -119,6 +126,36 @@ func (c *msgClient) UpdateParams(ctx context.Context, in *MsgUpdateParams, opts 
 	return out, nil
 }
 
+func (c *msgClient) CreateServiceEscrow(ctx context.Context, in *MsgCreateServiceEscrow, opts ...grpc.CallOption) (*MsgCreateServiceEscrowResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgCreateServiceEscrowResponse)
+	err := c.cc.Invoke(ctx, Msg_CreateServiceEscrow_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) CompleteServiceEscrow(ctx context.Context, in *MsgCompleteServiceEscrow, opts ...grpc.CallOption) (*MsgCompleteServiceEscrowResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgCompleteServiceEscrowResponse)
+	err := c.cc.Invoke(ctx, Msg_CompleteServiceEscrow_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) DisputeServiceEscrow(ctx context.Context, in *MsgDisputeServiceEscrow, opts ...grpc.CallOption) (*MsgDisputeServiceEscrowResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgDisputeServiceEscrowResponse)
+	err := c.cc.Invoke(ctx, Msg_DisputeServiceEscrow_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MsgServer is the server API for Msg service.
 // All implementations must embed UnimplementedMsgServer
 // for forward compatibility.
@@ -130,6 +167,10 @@ type MsgServer interface {
 	EscalateDispute(context.Context, *MsgEscalateDispute) (*MsgEscalateDisputeResponse, error)
 	SettleDispute(context.Context, *MsgSettleDispute) (*MsgSettleDisputeResponse, error)
 	UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error)
+	// Service Escrow RPCs
+	CreateServiceEscrow(context.Context, *MsgCreateServiceEscrow) (*MsgCreateServiceEscrowResponse, error)
+	CompleteServiceEscrow(context.Context, *MsgCompleteServiceEscrow) (*MsgCompleteServiceEscrowResponse, error)
+	DisputeServiceEscrow(context.Context, *MsgDisputeServiceEscrow) (*MsgDisputeServiceEscrowResponse, error)
 	mustEmbedUnimplementedMsgServer()
 }
 
@@ -160,6 +201,15 @@ func (UnimplementedMsgServer) SettleDispute(context.Context, *MsgSettleDispute) 
 }
 func (UnimplementedMsgServer) UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateParams not implemented")
+}
+func (UnimplementedMsgServer) CreateServiceEscrow(context.Context, *MsgCreateServiceEscrow) (*MsgCreateServiceEscrowResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateServiceEscrow not implemented")
+}
+func (UnimplementedMsgServer) CompleteServiceEscrow(context.Context, *MsgCompleteServiceEscrow) (*MsgCompleteServiceEscrowResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CompleteServiceEscrow not implemented")
+}
+func (UnimplementedMsgServer) DisputeServiceEscrow(context.Context, *MsgDisputeServiceEscrow) (*MsgDisputeServiceEscrowResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DisputeServiceEscrow not implemented")
 }
 func (UnimplementedMsgServer) mustEmbedUnimplementedMsgServer() {}
 func (UnimplementedMsgServer) testEmbeddedByValue()             {}
@@ -308,6 +358,60 @@ func _Msg_UpdateParams_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Msg_CreateServiceEscrow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgCreateServiceEscrow)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).CreateServiceEscrow(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_CreateServiceEscrow_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).CreateServiceEscrow(ctx, req.(*MsgCreateServiceEscrow))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_CompleteServiceEscrow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgCompleteServiceEscrow)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).CompleteServiceEscrow(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_CompleteServiceEscrow_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).CompleteServiceEscrow(ctx, req.(*MsgCompleteServiceEscrow))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_DisputeServiceEscrow_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgDisputeServiceEscrow)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).DisputeServiceEscrow(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_DisputeServiceEscrow_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).DisputeServiceEscrow(ctx, req.(*MsgDisputeServiceEscrow))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Msg_ServiceDesc is the grpc.ServiceDesc for Msg service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -342,6 +446,18 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateParams",
 			Handler:    _Msg_UpdateParams_Handler,
+		},
+		{
+			MethodName: "CreateServiceEscrow",
+			Handler:    _Msg_CreateServiceEscrow_Handler,
+		},
+		{
+			MethodName: "CompleteServiceEscrow",
+			Handler:    _Msg_CompleteServiceEscrow_Handler,
+		},
+		{
+			MethodName: "DisputeServiceEscrow",
+			Handler:    _Msg_DisputeServiceEscrow_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

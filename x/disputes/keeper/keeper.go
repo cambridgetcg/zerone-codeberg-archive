@@ -723,3 +723,174 @@ func isActivePhase(phase types.DisputePhase) bool {
 	}
 	return false
 }
+
+// ---------- Service Escrow CRUD ----------
+
+// SetServiceEscrow stores a service escrow by ID.
+func (k Keeper) SetServiceEscrow(ctx context.Context, escrow *types.ServiceEscrow) {
+	kvStore := k.storeService.OpenKVStore(ctx)
+	bz, err := proto.Marshal(escrow)
+	if err != nil {
+		panic(fmt.Sprintf("failed to marshal service escrow: %v", err))
+	}
+	_ = kvStore.Set(types.ServiceEscrowKey(escrow.Id), bz)
+}
+
+// GetServiceEscrow retrieves a service escrow by ID.
+func (k Keeper) GetServiceEscrow(ctx context.Context, id string) (*types.ServiceEscrow, bool) {
+	kvStore := k.storeService.OpenKVStore(ctx)
+	bz, err := kvStore.Get(types.ServiceEscrowKey(id))
+	if err != nil || bz == nil {
+		return nil, false
+	}
+	var escrow types.ServiceEscrow
+	if err := proto.Unmarshal(bz, &escrow); err != nil {
+		return nil, false
+	}
+	return &escrow, true
+}
+
+// DeleteServiceEscrow removes a service escrow by ID.
+func (k Keeper) DeleteServiceEscrow(ctx context.Context, id string) {
+	kvStore := k.storeService.OpenKVStore(ctx)
+	_ = kvStore.Delete(types.ServiceEscrowKey(id))
+}
+
+// IterateServiceEscrows iterates all service escrows, calling cb for each.
+// Returns early if cb returns true.
+func (k Keeper) IterateServiceEscrows(ctx context.Context, cb func(*types.ServiceEscrow) bool) {
+	kvStore := k.storeService.OpenKVStore(ctx)
+	iter, err := kvStore.Iterator(types.ServiceEscrowKeyPrefix, prefixEndBytes(types.ServiceEscrowKeyPrefix))
+	if err != nil {
+		return
+	}
+	defer iter.Close()
+	for ; iter.Valid(); iter.Next() {
+		var escrow types.ServiceEscrow
+		if err := proto.Unmarshal(iter.Value(), &escrow); err != nil {
+			continue
+		}
+		if cb(&escrow) {
+			break
+		}
+	}
+}
+
+// GenerateServiceEscrowID generates a deterministic escrow ID from payer, provider, and block height.
+func GenerateServiceEscrowID(payer, provider string, blockHeight uint64) string {
+	heightBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(heightBytes, blockHeight)
+	h := sha256.Sum256(append(append([]byte(payer), []byte(provider)...), heightBytes...))
+	return hex.EncodeToString(h[:16])
+}
+
+// ProcessExpiredEscrows processes time-based transitions for service escrows.
+// Called from BeginBlock.
+//
+// PENDING  + Deadline passed           → REFUNDED (payer refunded in full)
+// COMPLETED + Deadline (dispute window) passed → funds released to provider
+//
+// The Deadline field is dual-purpose:
+//   - While PENDING: absolute block height by which the provider must submit proof.
+//   - While COMPLETED: block height after which the payer can no longer dispute
+//     and funds are auto-released (= completed_at + EscrowDisputeWindowBlocks).
+func (k Keeper) ProcessExpiredEscrows(ctx context.Context) {
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+	currentHeight := uint64(sdkCtx.BlockHeight())
+
+	k.IterateServiceEscrows(ctx, func(escrow *types.ServiceEscrow) bool {
+		switch escrow.Status {
+
+		case types.ServiceEscrowStatus_SERVICE_ESCROW_STATUS_PENDING:
+			if currentHeight <= escrow.Deadline {
+				return false // deadline not yet passed
+			}
+			// Deadline passed with no proof — refund payer in full.
+			k.refundEscrowToPayer(ctx, sdkCtx, escrow)
+
+		case types.ServiceEscrowStatus_SERVICE_ESCROW_STATUS_COMPLETED:
+			if currentHeight <= escrow.Deadline {
+				return false // dispute window still open
+			}
+			// Deadline == 0 is the post-release sentinel; skip to avoid double-release.
+			if escrow.Deadline == 0 {
+				return false
+			}
+			// Dispute window closed with no dispute — release funds to provider.
+			k.releaseEscrowToProvider(ctx, sdkCtx, escrow)
+		}
+
+		return false
+	})
+}
+
+// refundEscrowToPayer returns the locked amount to the payer and marks the escrow REFUNDED.
+func (k Keeper) refundEscrowToPayer(ctx context.Context, sdkCtx sdk.Context, escrow *types.ServiceEscrow) {
+	payerAddr, err := sdk.AccAddressFromBech32(escrow.Payer)
+	if err != nil {
+		k.Logger(ctx).Error("service escrow: invalid payer address on refund",
+			"escrow_id", escrow.Id, "payer", escrow.Payer)
+		return
+	}
+	coins, err := escrowCoins(escrow.Amount)
+	if err != nil {
+		k.Logger(ctx).Error("service escrow: invalid amount on refund",
+			"escrow_id", escrow.Id, "amount", escrow.Amount)
+		return
+	}
+	if err := k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, payerAddr, coins); err != nil {
+		k.Logger(ctx).Error("service escrow: failed to refund payer",
+			"escrow_id", escrow.Id, "error", err)
+		return
+	}
+	escrow.Status = types.ServiceEscrowStatus_SERVICE_ESCROW_STATUS_REFUNDED
+	k.SetServiceEscrow(ctx, escrow)
+	sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
+		"zerone.disputes.service_escrow_refunded",
+		sdk.NewAttribute("escrow_id", escrow.Id),
+		sdk.NewAttribute("payer", escrow.Payer),
+		sdk.NewAttribute("amount", escrow.Amount),
+	))
+}
+
+// releaseEscrowToProvider sends the locked amount to the provider.
+// After release, Deadline is zeroed as a post-release sentinel so that
+// ProcessExpiredEscrows will not attempt a second release on subsequent blocks.
+func (k Keeper) releaseEscrowToProvider(ctx context.Context, sdkCtx sdk.Context, escrow *types.ServiceEscrow) {
+	providerAddr, err := sdk.AccAddressFromBech32(escrow.Provider)
+	if err != nil {
+		k.Logger(ctx).Error("service escrow: invalid provider address on release",
+			"escrow_id", escrow.Id, "provider", escrow.Provider)
+		return
+	}
+	coins, err := escrowCoins(escrow.Amount)
+	if err != nil {
+		k.Logger(ctx).Error("service escrow: invalid amount on release",
+			"escrow_id", escrow.Id, "amount", escrow.Amount)
+		return
+	}
+	if err := k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, providerAddr, coins); err != nil {
+		k.Logger(ctx).Error("service escrow: failed to release to provider",
+			"escrow_id", escrow.Id, "error", err)
+		return
+	}
+	// Sentinel: Deadline = 0 signals "funds already released" so the next
+	// ProcessExpiredEscrows call skips this escrow. Status stays COMPLETED.
+	escrow.Deadline = 0
+	k.SetServiceEscrow(ctx, escrow)
+	sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
+		"zerone.disputes.service_escrow_released",
+		sdk.NewAttribute("escrow_id", escrow.Id),
+		sdk.NewAttribute("provider", escrow.Provider),
+		sdk.NewAttribute("amount", escrow.Amount),
+	))
+}
+
+// escrowCoins parses an amount string into an uzrn coin slice.
+func escrowCoins(amount string) (sdk.Coins, error) {
+	amt, ok := new(big.Int).SetString(amount, 10)
+	if !ok || amt.Sign() <= 0 {
+		return nil, fmt.Errorf("invalid escrow amount: %s", amount)
+	}
+	return sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(amt))), nil
+}

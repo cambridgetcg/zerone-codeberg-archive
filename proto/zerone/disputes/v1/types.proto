@@ -88,3 +88,27 @@ enum DisputeOutcome {
   DISPUTE_OUTCOME_DRAW = 3;
   DISPUTE_OUTCOME_TIMED_OUT = 4;
 }
+
+// ---------- Service Escrow ----------
+
+// ServiceEscrow holds funds from a payer in the module account until the
+// provider completes the agreed service or the deadline passes.
+message ServiceEscrow {
+  string              id         = 1;
+  string              payer      = 2;  // bech32 — locks funds, can dispute
+  string              provider   = 3;  // bech32 — delivers service, claims funds
+  string              amount     = 4;  // uzrn locked
+  string              terms_hash = 5;  // SHA256 of off-chain service agreement
+  uint64              deadline   = 6;  // block height deadline for completion
+  string              proof_hash = 7;  // set by provider on CompleteServiceEscrow
+  ServiceEscrowStatus status     = 8;
+  uint64              created_at = 9;  // block height at creation
+}
+
+enum ServiceEscrowStatus {
+  SERVICE_ESCROW_STATUS_UNSPECIFIED = 0;
+  SERVICE_ESCROW_STATUS_PENDING     = 1;  // funds locked, awaiting proof
+  SERVICE_ESCROW_STATUS_COMPLETED   = 2;  // proof submitted, funds released to provider
+  SERVICE_ESCROW_STATUS_DISPUTED    = 3;  // payer contested the proof
+  SERVICE_ESCROW_STATUS_REFUNDED    = 4;  // deadline passed with no proof, funds returned
+}

@@ -16,6 +16,11 @@ service Msg {
   rpc EscalateDispute(MsgEscalateDispute) returns (MsgEscalateDisputeResponse);
   rpc SettleDispute(MsgSettleDispute) returns (MsgSettleDisputeResponse);
   rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
+
+  // Service Escrow RPCs
+  rpc CreateServiceEscrow(MsgCreateServiceEscrow) returns (MsgCreateServiceEscrowResponse);
+  rpc CompleteServiceEscrow(MsgCompleteServiceEscrow) returns (MsgCompleteServiceEscrowResponse);
+  rpc DisputeServiceEscrow(MsgDisputeServiceEscrow) returns (MsgDisputeServiceEscrowResponse);
 }
 
 message MsgInitiateDispute {
@@ -75,3 +80,36 @@ message MsgUpdateParams {
   Params params    = 2;
 }
 message MsgUpdateParamsResponse {}
+
+// MsgCreateServiceEscrow locks payer funds in the disputes module account.
+message MsgCreateServiceEscrow {
+  option (cosmos.msg.v1.signer) = "payer";
+  string payer      = 1;
+  string provider   = 2;
+  string amount     = 3;   // uzrn to lock
+  string terms_hash = 4;   // SHA256 of off-chain agreement
+  uint64 deadline   = 5;   // absolute block height deadline
+}
+message MsgCreateServiceEscrowResponse { string escrow_id = 1; }
+
+// MsgCompleteServiceEscrow is submitted by the provider when the service is done.
+// On success, funds are released from the module account to the provider immediately.
+// The payer has escrow_dispute_window_blocks to raise a dispute.
+message MsgCompleteServiceEscrow {
+  option (cosmos.msg.v1.signer) = "provider";
+  string provider   = 1;
+  string escrow_id  = 2;
+  string proof_hash = 3;   // SHA256 of delivery proof
+}
+message MsgCompleteServiceEscrowResponse {}
+
+// MsgDisputeServiceEscrow is submitted by the payer within the dispute window
+// after CompleteServiceEscrow. Transitions status to DISPUTED; funds remain
+// in the module account pending governance / arbiter resolution.
+message MsgDisputeServiceEscrow {
+  option (cosmos.msg.v1.signer) = "payer";
+  string payer     = 1;
+  string escrow_id = 2;
+  string reason    = 3;
+}
+message MsgDisputeServiceEscrowResponse {}

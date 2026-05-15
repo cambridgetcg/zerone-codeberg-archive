@@ -241,6 +241,61 @@ func (DisputeOutcome) EnumDescriptor() ([]byte, []int) {
 	return file_zerone_disputes_v1_types_proto_rawDescGZIP(), []int{3}
 }
 
+type ServiceEscrowStatus int32
+
+const (
+	ServiceEscrowStatus_SERVICE_ESCROW_STATUS_UNSPECIFIED ServiceEscrowStatus = 0
+	ServiceEscrowStatus_SERVICE_ESCROW_STATUS_PENDING     ServiceEscrowStatus = 1 // funds locked, awaiting proof
+	ServiceEscrowStatus_SERVICE_ESCROW_STATUS_COMPLETED   ServiceEscrowStatus = 2 // proof submitted, funds released to provider
+	ServiceEscrowStatus_SERVICE_ESCROW_STATUS_DISPUTED    ServiceEscrowStatus = 3 // payer contested the proof
+	ServiceEscrowStatus_SERVICE_ESCROW_STATUS_REFUNDED    ServiceEscrowStatus = 4 // deadline passed with no proof, funds returned
+)
+
+// Enum value maps for ServiceEscrowStatus.
+var (
+	ServiceEscrowStatus_name = map[int32]string{
+		0: "SERVICE_ESCROW_STATUS_UNSPECIFIED",
+		1: "SERVICE_ESCROW_STATUS_PENDING",
+		2: "SERVICE_ESCROW_STATUS_COMPLETED",
+		3: "SERVICE_ESCROW_STATUS_DISPUTED",
+		4: "SERVICE_ESCROW_STATUS_REFUNDED",
+	}
+	ServiceEscrowStatus_value = map[string]int32{
+		"SERVICE_ESCROW_STATUS_UNSPECIFIED": 0,
+		"SERVICE_ESCROW_STATUS_PENDING":     1,
+		"SERVICE_ESCROW_STATUS_COMPLETED":   2,
+		"SERVICE_ESCROW_STATUS_DISPUTED":    3,
+		"SERVICE_ESCROW_STATUS_REFUNDED":    4,
+	}
+)
+
+func (x ServiceEscrowStatus) Enum() *ServiceEscrowStatus {
+	p := new(ServiceEscrowStatus)
+	*p = x
+	return p
+}
+
+func (x ServiceEscrowStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ServiceEscrowStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_zerone_disputes_v1_types_proto_enumTypes[4].Descriptor()
+}
+
+func (ServiceEscrowStatus) Type() protoreflect.EnumType {
+	return &file_zerone_disputes_v1_types_proto_enumTypes[4]
+}
+
+func (x ServiceEscrowStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ServiceEscrowStatus.Descriptor instead.
+func (ServiceEscrowStatus) EnumDescriptor() ([]byte, []int) {
+	return file_zerone_disputes_v1_types_proto_rawDescGZIP(), []int{4}
+}
+
 type Dispute struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -741,6 +796,116 @@ func (x *TierConfig) GetMajorityBps() uint64 {
 	return 0
 }
 
+// ServiceEscrow holds funds from a payer in the module account until the
+// provider completes the agreed service or the deadline passes.
+type ServiceEscrow struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Payer         string                 `protobuf:"bytes,2,opt,name=payer,proto3" json:"payer,omitempty"`                          // bech32 — locks funds, can dispute
+	Provider      string                 `protobuf:"bytes,3,opt,name=provider,proto3" json:"provider,omitempty"`                    // bech32 — delivers service, claims funds
+	Amount        string                 `protobuf:"bytes,4,opt,name=amount,proto3" json:"amount,omitempty"`                        // uzrn locked
+	TermsHash     string                 `protobuf:"bytes,5,opt,name=terms_hash,json=termsHash,proto3" json:"terms_hash,omitempty"` // SHA256 of off-chain service agreement
+	Deadline      uint64                 `protobuf:"varint,6,opt,name=deadline,proto3" json:"deadline,omitempty"`                   // block height deadline for completion
+	ProofHash     string                 `protobuf:"bytes,7,opt,name=proof_hash,json=proofHash,proto3" json:"proof_hash,omitempty"` // set by provider on CompleteServiceEscrow
+	Status        ServiceEscrowStatus    `protobuf:"varint,8,opt,name=status,proto3,enum=zerone.disputes.v1.ServiceEscrowStatus" json:"status,omitempty"`
+	CreatedAt     uint64                 `protobuf:"varint,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"` // block height at creation
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ServiceEscrow) Reset() {
+	*x = ServiceEscrow{}
+	mi := &file_zerone_disputes_v1_types_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ServiceEscrow) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServiceEscrow) ProtoMessage() {}
+
+func (x *ServiceEscrow) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_disputes_v1_types_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServiceEscrow.ProtoReflect.Descriptor instead.
+func (*ServiceEscrow) Descriptor() ([]byte, []int) {
+	return file_zerone_disputes_v1_types_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ServiceEscrow) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ServiceEscrow) GetPayer() string {
+	if x != nil {
+		return x.Payer
+	}
+	return ""
+}
+
+func (x *ServiceEscrow) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *ServiceEscrow) GetAmount() string {
+	if x != nil {
+		return x.Amount
+	}
+	return ""
+}
+
+func (x *ServiceEscrow) GetTermsHash() string {
+	if x != nil {
+		return x.TermsHash
+	}
+	return ""
+}
+
+func (x *ServiceEscrow) GetDeadline() uint64 {
+	if x != nil {
+		return x.Deadline
+	}
+	return 0
+}
+
+func (x *ServiceEscrow) GetProofHash() string {
+	if x != nil {
+		return x.ProofHash
+	}
+	return ""
+}
+
+func (x *ServiceEscrow) GetStatus() ServiceEscrowStatus {
+	if x != nil {
+		return x.Status
+	}
+	return ServiceEscrowStatus_SERVICE_ESCROW_STATUS_UNSPECIFIED
+}
+
+func (x *ServiceEscrow) GetCreatedAt() uint64 {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return 0
+}
+
 var File_zerone_disputes_v1_types_proto protoreflect.FileDescriptor
 
 const file_zerone_disputes_v1_types_proto_rawDesc = "" +
@@ -800,7 +965,20 @@ const file_zerone_disputes_v1_types_proto_rawDesc = "" +
 	"\rvoting_period\x18\x05 \x01(\x04R\fvotingPeriod\x12\x1d\n" +
 	"\n" +
 	"quorum_bps\x18\x06 \x01(\x04R\tquorumBps\x12!\n" +
-	"\fmajority_bps\x18\a \x01(\x04R\vmajorityBps*\x9b\x01\n" +
+	"\fmajority_bps\x18\a \x01(\x04R\vmajorityBps\"\xa3\x02\n" +
+	"\rServiceEscrow\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
+	"\x05payer\x18\x02 \x01(\tR\x05payer\x12\x1a\n" +
+	"\bprovider\x18\x03 \x01(\tR\bprovider\x12\x16\n" +
+	"\x06amount\x18\x04 \x01(\tR\x06amount\x12\x1d\n" +
+	"\n" +
+	"terms_hash\x18\x05 \x01(\tR\ttermsHash\x12\x1a\n" +
+	"\bdeadline\x18\x06 \x01(\x04R\bdeadline\x12\x1d\n" +
+	"\n" +
+	"proof_hash\x18\a \x01(\tR\tproofHash\x12?\n" +
+	"\x06status\x18\b \x01(\x0e2'.zerone.disputes.v1.ServiceEscrowStatusR\x06status\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\t \x01(\x04R\tcreatedAt*\x9b\x01\n" +
 	"\x11DisputeTargetType\x12#\n" +
 	"\x1fDISPUTE_TARGET_TYPE_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18DISPUTE_TARGET_TYPE_FACT\x10\x01\x12 \n" +
@@ -824,7 +1002,13 @@ const file_zerone_disputes_v1_types_proto_rawDesc = "" +
 	"\x1fDISPUTE_OUTCOME_CHALLENGER_WINS\x10\x01\x12!\n" +
 	"\x1dDISPUTE_OUTCOME_DEFENDER_WINS\x10\x02\x12\x18\n" +
 	"\x14DISPUTE_OUTCOME_DRAW\x10\x03\x12\x1d\n" +
-	"\x19DISPUTE_OUTCOME_TIMED_OUT\x10\x04B1Z/github.com/zerone-chain/zerone/x/disputes/typesb\x06proto3"
+	"\x19DISPUTE_OUTCOME_TIMED_OUT\x10\x04*\xcc\x01\n" +
+	"\x13ServiceEscrowStatus\x12%\n" +
+	"!SERVICE_ESCROW_STATUS_UNSPECIFIED\x10\x00\x12!\n" +
+	"\x1dSERVICE_ESCROW_STATUS_PENDING\x10\x01\x12#\n" +
+	"\x1fSERVICE_ESCROW_STATUS_COMPLETED\x10\x02\x12\"\n" +
+	"\x1eSERVICE_ESCROW_STATUS_DISPUTED\x10\x03\x12\"\n" +
+	"\x1eSERVICE_ESCROW_STATUS_REFUNDED\x10\x04B1Z/github.com/zerone-chain/zerone/x/disputes/typesb\x06proto3"
 
 var (
 	file_zerone_disputes_v1_types_proto_rawDescOnce sync.Once
@@ -838,29 +1022,32 @@ func file_zerone_disputes_v1_types_proto_rawDescGZIP() []byte {
 	return file_zerone_disputes_v1_types_proto_rawDescData
 }
 
-var file_zerone_disputes_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_zerone_disputes_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_zerone_disputes_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
+var file_zerone_disputes_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_zerone_disputes_v1_types_proto_goTypes = []any{
 	(DisputeTargetType)(0),     // 0: zerone.disputes.v1.DisputeTargetType
 	(DisputePhase)(0),          // 1: zerone.disputes.v1.DisputePhase
 	(ArbiterDecision)(0),       // 2: zerone.disputes.v1.ArbiterDecision
 	(DisputeOutcome)(0),        // 3: zerone.disputes.v1.DisputeOutcome
-	(*Dispute)(nil),            // 4: zerone.disputes.v1.Dispute
-	(*DisputeEvidence)(nil),    // 5: zerone.disputes.v1.DisputeEvidence
-	(*EvidenceCommitment)(nil), // 6: zerone.disputes.v1.EvidenceCommitment
-	(*DisputeVote)(nil),        // 7: zerone.disputes.v1.DisputeVote
-	(*TierConfig)(nil),         // 8: zerone.disputes.v1.TierConfig
+	(ServiceEscrowStatus)(0),   // 4: zerone.disputes.v1.ServiceEscrowStatus
+	(*Dispute)(nil),            // 5: zerone.disputes.v1.Dispute
+	(*DisputeEvidence)(nil),    // 6: zerone.disputes.v1.DisputeEvidence
+	(*EvidenceCommitment)(nil), // 7: zerone.disputes.v1.EvidenceCommitment
+	(*DisputeVote)(nil),        // 8: zerone.disputes.v1.DisputeVote
+	(*TierConfig)(nil),         // 9: zerone.disputes.v1.TierConfig
+	(*ServiceEscrow)(nil),      // 10: zerone.disputes.v1.ServiceEscrow
 }
 var file_zerone_disputes_v1_types_proto_depIdxs = []int32{
 	0, // 0: zerone.disputes.v1.Dispute.target_type:type_name -> zerone.disputes.v1.DisputeTargetType
 	1, // 1: zerone.disputes.v1.Dispute.phase:type_name -> zerone.disputes.v1.DisputePhase
 	3, // 2: zerone.disputes.v1.Dispute.outcome:type_name -> zerone.disputes.v1.DisputeOutcome
 	2, // 3: zerone.disputes.v1.DisputeVote.vote:type_name -> zerone.disputes.v1.ArbiterDecision
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	4, // 4: zerone.disputes.v1.ServiceEscrow.status:type_name -> zerone.disputes.v1.ServiceEscrowStatus
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_zerone_disputes_v1_types_proto_init() }
@@ -873,8 +1060,8 @@ func file_zerone_disputes_v1_types_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_zerone_disputes_v1_types_proto_rawDesc), len(file_zerone_disputes_v1_types_proto_rawDesc)),
-			NumEnums:      4,
-			NumMessages:   5,
+			NumEnums:      5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

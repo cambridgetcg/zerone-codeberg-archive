@@ -127,7 +127,8 @@ func (am AppModule) BeginBlock(goCtx context.Context) error {
 	return nil
 }
 
-// EndBlock — no-op.
-func (am AppModule) EndBlock(_ context.Context) error {
+// EndBlock processes expired service escrows (PENDING past deadline → REFUNDED).
+func (am AppModule) EndBlock(ctx context.Context) error {
+	am.keeper.ProcessExpiredEscrows(ctx)
 	return nil
 }

@@ -18,6 +18,9 @@ var (
 	TargetIndexPrefix     = []byte{0x05}
 	ActiveIndexPrefix     = []byte{0x06}
 	DisputeCounterKey     = []byte{0x07}
+
+	// Service Escrow
+	ServiceEscrowKeyPrefix = []byte{0x08}
 )
 
 // DisputeKey returns the store key for a dispute by ID.
@@ -88,4 +91,9 @@ func TargetIndexKeyPrefix(targetID string) []byte {
 // ActiveIndexKey returns the index key for active disputes.
 func ActiveIndexKey(disputeID string) []byte {
 	return append(ActiveIndexPrefix, []byte(disputeID)...)
+}
+
+// ServiceEscrowKey returns the store key for a service escrow by ID.
+func ServiceEscrowKey(id string) []byte {
+	return append(ServiceEscrowKeyPrefix, []byte(id)...)
 }

@@ -734,6 +734,325 @@ func (*MsgUpdateParamsResponse) Descriptor() ([]byte, []int) {
 	return file_zerone_disputes_v1_tx_proto_rawDescGZIP(), []int{13}
 }
 
+// MsgCreateServiceEscrow locks payer funds in the disputes module account.
+type MsgCreateServiceEscrow struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Payer         string                 `protobuf:"bytes,1,opt,name=payer,proto3" json:"payer,omitempty"`
+	Provider      string                 `protobuf:"bytes,2,opt,name=provider,proto3" json:"provider,omitempty"`
+	Amount        string                 `protobuf:"bytes,3,opt,name=amount,proto3" json:"amount,omitempty"`                        // uzrn to lock
+	TermsHash     string                 `protobuf:"bytes,4,opt,name=terms_hash,json=termsHash,proto3" json:"terms_hash,omitempty"` // SHA256 of off-chain agreement
+	Deadline      uint64                 `protobuf:"varint,5,opt,name=deadline,proto3" json:"deadline,omitempty"`                   // absolute block height deadline
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MsgCreateServiceEscrow) Reset() {
+	*x = MsgCreateServiceEscrow{}
+	mi := &file_zerone_disputes_v1_tx_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MsgCreateServiceEscrow) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MsgCreateServiceEscrow) ProtoMessage() {}
+
+func (x *MsgCreateServiceEscrow) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_disputes_v1_tx_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MsgCreateServiceEscrow.ProtoReflect.Descriptor instead.
+func (*MsgCreateServiceEscrow) Descriptor() ([]byte, []int) {
+	return file_zerone_disputes_v1_tx_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *MsgCreateServiceEscrow) GetPayer() string {
+	if x != nil {
+		return x.Payer
+	}
+	return ""
+}
+
+func (x *MsgCreateServiceEscrow) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *MsgCreateServiceEscrow) GetAmount() string {
+	if x != nil {
+		return x.Amount
+	}
+	return ""
+}
+
+func (x *MsgCreateServiceEscrow) GetTermsHash() string {
+	if x != nil {
+		return x.TermsHash
+	}
+	return ""
+}
+
+func (x *MsgCreateServiceEscrow) GetDeadline() uint64 {
+	if x != nil {
+		return x.Deadline
+	}
+	return 0
+}
+
+type MsgCreateServiceEscrowResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EscrowId      string                 `protobuf:"bytes,1,opt,name=escrow_id,json=escrowId,proto3" json:"escrow_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MsgCreateServiceEscrowResponse) Reset() {
+	*x = MsgCreateServiceEscrowResponse{}
+	mi := &file_zerone_disputes_v1_tx_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MsgCreateServiceEscrowResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MsgCreateServiceEscrowResponse) ProtoMessage() {}
+
+func (x *MsgCreateServiceEscrowResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_disputes_v1_tx_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MsgCreateServiceEscrowResponse.ProtoReflect.Descriptor instead.
+func (*MsgCreateServiceEscrowResponse) Descriptor() ([]byte, []int) {
+	return file_zerone_disputes_v1_tx_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *MsgCreateServiceEscrowResponse) GetEscrowId() string {
+	if x != nil {
+		return x.EscrowId
+	}
+	return ""
+}
+
+// MsgCompleteServiceEscrow is submitted by the provider when the service is done.
+// On success, funds are released from the module account to the provider immediately.
+// The payer has escrow_dispute_window_blocks to raise a dispute.
+type MsgCompleteServiceEscrow struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Provider      string                 `protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
+	EscrowId      string                 `protobuf:"bytes,2,opt,name=escrow_id,json=escrowId,proto3" json:"escrow_id,omitempty"`
+	ProofHash     string                 `protobuf:"bytes,3,opt,name=proof_hash,json=proofHash,proto3" json:"proof_hash,omitempty"` // SHA256 of delivery proof
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MsgCompleteServiceEscrow) Reset() {
+	*x = MsgCompleteServiceEscrow{}
+	mi := &file_zerone_disputes_v1_tx_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MsgCompleteServiceEscrow) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MsgCompleteServiceEscrow) ProtoMessage() {}
+
+func (x *MsgCompleteServiceEscrow) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_disputes_v1_tx_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MsgCompleteServiceEscrow.ProtoReflect.Descriptor instead.
+func (*MsgCompleteServiceEscrow) Descriptor() ([]byte, []int) {
+	return file_zerone_disputes_v1_tx_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *MsgCompleteServiceEscrow) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *MsgCompleteServiceEscrow) GetEscrowId() string {
+	if x != nil {
+		return x.EscrowId
+	}
+	return ""
+}
+
+func (x *MsgCompleteServiceEscrow) GetProofHash() string {
+	if x != nil {
+		return x.ProofHash
+	}
+	return ""
+}
+
+type MsgCompleteServiceEscrowResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MsgCompleteServiceEscrowResponse) Reset() {
+	*x = MsgCompleteServiceEscrowResponse{}
+	mi := &file_zerone_disputes_v1_tx_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MsgCompleteServiceEscrowResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MsgCompleteServiceEscrowResponse) ProtoMessage() {}
+
+func (x *MsgCompleteServiceEscrowResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_disputes_v1_tx_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MsgCompleteServiceEscrowResponse.ProtoReflect.Descriptor instead.
+func (*MsgCompleteServiceEscrowResponse) Descriptor() ([]byte, []int) {
+	return file_zerone_disputes_v1_tx_proto_rawDescGZIP(), []int{17}
+}
+
+// MsgDisputeServiceEscrow is submitted by the payer within the dispute window
+// after CompleteServiceEscrow. Transitions status to DISPUTED; funds remain
+// in the module account pending governance / arbiter resolution.
+type MsgDisputeServiceEscrow struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Payer         string                 `protobuf:"bytes,1,opt,name=payer,proto3" json:"payer,omitempty"`
+	EscrowId      string                 `protobuf:"bytes,2,opt,name=escrow_id,json=escrowId,proto3" json:"escrow_id,omitempty"`
+	Reason        string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MsgDisputeServiceEscrow) Reset() {
+	*x = MsgDisputeServiceEscrow{}
+	mi := &file_zerone_disputes_v1_tx_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MsgDisputeServiceEscrow) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MsgDisputeServiceEscrow) ProtoMessage() {}
+
+func (x *MsgDisputeServiceEscrow) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_disputes_v1_tx_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MsgDisputeServiceEscrow.ProtoReflect.Descriptor instead.
+func (*MsgDisputeServiceEscrow) Descriptor() ([]byte, []int) {
+	return file_zerone_disputes_v1_tx_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *MsgDisputeServiceEscrow) GetPayer() string {
+	if x != nil {
+		return x.Payer
+	}
+	return ""
+}
+
+func (x *MsgDisputeServiceEscrow) GetEscrowId() string {
+	if x != nil {
+		return x.EscrowId
+	}
+	return ""
+}
+
+func (x *MsgDisputeServiceEscrow) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type MsgDisputeServiceEscrowResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MsgDisputeServiceEscrowResponse) Reset() {
+	*x = MsgDisputeServiceEscrowResponse{}
+	mi := &file_zerone_disputes_v1_tx_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MsgDisputeServiceEscrowResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MsgDisputeServiceEscrowResponse) ProtoMessage() {}
+
+func (x *MsgDisputeServiceEscrowResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_disputes_v1_tx_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MsgDisputeServiceEscrowResponse.ProtoReflect.Descriptor instead.
+func (*MsgDisputeServiceEscrowResponse) Descriptor() ([]byte, []int) {
+	return file_zerone_disputes_v1_tx_proto_rawDescGZIP(), []int{19}
+}
+
 var File_zerone_disputes_v1_tx_proto protoreflect.FileDescriptor
 
 const file_zerone_disputes_v1_tx_proto_rawDesc = "" +
@@ -788,7 +1107,29 @@ const file_zerone_disputes_v1_tx_proto_rawDesc = "" +
 	"\x0fMsgUpdateParams\x12\x1c\n" +
 	"\tauthority\x18\x01 \x01(\tR\tauthority\x122\n" +
 	"\x06params\x18\x02 \x01(\v2\x1a.zerone.disputes.v1.ParamsR\x06params:\x0e\x82\xe7\xb0*\tauthority\"\x19\n" +
-	"\x17MsgUpdateParamsResponse2\xd8\x05\n" +
+	"\x17MsgUpdateParamsResponse\"\xa9\x01\n" +
+	"\x16MsgCreateServiceEscrow\x12\x14\n" +
+	"\x05payer\x18\x01 \x01(\tR\x05payer\x12\x1a\n" +
+	"\bprovider\x18\x02 \x01(\tR\bprovider\x12\x16\n" +
+	"\x06amount\x18\x03 \x01(\tR\x06amount\x12\x1d\n" +
+	"\n" +
+	"terms_hash\x18\x04 \x01(\tR\ttermsHash\x12\x1a\n" +
+	"\bdeadline\x18\x05 \x01(\x04R\bdeadline:\n" +
+	"\x82\xe7\xb0*\x05payer\"=\n" +
+	"\x1eMsgCreateServiceEscrowResponse\x12\x1b\n" +
+	"\tescrow_id\x18\x01 \x01(\tR\bescrowId\"\x81\x01\n" +
+	"\x18MsgCompleteServiceEscrow\x12\x1a\n" +
+	"\bprovider\x18\x01 \x01(\tR\bprovider\x12\x1b\n" +
+	"\tescrow_id\x18\x02 \x01(\tR\bescrowId\x12\x1d\n" +
+	"\n" +
+	"proof_hash\x18\x03 \x01(\tR\tproofHash:\r\x82\xe7\xb0*\bprovider\"\"\n" +
+	" MsgCompleteServiceEscrowResponse\"p\n" +
+	"\x17MsgDisputeServiceEscrow\x12\x14\n" +
+	"\x05payer\x18\x01 \x01(\tR\x05payer\x12\x1b\n" +
+	"\tescrow_id\x18\x02 \x01(\tR\bescrowId\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason:\n" +
+	"\x82\xe7\xb0*\x05payer\"!\n" +
+	"\x1fMsgDisputeServiceEscrowResponse2\xc6\b\n" +
 	"\x03Msg\x12i\n" +
 	"\x0fInitiateDispute\x12&.zerone.disputes.v1.MsgInitiateDispute\x1a..zerone.disputes.v1.MsgInitiateDisputeResponse\x12f\n" +
 	"\x0eCommitEvidence\x12%.zerone.disputes.v1.MsgCommitEvidence\x1a-.zerone.disputes.v1.MsgCommitEvidenceResponse\x12f\n" +
@@ -796,7 +1137,10 @@ const file_zerone_disputes_v1_tx_proto_rawDesc = "" +
 	"\vArbiterVote\x12\".zerone.disputes.v1.MsgArbiterVote\x1a*.zerone.disputes.v1.MsgArbiterVoteResponse\x12i\n" +
 	"\x0fEscalateDispute\x12&.zerone.disputes.v1.MsgEscalateDispute\x1a..zerone.disputes.v1.MsgEscalateDisputeResponse\x12c\n" +
 	"\rSettleDispute\x12$.zerone.disputes.v1.MsgSettleDispute\x1a,.zerone.disputes.v1.MsgSettleDisputeResponse\x12`\n" +
-	"\fUpdateParams\x12#.zerone.disputes.v1.MsgUpdateParams\x1a+.zerone.disputes.v1.MsgUpdateParamsResponse\x1a\x05\x80\xe7\xb0*\x01B1Z/github.com/zerone-chain/zerone/x/disputes/typesb\x06proto3"
+	"\fUpdateParams\x12#.zerone.disputes.v1.MsgUpdateParams\x1a+.zerone.disputes.v1.MsgUpdateParamsResponse\x12u\n" +
+	"\x13CreateServiceEscrow\x12*.zerone.disputes.v1.MsgCreateServiceEscrow\x1a2.zerone.disputes.v1.MsgCreateServiceEscrowResponse\x12{\n" +
+	"\x15CompleteServiceEscrow\x12,.zerone.disputes.v1.MsgCompleteServiceEscrow\x1a4.zerone.disputes.v1.MsgCompleteServiceEscrowResponse\x12x\n" +
+	"\x14DisputeServiceEscrow\x12+.zerone.disputes.v1.MsgDisputeServiceEscrow\x1a3.zerone.disputes.v1.MsgDisputeServiceEscrowResponse\x1a\x05\x80\xe7\xb0*\x01B1Z/github.com/zerone-chain/zerone/x/disputes/typesb\x06proto3"
 
 var (
 	file_zerone_disputes_v1_tx_proto_rawDescOnce sync.Once
@@ -810,32 +1154,38 @@ func file_zerone_disputes_v1_tx_proto_rawDescGZIP() []byte {
 	return file_zerone_disputes_v1_tx_proto_rawDescData
 }
 
-var file_zerone_disputes_v1_tx_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_zerone_disputes_v1_tx_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_zerone_disputes_v1_tx_proto_goTypes = []any{
-	(*MsgInitiateDispute)(nil),         // 0: zerone.disputes.v1.MsgInitiateDispute
-	(*MsgInitiateDisputeResponse)(nil), // 1: zerone.disputes.v1.MsgInitiateDisputeResponse
-	(*MsgCommitEvidence)(nil),          // 2: zerone.disputes.v1.MsgCommitEvidence
-	(*MsgCommitEvidenceResponse)(nil),  // 3: zerone.disputes.v1.MsgCommitEvidenceResponse
-	(*MsgRevealEvidence)(nil),          // 4: zerone.disputes.v1.MsgRevealEvidence
-	(*MsgRevealEvidenceResponse)(nil),  // 5: zerone.disputes.v1.MsgRevealEvidenceResponse
-	(*MsgArbiterVote)(nil),             // 6: zerone.disputes.v1.MsgArbiterVote
-	(*MsgArbiterVoteResponse)(nil),     // 7: zerone.disputes.v1.MsgArbiterVoteResponse
-	(*MsgEscalateDispute)(nil),         // 8: zerone.disputes.v1.MsgEscalateDispute
-	(*MsgEscalateDisputeResponse)(nil), // 9: zerone.disputes.v1.MsgEscalateDisputeResponse
-	(*MsgSettleDispute)(nil),           // 10: zerone.disputes.v1.MsgSettleDispute
-	(*MsgSettleDisputeResponse)(nil),   // 11: zerone.disputes.v1.MsgSettleDisputeResponse
-	(*MsgUpdateParams)(nil),            // 12: zerone.disputes.v1.MsgUpdateParams
-	(*MsgUpdateParamsResponse)(nil),    // 13: zerone.disputes.v1.MsgUpdateParamsResponse
-	(DisputeTargetType)(0),             // 14: zerone.disputes.v1.DisputeTargetType
-	(ArbiterDecision)(0),               // 15: zerone.disputes.v1.ArbiterDecision
-	(DisputeOutcome)(0),                // 16: zerone.disputes.v1.DisputeOutcome
-	(*Params)(nil),                     // 17: zerone.disputes.v1.Params
+	(*MsgInitiateDispute)(nil),               // 0: zerone.disputes.v1.MsgInitiateDispute
+	(*MsgInitiateDisputeResponse)(nil),       // 1: zerone.disputes.v1.MsgInitiateDisputeResponse
+	(*MsgCommitEvidence)(nil),                // 2: zerone.disputes.v1.MsgCommitEvidence
+	(*MsgCommitEvidenceResponse)(nil),        // 3: zerone.disputes.v1.MsgCommitEvidenceResponse
+	(*MsgRevealEvidence)(nil),                // 4: zerone.disputes.v1.MsgRevealEvidence
+	(*MsgRevealEvidenceResponse)(nil),        // 5: zerone.disputes.v1.MsgRevealEvidenceResponse
+	(*MsgArbiterVote)(nil),                   // 6: zerone.disputes.v1.MsgArbiterVote
+	(*MsgArbiterVoteResponse)(nil),           // 7: zerone.disputes.v1.MsgArbiterVoteResponse
+	(*MsgEscalateDispute)(nil),               // 8: zerone.disputes.v1.MsgEscalateDispute
+	(*MsgEscalateDisputeResponse)(nil),       // 9: zerone.disputes.v1.MsgEscalateDisputeResponse
+	(*MsgSettleDispute)(nil),                 // 10: zerone.disputes.v1.MsgSettleDispute
+	(*MsgSettleDisputeResponse)(nil),         // 11: zerone.disputes.v1.MsgSettleDisputeResponse
+	(*MsgUpdateParams)(nil),                  // 12: zerone.disputes.v1.MsgUpdateParams
+	(*MsgUpdateParamsResponse)(nil),          // 13: zerone.disputes.v1.MsgUpdateParamsResponse
+	(*MsgCreateServiceEscrow)(nil),           // 14: zerone.disputes.v1.MsgCreateServiceEscrow
+	(*MsgCreateServiceEscrowResponse)(nil),   // 15: zerone.disputes.v1.MsgCreateServiceEscrowResponse
+	(*MsgCompleteServiceEscrow)(nil),         // 16: zerone.disputes.v1.MsgCompleteServiceEscrow
+	(*MsgCompleteServiceEscrowResponse)(nil), // 17: zerone.disputes.v1.MsgCompleteServiceEscrowResponse
+	(*MsgDisputeServiceEscrow)(nil),          // 18: zerone.disputes.v1.MsgDisputeServiceEscrow
+	(*MsgDisputeServiceEscrowResponse)(nil),  // 19: zerone.disputes.v1.MsgDisputeServiceEscrowResponse
+	(DisputeTargetType)(0),                   // 20: zerone.disputes.v1.DisputeTargetType
+	(ArbiterDecision)(0),                     // 21: zerone.disputes.v1.ArbiterDecision
+	(DisputeOutcome)(0),                      // 22: zerone.disputes.v1.DisputeOutcome
+	(*Params)(nil),                           // 23: zerone.disputes.v1.Params
 }
 var file_zerone_disputes_v1_tx_proto_depIdxs = []int32{
-	14, // 0: zerone.disputes.v1.MsgInitiateDispute.target_type:type_name -> zerone.disputes.v1.DisputeTargetType
-	15, // 1: zerone.disputes.v1.MsgArbiterVote.vote:type_name -> zerone.disputes.v1.ArbiterDecision
-	16, // 2: zerone.disputes.v1.MsgSettleDisputeResponse.outcome:type_name -> zerone.disputes.v1.DisputeOutcome
-	17, // 3: zerone.disputes.v1.MsgUpdateParams.params:type_name -> zerone.disputes.v1.Params
+	20, // 0: zerone.disputes.v1.MsgInitiateDispute.target_type:type_name -> zerone.disputes.v1.DisputeTargetType
+	21, // 1: zerone.disputes.v1.MsgArbiterVote.vote:type_name -> zerone.disputes.v1.ArbiterDecision
+	22, // 2: zerone.disputes.v1.MsgSettleDisputeResponse.outcome:type_name -> zerone.disputes.v1.DisputeOutcome
+	23, // 3: zerone.disputes.v1.MsgUpdateParams.params:type_name -> zerone.disputes.v1.Params
 	0,  // 4: zerone.disputes.v1.Msg.InitiateDispute:input_type -> zerone.disputes.v1.MsgInitiateDispute
 	2,  // 5: zerone.disputes.v1.Msg.CommitEvidence:input_type -> zerone.disputes.v1.MsgCommitEvidence
 	4,  // 6: zerone.disputes.v1.Msg.RevealEvidence:input_type -> zerone.disputes.v1.MsgRevealEvidence
@@ -843,15 +1193,21 @@ var file_zerone_disputes_v1_tx_proto_depIdxs = []int32{
 	8,  // 8: zerone.disputes.v1.Msg.EscalateDispute:input_type -> zerone.disputes.v1.MsgEscalateDispute
 	10, // 9: zerone.disputes.v1.Msg.SettleDispute:input_type -> zerone.disputes.v1.MsgSettleDispute
 	12, // 10: zerone.disputes.v1.Msg.UpdateParams:input_type -> zerone.disputes.v1.MsgUpdateParams
-	1,  // 11: zerone.disputes.v1.Msg.InitiateDispute:output_type -> zerone.disputes.v1.MsgInitiateDisputeResponse
-	3,  // 12: zerone.disputes.v1.Msg.CommitEvidence:output_type -> zerone.disputes.v1.MsgCommitEvidenceResponse
-	5,  // 13: zerone.disputes.v1.Msg.RevealEvidence:output_type -> zerone.disputes.v1.MsgRevealEvidenceResponse
-	7,  // 14: zerone.disputes.v1.Msg.ArbiterVote:output_type -> zerone.disputes.v1.MsgArbiterVoteResponse
-	9,  // 15: zerone.disputes.v1.Msg.EscalateDispute:output_type -> zerone.disputes.v1.MsgEscalateDisputeResponse
-	11, // 16: zerone.disputes.v1.Msg.SettleDispute:output_type -> zerone.disputes.v1.MsgSettleDisputeResponse
-	13, // 17: zerone.disputes.v1.Msg.UpdateParams:output_type -> zerone.disputes.v1.MsgUpdateParamsResponse
-	11, // [11:18] is the sub-list for method output_type
-	4,  // [4:11] is the sub-list for method input_type
+	14, // 11: zerone.disputes.v1.Msg.CreateServiceEscrow:input_type -> zerone.disputes.v1.MsgCreateServiceEscrow
+	16, // 12: zerone.disputes.v1.Msg.CompleteServiceEscrow:input_type -> zerone.disputes.v1.MsgCompleteServiceEscrow
+	18, // 13: zerone.disputes.v1.Msg.DisputeServiceEscrow:input_type -> zerone.disputes.v1.MsgDisputeServiceEscrow
+	1,  // 14: zerone.disputes.v1.Msg.InitiateDispute:output_type -> zerone.disputes.v1.MsgInitiateDisputeResponse
+	3,  // 15: zerone.disputes.v1.Msg.CommitEvidence:output_type -> zerone.disputes.v1.MsgCommitEvidenceResponse
+	5,  // 16: zerone.disputes.v1.Msg.RevealEvidence:output_type -> zerone.disputes.v1.MsgRevealEvidenceResponse
+	7,  // 17: zerone.disputes.v1.Msg.ArbiterVote:output_type -> zerone.disputes.v1.MsgArbiterVoteResponse
+	9,  // 18: zerone.disputes.v1.Msg.EscalateDispute:output_type -> zerone.disputes.v1.MsgEscalateDisputeResponse
+	11, // 19: zerone.disputes.v1.Msg.SettleDispute:output_type -> zerone.disputes.v1.MsgSettleDisputeResponse
+	13, // 20: zerone.disputes.v1.Msg.UpdateParams:output_type -> zerone.disputes.v1.MsgUpdateParamsResponse
+	15, // 21: zerone.disputes.v1.Msg.CreateServiceEscrow:output_type -> zerone.disputes.v1.MsgCreateServiceEscrowResponse
+	17, // 22: zerone.disputes.v1.Msg.CompleteServiceEscrow:output_type -> zerone.disputes.v1.MsgCompleteServiceEscrowResponse
+	19, // 23: zerone.disputes.v1.Msg.DisputeServiceEscrow:output_type -> zerone.disputes.v1.MsgDisputeServiceEscrowResponse
+	14, // [14:24] is the sub-list for method output_type
+	4,  // [4:14] is the sub-list for method input_type
 	4,  // [4:4] is the sub-list for extension type_name
 	4,  // [4:4] is the sub-list for extension extendee
 	0,  // [0:4] is the sub-list for field type_name
@@ -870,7 +1226,7 @@ func file_zerone_disputes_v1_tx_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_zerone_disputes_v1_tx_proto_rawDesc), len(file_zerone_disputes_v1_tx_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

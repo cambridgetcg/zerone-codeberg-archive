@@ -16,4 +16,8 @@ message Params {
   uint64 slash_rate_loser_bps = 4;       // default: 500000 (50% of bond)
   uint64 reward_rate_winner_bps = 5;     // default: 400000 (40% of loser's slash)
   uint64 arbiter_reward_bps = 6;         // default: 100000 (10% of loser's slash)
+  // escrow_dispute_window_blocks: blocks after CompleteServiceEscrow during which
+  // the payer may call DisputeServiceEscrow. After this window the escrow is
+  // considered finalised (funds already released to provider at completion).
+  uint64 escrow_dispute_window_blocks = 7; // default: 250 (~10 minutes at 2.5s/block)
 }
