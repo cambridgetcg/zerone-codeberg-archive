@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"strings"
 	"testing"
 
 	"cosmossdk.io/log"
@@ -38,6 +39,7 @@ type mockBankKeeper struct {
 	balances    map[string]sdk.Coins
 	moduleSent  sdk.Coins
 	burnedCoins sdk.Coins
+	accountSent sdk.Coins // tracks SendCoinsFromModuleToAccount calls
 }
 
 func newMockBankKeeper() *mockBankKeeper {
@@ -54,7 +56,8 @@ func (m *mockBankKeeper) SendCoinsFromAccountToModule(_ context.Context, _ sdk.A
 	return nil
 }
 
-func (m *mockBankKeeper) SendCoinsFromModuleToAccount(_ context.Context, _ string, _ sdk.AccAddress, _ sdk.Coins) error {
+func (m *mockBankKeeper) SendCoinsFromModuleToAccount(_ context.Context, _ string, _ sdk.AccAddress, amt sdk.Coins) error {
+	m.accountSent = m.accountSent.Add(amt...)
 	return nil
 }
 
@@ -3429,5 +3432,361 @@ func TestGetParamsBackfillsSlashRateConfigs(t *testing.T) {
 	}
 	if types.GetSlashRate(loaded, types.SlashType_SLASH_TYPE_DOUBLE_VOTE) == 0 {
 		t.Error("expected backfilled DOUBLE_VOTE rate to be non-zero")
+	}
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Evidence-Based Slashing tests (Gap 3)
+// ────────────────────────────────────────────────────────────────────────────
+
+// TestMsgServer_SubmitSlashEvidence_Valid verifies that valid evidence is
+// stored in the queue and an evidence_id is returned.
+func TestMsgServer_SubmitSlashEvidence_Valid(t *testing.T) {
+	k, ctx := setupKeeper(t)
+	ms := keeper.NewMsgServerImpl(k)
+
+	valAddr := testAddr("se_val1")
+	submitter := testAddr("se_sub1")
+	registerTestValidator(t, k, ctx, valAddr, "", "10000000")
+
+	resp, err := ms.SubmitSlashEvidence(ctx, &types.MsgSubmitSlashEvidence{
+		Submitter:     submitter,
+		ValidatorAddr: valAddr,
+		SlashType:     types.SlashType_SLASH_TYPE_DOUBLE_VOTE,
+		EvidenceHash:  "abc123deadbeef",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.EvidenceId == "" {
+		t.Fatal("expected non-empty evidence_id")
+	}
+
+	ev, found := k.GetSlashEvidence(ctx, resp.EvidenceId)
+	if !found {
+		t.Fatal("evidence not found in queue after submission")
+	}
+	if ev.ValidatorAddr != valAddr {
+		t.Errorf("evidence.validator_addr: got %s, want %s", ev.ValidatorAddr, valAddr)
+	}
+	if ev.Submitter != submitter {
+		t.Errorf("evidence.submitter: got %s, want %s", ev.Submitter, submitter)
+	}
+	if ev.Processed {
+		t.Error("evidence should not be marked processed immediately after submission")
+	}
+}
+
+// TestMsgServer_SubmitSlashEvidence_ValidatorNotFound verifies that submitting
+// evidence for an unknown validator returns an error.
+func TestMsgServer_SubmitSlashEvidence_ValidatorNotFound(t *testing.T) {
+	k, ctx := setupKeeper(t)
+	ms := keeper.NewMsgServerImpl(k)
+
+	_, err := ms.SubmitSlashEvidence(ctx, &types.MsgSubmitSlashEvidence{
+		Submitter:     testAddr("se_sub2"),
+		ValidatorAddr: testAddr("se_val_unknown"),
+		SlashType:     types.SlashType_SLASH_TYPE_DOUBLE_VOTE,
+		EvidenceHash:  "deadbeef",
+	})
+	if err == nil {
+		t.Fatal("expected error for unknown validator, got nil")
+	}
+}
+
+// TestMsgServer_SubmitSlashEvidence_NoRate verifies that submitting evidence
+// for a slash type with rate=0 returns an error.
+func TestMsgServer_SubmitSlashEvidence_NoRate(t *testing.T) {
+	k, ctx := setupKeeper(t)
+	ms := keeper.NewMsgServerImpl(k)
+
+	valAddr := testAddr("se_val3")
+	registerTestValidator(t, k, ctx, valAddr, "", "10000000")
+
+	params := k.GetParams(ctx)
+	params.SlashRateConfigs = []*types.SlashRateConfig{
+		{SlashType: types.SlashType_SLASH_TYPE_DOUBLE_VOTE, RateBps: 0},
+	}
+	k.SetParams(ctx, params)
+
+	_, err := ms.SubmitSlashEvidence(ctx, &types.MsgSubmitSlashEvidence{
+		Submitter:     testAddr("se_sub3"),
+		ValidatorAddr: valAddr,
+		SlashType:     types.SlashType_SLASH_TYPE_DOUBLE_VOTE,
+		EvidenceHash:  "deadbeef",
+	})
+	if err == nil {
+		t.Fatal("expected error when slash type rate=0, got nil")
+	}
+}
+
+// TestMsgServer_SubmitSlashEvidence_Duplicate verifies that submitting the
+// same evidence (same block, same submitter, same validator) is rejected.
+func TestMsgServer_SubmitSlashEvidence_Duplicate(t *testing.T) {
+	k, ctx := setupKeeper(t)
+	ms := keeper.NewMsgServerImpl(k)
+
+	valAddr := testAddr("se_val4")
+	submitter := testAddr("se_sub4")
+	registerTestValidator(t, k, ctx, valAddr, "", "10000000")
+
+	msg := &types.MsgSubmitSlashEvidence{
+		Submitter:     submitter,
+		ValidatorAddr: valAddr,
+		SlashType:     types.SlashType_SLASH_TYPE_LIVENESS_FAULT,
+		EvidenceHash:  "hash1",
+	}
+
+	// First submission succeeds.
+	_, err := ms.SubmitSlashEvidence(ctx, msg)
+	if err != nil {
+		t.Fatalf("first submission failed: %v", err)
+	}
+
+	// Second submission same block is rejected (same ID).
+	_, err = ms.SubmitSlashEvidence(ctx, msg)
+	if err == nil {
+		t.Fatal("expected duplicate submission to be rejected, got nil error")
+	}
+	if !strings.Contains(err.Error(), "already submitted") {
+		t.Errorf("expected 'already submitted' in error, got: %v", err)
+	}
+}
+
+// TestProcessSlashEvidenceQueue_SlashApplied verifies that EndBlocker processes
+// queued evidence and slashes the validator.
+func TestProcessSlashEvidenceQueue_SlashApplied(t *testing.T) {
+	k, ctx := setupKeeper(t)
+	ms := keeper.NewMsgServerImpl(k)
+
+	valAddr := testAddr("se_val5")
+	submitter := testAddr("se_sub5")
+	stake := "10000000"
+	registerTestValidator(t, k, ctx, valAddr, "", stake)
+
+	params := k.GetParams(ctx)
+	params.SlashEscalationBps = 0
+	params.EvidenceRewardBps = 0
+	k.SetParams(ctx, params)
+
+	_, err := ms.SubmitSlashEvidence(ctx, &types.MsgSubmitSlashEvidence{
+		Submitter:     submitter,
+		ValidatorAddr: valAddr,
+		SlashType:     types.SlashType_SLASH_TYPE_DOUBLE_VOTE,
+		EvidenceHash:  "evidhash5",
+	})
+	if err != nil {
+		t.Fatalf("submission failed: %v", err)
+	}
+
+	val, _ := k.GetValidator(ctx, valAddr)
+	if val.SlashCount != 0 {
+		t.Error("expected slash count 0 before EndBlock")
+	}
+
+	k.EndBlocker(ctx)
+
+	val, found := k.GetValidator(ctx, valAddr)
+	if !found {
+		t.Fatal("validator not found after EndBlock")
+	}
+	if val.SlashCount == 0 {
+		t.Error("expected slash count > 0 after EndBlock processing")
+	}
+
+	stakeAfter, _ := new(big.Int).SetString(val.TotalStake, 10)
+	stakeBefore, _ := new(big.Int).SetString(stake, 10)
+	if stakeAfter.Cmp(stakeBefore) >= 0 {
+		t.Errorf("expected stake to decrease: before=%s, after=%s", stake, val.TotalStake)
+	}
+}
+
+// TestProcessSlashEvidenceQueue_QueueCleared verifies that evidence items are
+// removed from the queue after processing.
+func TestProcessSlashEvidenceQueue_QueueCleared(t *testing.T) {
+	k, ctx := setupKeeper(t)
+	ms := keeper.NewMsgServerImpl(k)
+
+	valAddr := testAddr("se_val6")
+	registerTestValidator(t, k, ctx, valAddr, "", "10000000")
+
+	resp, err := ms.SubmitSlashEvidence(ctx, &types.MsgSubmitSlashEvidence{
+		Submitter:     testAddr("se_sub6"),
+		ValidatorAddr: valAddr,
+		SlashType:     types.SlashType_SLASH_TYPE_LIVENESS_FAULT,
+		EvidenceHash:  "evidhash6",
+	})
+	if err != nil {
+		t.Fatalf("submission failed: %v", err)
+	}
+
+	evidenceID := resp.EvidenceId
+
+	if _, found := k.GetSlashEvidence(ctx, evidenceID); !found {
+		t.Fatal("evidence should be in queue before EndBlock")
+	}
+
+	k.EndBlocker(ctx)
+
+	if _, found := k.GetSlashEvidence(ctx, evidenceID); found {
+		t.Error("evidence should be removed from queue after EndBlock processing")
+	}
+}
+
+// TestProcessSlashEvidenceQueue_GhostValidator verifies that evidence for
+// a non-existent validator is cleaned up without panicking.
+func TestProcessSlashEvidenceQueue_GhostValidator(t *testing.T) {
+	k, ctx := setupKeeper(t)
+
+	k.SetSlashEvidence(ctx, &types.SlashEvidence{
+		Id:            "ghost_evidence",
+		Submitter:     testAddr("se_sub7"),
+		ValidatorAddr: testAddr("se_ghost_val"),
+		SlashType:     types.SlashType_SLASH_TYPE_DOUBLE_VOTE,
+		EvidenceHash:  "hash",
+		SubmittedAt:   100,
+	})
+
+	// Must not panic.
+	k.EndBlocker(ctx)
+
+	if _, found := k.GetSlashEvidence(ctx, "ghost_evidence"); found {
+		t.Error("ghost evidence should have been cleaned up by EndBlock")
+	}
+}
+
+// TestProcessSlashEvidenceQueue_EvidenceReward verifies that the submitter
+// receives evidence_reward_bps fraction of the slashed amount.
+func TestProcessSlashEvidenceQueue_EvidenceReward(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+	ms := keeper.NewMsgServerImpl(k)
+
+	valAddr := testAddr("se_val8")
+	submitter := testAddr("se_sub8")
+	registerTestValidator(t, k, ctx, valAddr, "", "10000000")
+
+	params := k.GetParams(ctx)
+	params.SlashEscalationBps = 0
+	params.SlashBurnFractionBps = 0
+	params.EvidenceRewardBps = 100_000 // 10%
+	k.SetParams(ctx, params)
+
+	_, err := ms.SubmitSlashEvidence(ctx, &types.MsgSubmitSlashEvidence{
+		Submitter:     submitter,
+		ValidatorAddr: valAddr,
+		SlashType:     types.SlashType_SLASH_TYPE_LIVENESS_FAULT, // rate=10_000 bps → 1% of 10_000_000 = 100_000
+		EvidenceHash:  "evidhash8",
+	})
+	if err != nil {
+		t.Fatalf("submission failed: %v", err)
+	}
+
+	k.EndBlocker(ctx)
+
+	// slashInt=100_000, burn=0, afterBurn=100_000
+	// reward = 100_000 * 100_000/1_000_000 = 10_000
+	// devFund = 100_000 - 10_000 = 90_000
+	expectedReward := int64(10_000)
+	expectedDevFund := int64(90_000)
+
+	rewardAmt := bk.accountSent.AmountOf("uzrn").Int64()
+	devFundAmt := bk.moduleSent.AmountOf("uzrn").Int64()
+
+	if rewardAmt != expectedReward {
+		t.Errorf("evidence reward: got %d, want %d", rewardAmt, expectedReward)
+	}
+	if devFundAmt != expectedDevFund {
+		t.Errorf("dev fund: got %d, want %d", devFundAmt, expectedDevFund)
+	}
+	if len(bk.burnedCoins) != 0 {
+		t.Errorf("expected no burn, got %v", bk.burnedCoins)
+	}
+}
+
+// TestProcessSlashEvidenceQueue_ThreeWayRouting verifies the three-way split:
+// burn fraction, evidence reward from after-burn, remainder to dev fund.
+func TestProcessSlashEvidenceQueue_ThreeWayRouting(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+	ms := keeper.NewMsgServerImpl(k)
+
+	valAddr := testAddr("se_val9")
+	submitter := testAddr("se_sub9")
+	registerTestValidator(t, k, ctx, valAddr, "", "10000000")
+
+	params := k.GetParams(ctx)
+	params.SlashEscalationBps = 0
+	// DOUBLE_VOTE rate = 200_000 bps (20%) of 10_000_000 = 2_000_000 slashed
+	params.SlashBurnFractionBps = 200_000 // 20% burn first
+	params.EvidenceRewardBps = 100_000   // 10% of after-burn
+	k.SetParams(ctx, params)
+
+	_, err := ms.SubmitSlashEvidence(ctx, &types.MsgSubmitSlashEvidence{
+		Submitter:     submitter,
+		ValidatorAddr: valAddr,
+		SlashType:     types.SlashType_SLASH_TYPE_DOUBLE_VOTE,
+		EvidenceHash:  "evidhash9",
+	})
+	if err != nil {
+		t.Fatalf("submission failed: %v", err)
+	}
+
+	k.EndBlocker(ctx)
+
+	// slashInt  = 2_000_000
+	// burnAmt   = 2_000_000 * 200_000 / 1_000_000 = 400_000
+	// afterBurn = 2_000_000 - 400_000 = 1_600_000
+	// reward    = 1_600_000 * 100_000 / 1_000_000 = 160_000
+	// devFund   = 1_600_000 - 160_000 = 1_440_000
+	expectedBurn := int64(400_000)
+	expectedReward := int64(160_000)
+	expectedDevFund := int64(1_440_000)
+
+	burnAmt := bk.burnedCoins.AmountOf("uzrn").Int64()
+	rewardAmt := bk.accountSent.AmountOf("uzrn").Int64()
+	devFundAmt := bk.moduleSent.AmountOf("uzrn").Int64()
+
+	if burnAmt != expectedBurn {
+		t.Errorf("burn: got %d, want %d", burnAmt, expectedBurn)
+	}
+	if rewardAmt != expectedReward {
+		t.Errorf("reward: got %d, want %d", rewardAmt, expectedReward)
+	}
+	if devFundAmt != expectedDevFund {
+		t.Errorf("dev fund: got %d, want %d", devFundAmt, expectedDevFund)
+	}
+}
+
+// TestProcessSlashEvidenceQueue_DisabledReward verifies that with
+// EvidenceRewardBps=0, no coins are sent to the submitter account.
+func TestProcessSlashEvidenceQueue_DisabledReward(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+	ms := keeper.NewMsgServerImpl(k)
+
+	valAddr := testAddr("se_val10")
+	registerTestValidator(t, k, ctx, valAddr, "", "10000000")
+
+	params := k.GetParams(ctx)
+	params.SlashEscalationBps = 0
+	params.EvidenceRewardBps = 0
+	params.SlashBurnFractionBps = 0
+	k.SetParams(ctx, params)
+
+	_, err := ms.SubmitSlashEvidence(ctx, &types.MsgSubmitSlashEvidence{
+		Submitter:     testAddr("se_sub10"),
+		ValidatorAddr: valAddr,
+		SlashType:     types.SlashType_SLASH_TYPE_LIVENESS_FAULT,
+		EvidenceHash:  "evidhash10",
+	})
+	if err != nil {
+		t.Fatalf("submission failed: %v", err)
+	}
+
+	k.EndBlocker(ctx)
+
+	if bk.accountSent.AmountOf("uzrn").Int64() != 0 {
+		t.Errorf("expected no account send when EvidenceRewardBps=0, got %v", bk.accountSent)
+	}
+	if bk.moduleSent.IsZero() {
+		t.Error("expected module routing (dev fund) when reward=0")
 	}
 }

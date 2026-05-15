@@ -791,6 +791,251 @@ func (k Keeper) SlashValidatorByType(ctx sdk.Context, validatorAddr string, slas
 	k.SlashValidator(ctx, validatorAddr, amount, types.SlashTypeString(slashType))
 }
 
+
+// ---------- Slash Evidence Queue ----------
+
+// SetSlashEvidence stores a slash evidence item in the queue.
+func (k Keeper) SetSlashEvidence(ctx sdk.Context, evidence *types.SlashEvidence) {
+	store := k.getStore(ctx)
+	bz, err := json.Marshal(evidence)
+	if err != nil {
+		panic(fmt.Sprintf("failed to marshal slash evidence: %v", err))
+	}
+	store.Set(types.SlashEvidenceKey(evidence.Id), bz)
+}
+
+// GetSlashEvidence retrieves a slash evidence item by ID.
+func (k Keeper) GetSlashEvidence(ctx sdk.Context, id string) (*types.SlashEvidence, bool) {
+	store := k.getStore(ctx)
+	bz := store.Get(types.SlashEvidenceKey(id))
+	if bz == nil {
+		return nil, false
+	}
+	var ev types.SlashEvidence
+	if err := json.Unmarshal(bz, &ev); err != nil {
+		return nil, false
+	}
+	return &ev, true
+}
+
+// DeleteSlashEvidence removes a slash evidence item from the queue.
+func (k Keeper) DeleteSlashEvidence(ctx sdk.Context, id string) {
+	store := k.getStore(ctx)
+	store.Delete(types.SlashEvidenceKey(id))
+}
+
+// GetPendingSlashEvidence returns all unprocessed slash evidence items.
+func (k Keeper) GetPendingSlashEvidence(ctx sdk.Context) []*types.SlashEvidence {
+	store := k.getStore(ctx)
+	iter := storetypes.KVStorePrefixIterator(store, types.SlashEvidenceQueuePrefix)
+	defer iter.Close()
+
+	var items []*types.SlashEvidence
+	for ; iter.Valid(); iter.Next() {
+		var ev types.SlashEvidence
+		if err := json.Unmarshal(iter.Value(), &ev); err != nil {
+			continue
+		}
+		if !ev.Processed {
+			items = append(items, &ev)
+		}
+	}
+	return items
+}
+
+// SlashValidatorWithReward slashes a validator and routes evidence_reward_bps
+// fraction of the slashed amount to the evidence submitter.
+// Returns the actual amount slashed.
+func (k Keeper) SlashValidatorWithReward(ctx sdk.Context, validatorAddr string, amount *big.Int, submitterAddr sdk.AccAddress, evidenceRewardBps uint64, reason string) *big.Int {
+	val, found := k.GetValidator(ctx, validatorAddr)
+	if !found {
+		return new(big.Int)
+	}
+	params := k.GetParams(ctx)
+
+	// per-epoch slash cap
+	if params.MaxSlashesPerEpoch > 0 && val.SlashesThisEpoch >= params.MaxSlashesPerEpoch {
+		return new(big.Int)
+	}
+
+	// Progressive escalation
+	escalationFactor := new(big.Int).SetUint64(types.BPSScale + val.SlashCount*params.SlashEscalationBps)
+	adjustedAmount := new(big.Int).Mul(amount, escalationFactor)
+	adjustedAmount.Div(adjustedAmount, new(big.Int).SetUint64(types.BPSScale))
+
+	// Autopoiesis SSI multiplier
+	if k.autopoiesisKeeper != nil {
+		multiplier := k.autopoiesisKeeper.GetMultiplier(ctx, "ssi")
+		if multiplier != 0 && multiplier != types.BPSScale {
+			adjustedAmount.Mul(adjustedAmount, new(big.Int).SetUint64(multiplier))
+			adjustedAmount.Div(adjustedAmount, new(big.Int).SetUint64(types.BPSScale))
+		}
+	}
+
+	// Slash from own stake first, delegated absorbs overflow
+	selfStake, _ := new(big.Int).SetString(val.SelfDelegation, 10)
+	if selfStake == nil {
+		selfStake = new(big.Int)
+	}
+	slashInt := new(big.Int).Set(adjustedAmount)
+	if slashInt.Cmp(selfStake) > 0 {
+		slashInt.Set(selfStake)
+		overflow := new(big.Int).Sub(adjustedAmount, selfStake)
+		delegated, _ := new(big.Int).SetString(val.DelegatedStake, 10)
+		if delegated == nil {
+			delegated = new(big.Int)
+		}
+		if overflow.Cmp(delegated) > 0 {
+			overflow.Set(delegated)
+		}
+		delegated.Sub(delegated, overflow)
+		val.DelegatedStake = delegated.String()
+		slashInt.Add(slashInt, overflow)
+	}
+
+	if slashInt.Sign() > 0 {
+		scale := new(big.Int).SetUint64(types.BPSScale)
+
+		// Burn fraction
+		burnAmt := new(big.Int)
+		if params.SlashBurnFractionBps > 0 {
+			burnAmt.Mul(slashInt, new(big.Int).SetUint64(params.SlashBurnFractionBps))
+			burnAmt.Div(burnAmt, scale)
+		}
+
+		// Evidence reward (from remaining after burn)
+		afterBurn := new(big.Int).Sub(slashInt, burnAmt)
+		rewardAmt := new(big.Int)
+		if evidenceRewardBps > 0 && afterBurn.Sign() > 0 {
+			rewardAmt.Mul(afterBurn, new(big.Int).SetUint64(evidenceRewardBps))
+			rewardAmt.Div(rewardAmt, scale)
+		}
+
+		// Remainder to development fund
+		restAmt := new(big.Int).Sub(afterBurn, rewardAmt)
+
+		if burnAmt.Sign() > 0 {
+			burnCoins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(burnAmt)))
+			if err := k.bankKeeper.BurnCoins(ctx, types.ModuleName, burnCoins); err != nil {
+				return new(big.Int)
+			}
+		}
+		if rewardAmt.Sign() > 0 {
+			rewardCoins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(rewardAmt)))
+			if err := k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, submitterAddr, rewardCoins); err != nil {
+				k.logger.Error("failed to send evidence reward", "submitter", submitterAddr.String(), "error", err)
+				// Continue — don't abort the slash on reward failure
+			}
+		}
+		if restAmt.Sign() > 0 {
+			restCoins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(restAmt)))
+			if err := k.bankKeeper.SendCoinsFromModuleToModule(ctx, types.ModuleName, "development_fund", restCoins); err != nil {
+				return new(big.Int)
+			}
+		}
+	}
+
+	if slashInt.Sign() > 0 {
+		val.SlashCount++
+		val.SlashesThisEpoch++
+		val.LastSlashHeight = uint64(ctx.BlockHeight())
+	}
+
+	// Update stake
+	selfStakeNew, _ := new(big.Int).SetString(val.SelfDelegation, 10)
+	if selfStakeNew == nil {
+		selfStakeNew = new(big.Int)
+	}
+	selfStakeNew.Sub(selfStakeNew, slashInt)
+	if selfStakeNew.Sign() < 0 {
+		selfStakeNew.SetInt64(0)
+	}
+	val.SelfDelegation = selfStakeNew.String()
+
+	delegated, _ := new(big.Int).SetString(val.DelegatedStake, 10)
+	if delegated == nil {
+		delegated = new(big.Int)
+	}
+	total := new(big.Int).Add(selfStakeNew, delegated)
+	val.TotalStake = total.String()
+
+	if val.ReputationScore >= params.ReputationSlashDelta {
+		val.ReputationScore -= params.ReputationSlashDelta
+	} else {
+		val.ReputationScore = 0
+	}
+	if params.MaxSlashCountDeactivate > 0 && val.SlashCount >= params.MaxSlashCountDeactivate {
+		val.IsActive = false
+	}
+	newTier, changed := k.CheckTierTransition(ctx, val)
+	if changed {
+		val.Tier = newTier
+	}
+	k.SetValidator(ctx, val)
+
+	return slashInt
+}
+
+// ProcessSlashEvidenceQueue processes all pending slash evidence at end-block.
+// For each valid item: slashes the validator and rewards the submitter.
+func (k Keeper) ProcessSlashEvidenceQueue(ctx sdk.Context) {
+	pending := k.GetPendingSlashEvidence(ctx)
+	if len(pending) == 0 {
+		return
+	}
+
+	params := k.GetParams(ctx)
+
+	for _, ev := range pending {
+		// Validate: validator must exist
+		val, found := k.GetValidator(ctx, ev.ValidatorAddr)
+		if !found {
+			k.DeleteSlashEvidence(ctx, ev.Id)
+			continue
+		}
+
+		// Slash type must have a configured rate
+		rateBps := types.GetSlashRate(params, ev.SlashType)
+		if rateBps == 0 {
+			k.DeleteSlashEvidence(ctx, ev.Id)
+			continue
+		}
+
+		// Compute slash amount: totalStake × rateBps / BPSScale
+		totalStake, ok := new(big.Int).SetString(val.TotalStake, 10)
+		if !ok || totalStake.Sign() <= 0 {
+			k.DeleteSlashEvidence(ctx, ev.Id)
+			continue
+		}
+		amount := new(big.Int).Mul(totalStake, new(big.Int).SetUint64(rateBps))
+		amount.Div(amount, new(big.Int).SetUint64(types.BPSScale))
+		if amount.Sign() <= 0 {
+			k.DeleteSlashEvidence(ctx, ev.Id)
+			continue
+		}
+
+		submitterAddr, err := sdk.AccAddressFromBech32(ev.Submitter)
+		if err != nil {
+			k.DeleteSlashEvidence(ctx, ev.Id)
+			continue
+		}
+
+		slashed := k.SlashValidatorWithReward(ctx, ev.ValidatorAddr, amount, submitterAddr, params.EvidenceRewardBps, types.SlashTypeString(ev.SlashType))
+
+		ctx.EventManager().EmitEvent(sdk.NewEvent(
+			"zerone.staking.slash_evidence_processed",
+			sdk.NewAttribute("evidence_id", ev.Id),
+			sdk.NewAttribute("submitter", ev.Submitter),
+			sdk.NewAttribute("validator", ev.ValidatorAddr),
+			sdk.NewAttribute("slash_type", types.SlashTypeString(ev.SlashType)),
+			sdk.NewAttribute("slashed", slashed.String()),
+			sdk.NewAttribute("evidence_hash", ev.EvidenceHash),
+		))
+
+		k.DeleteSlashEvidence(ctx, ev.Id)
+	}
+}
+
 // ---------- Genesis ----------
 
 // InitGenesis initializes the module state from genesis.
@@ -895,8 +1140,11 @@ func (k Keeper) BeginBlocker(ctx sdk.Context) {
 	}
 }
 
-// EndBlocker runs at the end of each block: tier advancement checks.
+// EndBlocker runs at the end of each block: tier advancement checks + slash evidence queue.
 func (k Keeper) EndBlocker(ctx sdk.Context) {
+	// Process any pending slash evidence submitted this block.
+	k.ProcessSlashEvidenceQueue(ctx)
+
 	k.IterateValidators(ctx, func(val *types.Validator) bool {
 		newTier, changed := k.CheckTierTransition(ctx, val)
 		if changed {
