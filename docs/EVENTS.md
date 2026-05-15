@@ -662,6 +662,42 @@ Dispute settled.
 Governance parameter update.
 - `authority` -- governance address
 
+### zerone.disputes.service_escrow_created
+*Tx.* Payer locked funds into a time-locked service escrow.
+- `escrow_id` -- unique escrow identifier
+- `payer` -- address that deposited funds
+- `provider` -- address expected to deliver the service
+- `amount` -- locked amount (in uzrn)
+- `deadline` -- block height by which provider must submit proof
+- `terms_hash` -- caller-provided hash of off-chain service terms
+
+### zerone.disputes.service_escrow_completed
+*Tx.* Provider submitted proof of delivery; funds enter the dispute window.
+- `escrow_id` -- escrow identifier
+- `provider` -- provider address that submitted proof
+- `proof_hash` -- hash of the off-chain proof artefact
+- `dispute_window_closes` -- block height after which funds auto-release to provider
+
+### zerone.disputes.service_escrow_disputed
+*Tx.* Payer opened a dispute during the dispute window; funds frozen for arbiter resolution.
+- `escrow_id` -- escrow identifier
+- `payer` -- address that raised the dispute
+- `provider` -- provider address named in the dispute
+- `amount` -- disputed amount (in uzrn)
+- `reason` -- caller-provided dispute reason string
+
+### zerone.disputes.service_escrow_refunded
+*EndBlock.* PENDING escrow expired past its deadline; funds returned to payer.
+- `escrow_id` -- escrow identifier
+- `payer` -- address that received the refund
+- `amount` -- refunded amount (in uzrn)
+
+### zerone.disputes.service_escrow_released
+*EndBlock.* COMPLETED escrow survived the dispute window; funds released to provider.
+- `escrow_id` -- escrow identifier
+- `provider` -- address that received the funds
+- `amount` -- released amount (in uzrn)
+
 
 ## emergency
 

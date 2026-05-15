@@ -2,6 +2,9 @@ package keeper
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 
@@ -519,6 +522,59 @@ func (ms *msgServer) UpdateValidatorStake(goCtx context.Context, msg *types.MsgU
 	)
 
 	return &types.MsgUpdateValidatorStakeResponse{}, nil
+}
+
+// SubmitSlashEvidence queues on-chain evidence of validator misbehavior.
+// The evidence is processed at EndBlock; if valid, the validator is slashed
+// and the submitter receives evidence_reward_bps fraction of the slashed amount.
+func (ms *msgServer) SubmitSlashEvidence(goCtx context.Context, msg *types.MsgSubmitSlashEvidence) (*types.MsgSubmitSlashEvidenceResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+
+	// Validator must exist
+	if _, found := ms.GetValidator(ctx, msg.ValidatorAddr); !found {
+		return nil, fmt.Errorf("%w: %s", types.ErrValidatorNotFound, msg.ValidatorAddr)
+	}
+
+	// Slash type must have a configured rate (otherwise this will be a no-op at end-block)
+	params := ms.GetParams(ctx)
+	if types.GetSlashRate(params, msg.SlashType) == 0 {
+		return nil, fmt.Errorf("%w: no configured rate for slash type %s", types.ErrValidatorNotSlashable, msg.SlashType.String())
+	}
+
+	// Generate deterministic evidence ID from submitter + validator + block height
+	currentBlock := uint64(ctx.BlockHeight())
+	heightBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(heightBytes, currentBlock)
+	h := sha256.Sum256(append(append([]byte(msg.Submitter), []byte(msg.ValidatorAddr)...), heightBytes...))
+	evidenceID := hex.EncodeToString(h[:16])
+
+	// Idempotency: reject duplicate evidence from same submitter for same validator same block
+	if _, exists := ms.GetSlashEvidence(ctx, evidenceID); exists {
+		return nil, fmt.Errorf("%w: evidence_id %s", types.ErrEvidenceAlreadySubmitted, evidenceID)
+	}
+
+	evidence := &types.SlashEvidence{
+		Id:           evidenceID,
+		Submitter:    msg.Submitter,
+		ValidatorAddr: msg.ValidatorAddr,
+		SlashType:    msg.SlashType,
+		EvidenceHash: msg.EvidenceHash,
+		WitnessData:  msg.WitnessData,
+		SubmittedAt:  currentBlock,
+		Processed:    false,
+	}
+	ms.SetSlashEvidence(ctx, evidence)
+
+	ctx.EventManager().EmitEvent(sdk.NewEvent(
+		"zerone.staking.slash_evidence_submitted",
+		sdk.NewAttribute("evidence_id", evidenceID),
+		sdk.NewAttribute("submitter", msg.Submitter),
+		sdk.NewAttribute("validator", msg.ValidatorAddr),
+		sdk.NewAttribute("slash_type", msg.SlashType.String()),
+		sdk.NewAttribute("evidence_hash", msg.EvidenceHash),
+	))
+
+	return &types.MsgSubmitSlashEvidenceResponse{EvidenceId: evidenceID}, nil
 }
 
 // UpdateParams updates module parameters (governance-gated).
