@@ -358,6 +358,13 @@ func DefaultParams() Params {
 		// submitter may earmark as a priority tip for early committers. Default 0 =
 		// feature disabled entirely; governance enables by setting a non-zero cap.
 		MaxPriorityTipBps: 0, // disabled — governance must explicitly enable
+
+		// Verifier independence gate (P-10a): gate disabled by default.
+		// Governance enables once validators have sufficient vote history.
+		// MinVerifierIndependenceRounds = 10 so new validators are never excluded
+		// before they have history to judge.
+		MinVerifierIndependenceBps:    0,  // disabled by default
+		MinVerifierIndependenceRounds: 10, // minimum rounds before gate applies
 	}
 }
 
@@ -832,6 +839,19 @@ func (p *Params) Validate() error {
 	// would leave the base reward pathologically small for non-early committers.
 	if p.MaxPriorityTipBps > 500_000 {
 		return fmt.Errorf("max_priority_tip_bps must be ≤ 500,000 (50%% of verifier pool)")
+	}
+
+	// ─── Verifier independence gate (P-10a) ──────────────────────────────────
+	// min_verifier_independence_bps: 0 = disabled; max meaningful value 1,000,000
+	// (100% dissent — impossible in practice, but structurally valid).
+	// min_verifier_independence_rounds must be ≥ 1 when the gate is enabled —
+	// a rounds threshold of 0 would apply the gate to brand-new validators with
+	// no history, excluding them instantly.
+	if p.MinVerifierIndependenceBps > 1_000_000 {
+		return fmt.Errorf("min_verifier_independence_bps must be ≤ 1,000,000")
+	}
+	if p.MinVerifierIndependenceBps > 0 && p.MinVerifierIndependenceRounds == 0 {
+		return fmt.Errorf("min_verifier_independence_rounds must be ≥ 1 when min_verifier_independence_bps is set")
 	}
 
 	return nil

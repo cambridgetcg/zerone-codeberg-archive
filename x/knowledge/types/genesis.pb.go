@@ -347,8 +347,25 @@ type Params struct {
 	// Governance can set to e.g. 100_000 (10%) to allow speed-premium bids
 	// up to 10% of the verifier pool.
 	MaxPriorityTipBps uint64 `protobuf:"varint,167,opt,name=max_priority_tip_bps,json=maxPriorityTipBps,proto3" json:"max_priority_tip_bps,omitempty"` // default: 0 (disabled)
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Verifier independence pre-check gate (P-10a).
+	//
+	// min_verifier_independence_bps: minimum dissent fraction required before a
+	// validator may join a verification panel. Measured as
+	//
+	//	(minority_votes / total_votes) × 1_000_000.
+	//
+	// A validator who always agrees with the majority scores 0; one who dissents
+	// 10% of the time scores 100_000. Default 0 = gate disabled (all validators
+	// eligible regardless of independence score). Enable via governance once
+	// validators have sufficient vote history. Recommended value: 50_000 (5%).
+	//
+	// min_verifier_independence_rounds: minimum completed rounds a validator must
+	// have before the independence gate applies. Protects new validators from
+	// being excluded before they have vote history. Default 10.
+	MinVerifierIndependenceBps    uint64 `protobuf:"varint,168,opt,name=min_verifier_independence_bps,json=minVerifierIndependenceBps,proto3" json:"min_verifier_independence_bps,omitempty"`          // default: 0 (disabled)
+	MinVerifierIndependenceRounds uint64 `protobuf:"varint,169,opt,name=min_verifier_independence_rounds,json=minVerifierIndependenceRounds,proto3" json:"min_verifier_independence_rounds,omitempty"` // default: 10
+	unknownFields                 protoimpl.UnknownFields
+	sizeCache                     protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -1550,6 +1567,20 @@ func (x *Params) GetMaxPriorityTipBps() uint64 {
 	return 0
 }
 
+func (x *Params) GetMinVerifierIndependenceBps() uint64 {
+	if x != nil {
+		return x.MinVerifierIndependenceBps
+	}
+	return 0
+}
+
+func (x *Params) GetMinVerifierIndependenceRounds() uint64 {
+	if x != nil {
+		return x.MinVerifierIndependenceRounds
+	}
+	return 0
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -1787,7 +1818,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xbbR\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xc9S\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -1956,7 +1987,9 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\x15protocol_treasury_bps\x18\xa4\x01 \x01(\x04R\x13protocolTreasuryBps\x121\n" +
 	"\x14development_fund_bps\x18\xa5\x01 \x01(\x04R\x12developmentFundBps\x12\x1a\n" +
 	"\bburn_bps\x18\xa6\x01 \x01(\x04R\aburnBps\x120\n" +
-	"\x14max_priority_tip_bps\x18\xa7\x01 \x01(\x04R\x11maxPriorityTipBps\x1aN\n" +
+	"\x14max_priority_tip_bps\x18\xa7\x01 \x01(\x04R\x11maxPriorityTipBps\x12B\n" +
+	"\x1dmin_verifier_independence_bps\x18\xa8\x01 \x01(\x04R\x1aminVerifierIndependenceBps\x12H\n" +
+	" min_verifier_independence_rounds\x18\xa9\x01 \x01(\x04R\x1dminVerifierIndependenceRounds\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xe5\x0e\n" +

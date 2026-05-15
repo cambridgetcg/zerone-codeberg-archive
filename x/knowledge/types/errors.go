@@ -83,4 +83,7 @@ var (
 
 	// ─── Priority tip validation (82) ────────────────────────────────────
 	ErrPriorityTipExceedsMax = errors.Register(ModuleName, 82, "priority_tip_bps exceeds governance maximum")
+
+	// ─── Verifier independence gate (83) — P-10a ─────────────────────────
+	ErrLowVerifierIndependence = errors.Register(ModuleName, 83, "verifier independence score below governance minimum")
 )

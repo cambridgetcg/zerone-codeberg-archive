@@ -258,6 +258,43 @@ func (k Keeper) GetValidatorIndependence(ctx context.Context, validator string) 
 	return rec, true, nil
 }
 
+// CountValidatorsWithSufficientIndependence returns the number of validators
+// whose independence score meets or exceeds minIndependenceBps and who have
+// at least minRounds completed verification rounds. Used by the verifier
+// independence gate (P-10a) to determine whether the fallback should apply.
+//
+// Score = (MinorityVotes / TotalVotes) × 1_000_000.
+// A validator who always votes with the majority scores 0.
+func (k Keeper) CountValidatorsWithSufficientIndependence(
+	ctx context.Context,
+	minIndependenceBps uint64,
+	minRounds uint64,
+) int {
+	store := k.storeService.OpenKVStore(ctx)
+	pfx := types.ValidatorIndependencePrefix
+	iter, err := store.Iterator(pfx, prefixEndBytes(pfx))
+	if err != nil {
+		return 0
+	}
+	defer iter.Close()
+
+	count := 0
+	for ; iter.Valid(); iter.Next() {
+		var rec ValidatorIndependenceRecord
+		if err := json.Unmarshal(iter.Value(), &rec); err != nil {
+			continue
+		}
+		if rec.TotalVotes < minRounds {
+			continue // not enough history
+		}
+		score := rec.MinorityVotes * 1_000_000 / rec.TotalVotes
+		if score >= minIndependenceBps {
+			count++
+		}
+	}
+	return count
+}
+
 // ─── CRUD: ConformityStreak ──────────────────────────────────────────────────
 
 func (k Keeper) SetConformityStreak(ctx context.Context, domain string, rec ConformityStreakRecord) error {

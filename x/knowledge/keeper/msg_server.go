@@ -346,6 +346,38 @@ func (m *msgServer) SubmitCommitment(ctx context.Context, msg *types.MsgSubmitCo
 		}
 	}
 
+	// Verifier independence gate (P-10a): block validators who consistently
+	// agree with the majority if governance has enabled a minimum independence
+	// score. Fallback applies if not enough independent validators exist to
+	// form a panel — same design as the domain qualification fallback above.
+	if params2, err2 := m.keeper.GetParams(ctx); err2 == nil && params2.MinVerifierIndependenceBps > 0 {
+		rec, found, _ := m.keeper.GetValidatorIndependence(ctx, msg.Verifier)
+		if found && rec.TotalVotes >= params2.MinVerifierIndependenceRounds {
+			score := uint64(0)
+			if rec.TotalVotes > 0 {
+				score = rec.MinorityVotes * 1_000_000 / rec.TotalVotes
+			}
+			if score < params2.MinVerifierIndependenceBps {
+				// Check fallback: count validators with sufficient independence.
+				independentCount := m.keeper.CountValidatorsWithSufficientIndependence(
+					ctx, params2.MinVerifierIndependenceBps, params2.MinVerifierIndependenceRounds)
+				if uint64(independentCount) >= params2.MinVerifiers {
+					// Enough independent validators exist — enforce the gate.
+					return nil, types.ErrLowVerifierIndependence.Wrapf(
+						"validator %s has independence score %d bps (minimum: %d bps, total_votes: %d)",
+						msg.Verifier, score, params2.MinVerifierIndependenceBps, rec.TotalVotes)
+				}
+				// Insufficient independent validators — allow through with warning.
+				m.keeper.Logger(ctx).Warn("allowing low-independence verifier due to insufficient independent validators",
+					"verifier", msg.Verifier,
+					"score_bps", score,
+					"required_bps", params2.MinVerifierIndependenceBps,
+					"independent_count", independentCount,
+					"min_verifiers", params2.MinVerifiers)
+			}
+		}
+	}
+
 	// Delegate storage to the unified helper so the tx path and the vote-extension
 	// path share equivocation detection and SelectedVerifiers tracking.
 	if err := m.keeper.StoreCommitmentInRound(ctx, msg.RoundId, &types.CommitEntry{

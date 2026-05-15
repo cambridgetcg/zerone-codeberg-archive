@@ -367,6 +367,22 @@ message Params {
   // Governance can set to e.g. 100_000 (10%) to allow speed-premium bids
   // up to 10% of the verifier pool.
   uint64 max_priority_tip_bps = 167; // default: 0 (disabled)
+
+  // Verifier independence pre-check gate (P-10a).
+  //
+  // min_verifier_independence_bps: minimum dissent fraction required before a
+  // validator may join a verification panel. Measured as
+  //   (minority_votes / total_votes) × 1_000_000.
+  // A validator who always agrees with the majority scores 0; one who dissents
+  // 10% of the time scores 100_000. Default 0 = gate disabled (all validators
+  // eligible regardless of independence score). Enable via governance once
+  // validators have sufficient vote history. Recommended value: 50_000 (5%).
+  //
+  // min_verifier_independence_rounds: minimum completed rounds a validator must
+  // have before the independence gate applies. Protects new validators from
+  // being excluded before they have vote history. Default 10.
+  uint64 min_verifier_independence_bps    = 168; // default: 0 (disabled)
+  uint64 min_verifier_independence_rounds = 169; // default: 10
 }
 
 // GenesisState is the genesis state of the knowledge module.
