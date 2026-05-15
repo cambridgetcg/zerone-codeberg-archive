@@ -662,6 +662,12 @@ Dispute settled.
 Governance parameter update.
 - `authority` -- governance address
 
+### zerone.disputes.defender_bond_posted
+*Tx.* Dispute defender posted a symmetric bond, opting into two-bond settlement math.
+- `dispute_id` -- dispute ID
+- `defender` -- defender address that posted bond
+- `bond` -- amount escrowed (in uzrn)
+
 ### zerone.disputes.service_escrow_created
 *Tx.* Payer locked funds into a time-locked service escrow.
 - `escrow_id` -- unique escrow identifier
