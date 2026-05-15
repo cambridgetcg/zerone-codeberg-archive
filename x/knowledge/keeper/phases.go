@@ -185,10 +185,38 @@ func (k Keeper) AdvanceRoundPhases(ctx context.Context) error {
 					claim.Status = types.ClaimStatus_CLAIM_STATUS_INSUFFICIENT
 					_ = k.SetClaim(ctx, claim)
 				}
+
+				// P-24b: Decrement the active-rounds counter.
+				// CompleteRound normally does this; the insufficient-reveals path
+				// bypasses CompleteRound, so the counter must be decremented here.
+				// Without this, every abandoned round permanently inflates
+				// ActiveRoundsCount, mis-signalling congestion and triggering
+				// premature fee backpressure across the entire knowledge market.
+				k.DecrementActiveRoundsCount(ctx)
+
+				// Slash committed-but-not-revealed verifiers for MissedRevealSlashBps.
+				// They made a commitment (creating an obligation to reveal) but the
+				// round failed to gather enough reveals. The same penalty applies here
+				// as in the normal aggregation path — abandoning a commitment degrades
+				// the verifier pool's reliability regardless of whether the round
+				// ultimately reaches quorum.
+				if k.stakingKeeper != nil && params.MissedRevealSlashBps > 0 && len(round.Commits) > 0 {
+					revealSet := make(map[string]struct{}, len(round.Reveals))
+					for _, rev := range round.Reveals {
+						revealSet[rev.Verifier] = struct{}{}
+					}
+					for _, commit := range round.Commits {
+						if _, revealed := revealSet[commit.Verifier]; !revealed {
+							_ = k.stakingKeeper.SlashValidator(ctx, commit.Verifier, params.MissedRevealSlashBps)
+						}
+					}
+				}
+
 				sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
 					"zerone.knowledge.round_expired",
 					sdk.NewAttribute("round_id", round.Id),
 					sdk.NewAttribute("reveals", fmt.Sprintf("%d", len(round.Reveals))),
+					sdk.NewAttribute("commits", fmt.Sprintf("%d", len(round.Commits))),
 				))
 			}
 		}

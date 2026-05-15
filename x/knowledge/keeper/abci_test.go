@@ -958,3 +958,142 @@ func TestAdvanceRoundPhases_RevealToAggregation_Reject(t *testing.T) {
 	require.True(t, found)
 	require.Equal(t, types.ClaimStatus_CLAIM_STATUS_REJECTED, updatedClaim.Status)
 }
+
+// ── P-24b: Abandoned round finality ─────────────────────────────────────────
+//
+// Gap: rounds that expire with insufficient reveals bypassed CompleteRound,
+// so ActiveRoundsCount was never decremented and committed-but-not-revealed
+// verifiers escaped the MissedRevealSlashBps penalty. Both are now fixed in
+// phases.go (DecrementActiveRoundsCount + missed-reveal slash loop).
+
+// TestExpiredRound_DecrementsActiveRoundsCount verifies that an abandoned round
+// (expired with too few reveals to reach quorum) correctly decrements the
+// ActiveRoundsCount singleton. Before the P-24b fix, each abandoned round
+// inflated the counter permanently, corrupting the congestion-based fee market.
+func TestExpiredRound_DecrementsActiveRoundsCount(t *testing.T) {
+	k, ctx := setupKnowledgeKeeper(t)
+
+	// Seed counter at 3 (simulates 3 prior active rounds in flight).
+	k.SetActiveRoundsCount(ctx, 3)
+
+	// Create a claim to be abandoned.
+	claim := &types.Claim{
+		Id:          "claim-p24b-counter",
+		FactContent: "Abandoned round — no quorum, counter must drop",
+		Domain:      "general",
+		Category:    "empirical",
+		Submitter:   "zrn1submitter000000000000000000000",
+		Status:      types.ClaimStatus_CLAIM_STATUS_IN_VERIFICATION,
+		Stake:       "1000000",
+	}
+	require.NoError(t, k.SetClaim(ctx, claim))
+
+	// Create round: 1 reveal, MinVerifiers default = 3 → insufficient.
+	round := testRound("round-p24b-counter", "claim-p24b-counter", types.VerificationPhase_VERIFICATION_PHASE_COMMIT)
+	round.Reveals = []*types.RevealEntry{
+		{Verifier: "zrn1val1xxxxxxxxxxxxxxxxxxxxxxxxxxxx", Vote: "accept", Salt: []byte("s1"), RevealedAtBlock: 155},
+	}
+	require.NoError(t, k.SetVerificationRound(ctx, round))
+
+	// Advance to past AggregationDeadline.
+	ctx = ctx.WithBlockHeight(300)
+	require.NoError(t, k.AdvanceRoundPhases(ctx))
+
+	// Counter must have been decremented by exactly 1.
+	require.Equal(t, uint64(2), k.GetActiveRoundsCount(ctx),
+		"ActiveRoundsCount must drop by 1 when a round expires with insufficient reveals (P-24b)")
+
+	// Sanity: round is EXPIRED.
+	updated, found := k.GetVerificationRound(ctx, "round-p24b-counter")
+	require.True(t, found)
+	require.Equal(t, types.VerificationPhase_VERIFICATION_PHASE_EXPIRED, updated.Phase)
+}
+
+// TestExpiredRound_SlashesMissedRevealers verifies that verifiers who committed
+// to a round but never revealed are slashed at MissedRevealSlashBps when the
+// round expires with insufficient participation. Before P-24b, these verifiers
+// escaped the penalty entirely because the insufficient-reveals path bypassed
+// the normal aggregation / slash pipeline.
+func TestExpiredRound_SlashesMissedRevealers(t *testing.T) {
+	k, ctx, _, sk := setupKnowledgeTestFull(t)
+
+	// Enable missed-reveal penalty.
+	params, err := k.GetParams(ctx)
+	require.NoError(t, err)
+	params.MissedRevealSlashBps = 50_000 // 5%
+	require.NoError(t, k.SetParams(ctx, params))
+
+	// Create a claim.
+	claim := &types.Claim{
+		Id:          "claim-p24b-slash",
+		FactContent: "Abandoned round — committed verifiers must be slashed",
+		Domain:      "general",
+		Category:    "empirical",
+		Submitter:   "zrn1submitter000000000000000000000",
+		Status:      types.ClaimStatus_CLAIM_STATUS_IN_VERIFICATION,
+		Stake:       "1000000",
+	}
+	require.NoError(t, k.SetClaim(ctx, claim))
+
+	// Two verifiers commit; zero reveal. (MinVerifiers = 3 → insufficient.)
+	committer1 := "zrn1committer1xxxxxxxxxxxxxxxxxxxxxx"
+	committer2 := "zrn1committer2xxxxxxxxxxxxxxxxxxxxxx"
+
+	round := testRound("round-p24b-slash", "claim-p24b-slash", types.VerificationPhase_VERIFICATION_PHASE_COMMIT)
+	round.Commits = []*types.CommitEntry{
+		{Verifier: committer1, CommitHash: []byte("h1"), CommittedAtBlock: 110},
+		{Verifier: committer2, CommitHash: []byte("h2"), CommittedAtBlock: 115},
+	}
+	// No reveals.
+	require.NoError(t, k.SetVerificationRound(ctx, round))
+
+	// Advance past AggregationDeadline.
+	ctx = ctx.WithBlockHeight(300)
+	require.NoError(t, k.AdvanceRoundPhases(ctx))
+
+	// Both committers must have been slashed at MissedRevealSlashBps.
+	require.Len(t, sk.slashes, 2,
+		"both committers must be slashed for missed reveal (P-24b)")
+	slashMap := make(map[string]uint64)
+	for _, s := range sk.slashes {
+		slashMap[s.Validator] = s.SlashBps
+	}
+	require.Equal(t, uint64(50_000), slashMap[committer1],
+		"committer1 must be slashed at MissedRevealSlashBps")
+	require.Equal(t, uint64(50_000), slashMap[committer2],
+		"committer2 must be slashed at MissedRevealSlashBps")
+}
+
+// TestExpiredRound_NoSlash_WhenMissedRevealSlashBpsIsZero verifies that when
+// MissedRevealSlashBps = 0 (disabled), no slashes are issued on round expiry.
+func TestExpiredRound_NoSlash_WhenMissedRevealSlashBpsIsZero(t *testing.T) {
+	k, ctx, _, sk := setupKnowledgeTestFull(t)
+
+	// Explicitly disable missed-reveal penalty.
+	params, err := k.GetParams(ctx)
+	require.NoError(t, err)
+	params.MissedRevealSlashBps = 0
+	require.NoError(t, k.SetParams(ctx, params))
+
+	claim := &types.Claim{
+		Id:          "claim-p24b-noslash",
+		FactContent: "No slash when MissedRevealSlashBps is zero",
+		Domain:      "general",
+		Category:    "empirical",
+		Submitter:   "zrn1submitter000000000000000000000",
+		Status:      types.ClaimStatus_CLAIM_STATUS_IN_VERIFICATION,
+		Stake:       "1000000",
+	}
+	require.NoError(t, k.SetClaim(ctx, claim))
+
+	round := testRound("round-p24b-noslash", "claim-p24b-noslash", types.VerificationPhase_VERIFICATION_PHASE_COMMIT)
+	round.Commits = []*types.CommitEntry{
+		{Verifier: "zrn1committer1xxxxxxxxxxxxxxxxxxxxxx", CommitHash: []byte("h1"), CommittedAtBlock: 110},
+	}
+	require.NoError(t, k.SetVerificationRound(ctx, round))
+
+	ctx = ctx.WithBlockHeight(300)
+	require.NoError(t, k.AdvanceRoundPhases(ctx))
+
+	require.Empty(t, sk.slashes, "no slashes should be issued when MissedRevealSlashBps = 0")
+}
