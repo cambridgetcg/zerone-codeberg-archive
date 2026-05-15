@@ -18,10 +18,11 @@ import (
 
 // Keeper manages the liquiditypool module's state.
 type Keeper struct {
-	cdc          codec.Codec
-	storeService store.KVStoreService
-	bankKeeper   types.BankKeeper
-	authority    string
+	cdc              codec.Codec
+	storeService     store.KVStoreService
+	bankKeeper       types.BankKeeper
+	authority        string
+	emergencyKeeper  types.EmergencyKeeper // optional; nil until SetEmergencyKeeper called
 }
 
 // NewKeeper creates a new liquiditypool module Keeper.
@@ -37,6 +38,14 @@ func NewKeeper(
 		bankKeeper:   bk,
 		authority:    authority,
 	}
+}
+
+// SetEmergencyKeeper wires the optional emergency keeper for the oracle
+// staleness circuit breaker (P-21b). Call this from app.go after both keepers
+// are constructed. The liquiditypool keeper is nil-safe: if never called, the
+// circuit breaker simply does not receive oracle liveness signals.
+func (k *Keeper) SetEmergencyKeeper(ek types.EmergencyKeeper) {
+	k.emergencyKeeper = ek
 }
 
 func (k Keeper) Logger(ctx sdk.Context) log.Logger {

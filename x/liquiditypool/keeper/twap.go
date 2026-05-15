@@ -65,6 +65,13 @@ func (k Keeper) UpdateTWAPAccumulator(ctx sdk.Context, pool *types.Pool) {
 	acc.LastBlock = currentBlock
 
 	k.SetTWAPAccumulator(ctx, acc)
+
+	// Notify the emergency module that the oracle is alive (P-21b).
+	// Nil-safe: emergencyKeeper is optional and only set in production via
+	// liquiditypoolKeeper.SetEmergencyKeeper(&emergencyKeeper) in app.go.
+	if k.emergencyKeeper != nil {
+		k.emergencyKeeper.RecordOracleUpdate(ctx)
+	}
 }
 
 // GetTWAP computes the time-weighted average price over a window of blocks.

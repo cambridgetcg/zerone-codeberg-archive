@@ -139,6 +139,9 @@ func (am AppModule) BeginBlock(ctx context.Context) error {
 	// Auto-resume if halt exceeded max duration.
 	am.keeper.CheckHaltExpiry(ctx)
 
+	// Oracle staleness circuit breaker (P-21b): halt if no TWAP update for too long.
+	am.keeper.CheckOracleStaleness(ctx)
+
 	// Monitor revert status (ERROR log every block).
 	am.keeper.MonitorRevertStatus(ctx)
 

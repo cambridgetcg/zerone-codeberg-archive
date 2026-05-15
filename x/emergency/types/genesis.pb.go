@@ -123,8 +123,14 @@ type Params struct {
 	CouncilVirtualStake string   `protobuf:"bytes,22,opt,name=council_virtual_stake,json=councilVirtualStake,proto3" json:"council_virtual_stake,omitempty"` // uzrn bigint string
 	// Auto-resume: max halt duration before automatic resume.
 	MaxHaltDurationBlocks uint64 `protobuf:"varint,23,opt,name=max_halt_duration_blocks,json=maxHaltDurationBlocks,proto3" json:"max_halt_duration_blocks,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// Oracle staleness circuit breaker: halt if no TWAP update received for this
+	// many blocks. 0 = disabled (default). Enable via governance once the ZRN/USDC
+	// AMM pool is live and consistently updated. Recommended value once active:
+	// ~100 blocks (~4 minutes at 2.5s/block) — generous enough for routine network
+	// jitter, tight enough to catch genuine oracle failure.
+	CircuitOracleStalenessBlocks uint64 `protobuf:"varint,24,opt,name=circuit_oracle_staleness_blocks,json=circuitOracleStalenessBlocks,proto3" json:"circuit_oracle_staleness_blocks,omitempty"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -318,6 +324,13 @@ func (x *Params) GetMaxHaltDurationBlocks() uint64 {
 	return 0
 }
 
+func (x *Params) GetCircuitOracleStalenessBlocks() uint64 {
+	if x != nil {
+		return x.CircuitOracleStalenessBlocks
+	}
+	return 0
+}
+
 var File_zerone_emergency_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_emergency_v1_genesis_proto_rawDesc = "" +
@@ -329,7 +342,7 @@ const file_zerone_emergency_v1_genesis_proto_rawDesc = "" +
 	"\n" +
 	"ceremonies\x18\x03 \x03(\v2&.zerone.emergency.v1.EmergencyCeremonyR\n" +
 	"ceremonies\x12E\n" +
-	"\taudit_log\x18\x04 \x03(\v2(.zerone.emergency.v1.EmergencyAuditEntryR\bauditLog\"\xe9\b\n" +
+	"\taudit_log\x18\x04 \x03(\v2(.zerone.emergency.v1.EmergencyAuditEntryR\bauditLog\"\xb0\t\n" +
 	"\x06Params\x12\x1f\n" +
 	"\vhalt_quorum\x18\x01 \x01(\x04R\n" +
 	"haltQuorum\x12#\n" +
@@ -355,7 +368,8 @@ const file_zerone_emergency_v1_genesis_proto_rawDesc = "" +
 	"\x0fgenesis_council\x18\x14 \x03(\tR\x0egenesisCouncil\x120\n" +
 	"\x14council_expiry_block\x18\x15 \x01(\x04R\x12councilExpiryBlock\x122\n" +
 	"\x15council_virtual_stake\x18\x16 \x01(\tR\x13councilVirtualStake\x127\n" +
-	"\x18max_halt_duration_blocks\x18\x17 \x01(\x04R\x15maxHaltDurationBlocksB2Z0github.com/zerone-chain/zerone/x/emergency/typesb\x06proto3"
+	"\x18max_halt_duration_blocks\x18\x17 \x01(\x04R\x15maxHaltDurationBlocks\x12E\n" +
+	"\x1fcircuit_oracle_staleness_blocks\x18\x18 \x01(\x04R\x1ccircuitOracleStalenessBlocksB2Z0github.com/zerone-chain/zerone/x/emergency/typesb\x06proto3"
 
 var (
 	file_zerone_emergency_v1_genesis_proto_rawDescOnce sync.Once

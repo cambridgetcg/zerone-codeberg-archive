@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 
 	"cosmossdk.io/core/store"
@@ -178,4 +179,82 @@ func (k Keeper) ExportGenesis(ctx context.Context) *types.GenesisState {
 		Ceremonies: ceremonies,
 		AuditLog:   auditLog,
 	}
+}
+
+// --- Oracle staleness circuit breaker (P-21b) ---
+
+// RecordOracleUpdate is called by the liquiditypool module whenever a TWAP
+// accumulator is updated (BeginBlock, per active pool). It stamps the current
+// block height as the last known oracle liveness signal. The call is designed
+// to be idempotent within a block — multiple pools updating the same block is
+// fine; only the first write per block matters structurally, though subsequent
+// same-block writes are harmless overwrites.
+func (k Keeper) RecordOracleUpdate(ctx context.Context) {
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+	k.SetLastOracleUpdateBlock(ctx, uint64(sdkCtx.BlockHeight()))
+}
+
+// CheckOracleStaleness is called from the emergency module's BeginBlock. It
+// compares the current block height against the last recorded oracle update and
+// halts the chain automatically if the oracle has been silent for longer than
+// CircuitOracleStalenessBlocks.
+//
+// The check is a no-op when:
+//   - CircuitOracleStalenessBlocks == 0 (disabled, the default)
+//   - The chain is already halted (no point double-halting)
+//   - LastOracleUpdateBlock == 0 (oracle keeper not yet wired or chain just started)
+func (k Keeper) CheckOracleStaleness(ctx context.Context) {
+	params := k.GetParams(ctx)
+	if params.CircuitOracleStalenessBlocks == 0 {
+		return // disabled
+	}
+	if k.IsHalted(ctx) {
+		return // already halted; nothing to do
+	}
+
+	lastUpdate := k.GetLastOracleUpdateBlock(ctx)
+	if lastUpdate == 0 {
+		return // no oracle update ever recorded — oracle not yet wired; skip
+	}
+
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+	current := uint64(sdkCtx.BlockHeight())
+	if current <= lastUpdate {
+		return // same block or before — not stale
+	}
+
+	staleness := current - lastUpdate
+	if staleness <= params.CircuitOracleStalenessBlocks {
+		return // within tolerance
+	}
+
+	// Oracle is stale beyond the threshold — halt the chain.
+	k.autoHaltOracleStaleness(ctx, sdkCtx, staleness)
+}
+
+// autoHaltOracleStaleness halts the chain due to oracle staleness and records
+// an audit entry explaining why.
+func (k Keeper) autoHaltOracleStaleness(ctx context.Context, sdkCtx sdk.Context, staleBlocks uint64) {
+	k.SetEmergencyStatus(ctx, types.StatusHalted)
+
+	reason := fmt.Sprintf(
+		"automatic halt: oracle TWAP not updated for %d blocks (threshold: %d)",
+		staleBlocks, k.GetParams(ctx).CircuitOracleStalenessBlocks,
+	)
+	k.AddAuditEntry(ctx, &types.EmergencyAuditEntry{
+		BlockNumber: uint64(sdkCtx.BlockHeight()),
+		Action:      "circuit_breaker_oracle_staleness",
+		Details:     reason,
+	})
+
+	sdkCtx.EventManager().EmitEvent(
+		sdk.NewEvent(
+			"emergency_circuit_breaker",
+			sdk.NewAttribute("type", "oracle_staleness"),
+			sdk.NewAttribute("stale_blocks", fmt.Sprintf("%d", staleBlocks)),
+			sdk.NewAttribute("status", string(types.StatusHalted)),
+		),
+	)
+
+	k.Logger(ctx).Error(reason)
 }

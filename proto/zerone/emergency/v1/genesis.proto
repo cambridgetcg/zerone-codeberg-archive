@@ -51,4 +51,11 @@ message Params {
 
   // Auto-resume: max halt duration before automatic resume.
   uint64 max_halt_duration_blocks = 23;
+
+  // Oracle staleness circuit breaker: halt if no TWAP update received for this
+  // many blocks. 0 = disabled (default). Enable via governance once the ZRN/USDC
+  // AMM pool is live and consistently updated. Recommended value once active:
+  // ~100 blocks (~4 minutes at 2.5s/block) — generous enough for routine network
+  // jitter, tight enough to catch genuine oracle failure.
+  uint64 circuit_oracle_staleness_blocks = 24;
 }

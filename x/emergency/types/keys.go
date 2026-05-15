@@ -22,6 +22,11 @@ var (
 	RevertTargetHeightKey       = []byte{0x0A}
 	RevertTargetHashKey         = []byte{0x0B}
 	RevertCeremonyIdKey         = []byte{0x0C}
+
+	// LastOracleUpdateBlockKey stores the block height of the most recent TWAP
+	// update received from the liquiditypool module. Used by the oracle staleness
+	// circuit breaker (P-21b) to detect oracle failure.
+	LastOracleUpdateBlockKey = []byte{0x0D}
 )
 
 // CeremonyKey returns the store key for a ceremony by ID.

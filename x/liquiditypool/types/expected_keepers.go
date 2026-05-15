@@ -16,3 +16,12 @@ type BankKeeper interface {
 	BurnCoins(ctx context.Context, moduleName string, amt sdk.Coins) error
 	GetBalance(ctx context.Context, addr sdk.AccAddress, denom string) sdk.Coin
 }
+
+// EmergencyKeeper defines the optional emergency module interface used by the
+// liquiditypool module to report oracle liveness signals. The liquiditypool
+// keeper holds this as a pointer (nil by default) and only calls it when
+// non-nil, so the dependency is entirely optional — no circular import, no
+// forced wiring in tests that don't exercise the circuit breaker.
+type EmergencyKeeper interface {
+	RecordOracleUpdate(ctx context.Context)
+}

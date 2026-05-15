@@ -63,6 +63,11 @@ func DefaultParams() Params {
 		CouncilExpiryBlock:             0,
 		CouncilVirtualStake:            "11111000000", // 11,111 ZRN
 		MaxHaltDurationBlocks:          34272,         // ~1 day auto-resume — halts cannot DoS forever
+
+		// Oracle staleness circuit breaker: disabled by default (0).
+		// Enable via governance once the AMM price oracle is live and
+		// producing continuous TWAP updates. Recommended value: ~100 blocks.
+		CircuitOracleStalenessBlocks: 0,
 	}
 }
 

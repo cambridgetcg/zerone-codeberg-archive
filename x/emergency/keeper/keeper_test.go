@@ -2004,3 +2004,140 @@ func TestBeginBlockCeremonyTimeout(t *testing.T) {
 		t.Fatalf("expected normal after halt failure via BeginBlock, got %s", status)
 	}
 }
+
+// --- Oracle Staleness Circuit Breaker Tests (P-21b) ---
+
+func TestRecordOracleUpdate_StoresCurrentBlock(t *testing.T) {
+	k, _, ctx := setupKeeper(t)
+
+	// Initially no oracle update recorded.
+	if got := k.GetLastOracleUpdateBlock(ctx); got != 0 {
+		t.Fatalf("expected 0 before any update, got %d", got)
+	}
+
+	// Record at block 100 (setupKeeper default height).
+	k.RecordOracleUpdate(ctx)
+	if got := k.GetLastOracleUpdateBlock(ctx); got != 100 {
+		t.Fatalf("expected 100 after RecordOracleUpdate, got %d", got)
+	}
+
+	// Advance block and record again.
+	ctx = ctx.WithBlockHeight(250)
+	k.RecordOracleUpdate(ctx)
+	if got := k.GetLastOracleUpdateBlock(ctx); got != 250 {
+		t.Fatalf("expected 250 after second RecordOracleUpdate, got %d", got)
+	}
+}
+
+func TestCheckOracleStaleness_DisabledByDefault(t *testing.T) {
+	k, _, ctx := setupKeeper(t)
+
+	// Default params: CircuitOracleStalenessBlocks == 0 → disabled.
+	// Record nothing; advance far into the future.
+	ctx = ctx.WithBlockHeight(99999)
+
+	// Must not halt even with massive staleness when disabled.
+	k.CheckOracleStaleness(ctx)
+	if k.IsHalted(ctx) {
+		t.Fatal("chain should NOT halt when oracle staleness circuit breaker is disabled (blocks=0)")
+	}
+}
+
+func TestCheckOracleStaleness_ThresholdNotMet(t *testing.T) {
+	k, _, ctx := setupKeeper(t)
+
+	params := k.GetParams(ctx)
+	params.CircuitOracleStalenessBlocks = 50
+	k.SetParams(ctx, params)
+
+	// Record oracle update at block 100.
+	k.RecordOracleUpdate(ctx)
+
+	// Advance to block 130: staleness = 30, threshold = 50 → no halt.
+	ctx = ctx.WithBlockHeight(130)
+	k.CheckOracleStaleness(ctx)
+	if k.IsHalted(ctx) {
+		t.Fatal("chain should NOT halt when staleness (30) < threshold (50)")
+	}
+}
+
+func TestCheckOracleStaleness_ThresholdExact_NoHalt(t *testing.T) {
+	k, _, ctx := setupKeeper(t)
+
+	params := k.GetParams(ctx)
+	params.CircuitOracleStalenessBlocks = 50
+	k.SetParams(ctx, params)
+
+	// Record oracle update at block 100.
+	k.RecordOracleUpdate(ctx)
+
+	// Advance to block 150: staleness = 50 exactly → still within tolerance (≤ threshold).
+	ctx = ctx.WithBlockHeight(150)
+	k.CheckOracleStaleness(ctx)
+	if k.IsHalted(ctx) {
+		t.Fatal("chain should NOT halt when staleness (50) == threshold (50); halts only when staleness > threshold")
+	}
+}
+
+func TestCheckOracleStaleness_ThresholdExceeded_Halts(t *testing.T) {
+	k, _, ctx := setupKeeper(t)
+
+	params := k.GetParams(ctx)
+	params.CircuitOracleStalenessBlocks = 50
+	k.SetParams(ctx, params)
+
+	// Record oracle update at block 100.
+	k.RecordOracleUpdate(ctx)
+
+	// Advance to block 151: staleness = 51 > threshold = 50 → halt.
+	ctx = ctx.WithBlockHeight(151)
+	k.CheckOracleStaleness(ctx)
+	if !k.IsHalted(ctx) {
+		t.Fatal("chain SHOULD halt when staleness (51) > threshold (50)")
+	}
+
+	// Status must be exactly StatusHalted.
+	if status := k.GetEmergencyStatus(ctx); status != types.StatusHalted {
+		t.Fatalf("expected StatusHalted, got %s", status)
+	}
+}
+
+func TestCheckOracleStaleness_NoUpdateEver_DoesNotHalt(t *testing.T) {
+	k, _, ctx := setupKeeper(t)
+
+	params := k.GetParams(ctx)
+	params.CircuitOracleStalenessBlocks = 10
+	k.SetParams(ctx, params)
+
+	// Never call RecordOracleUpdate → last update block = 0.
+	// Should not halt: 0 means "oracle keeper not yet wired".
+	ctx = ctx.WithBlockHeight(9999)
+	k.CheckOracleStaleness(ctx)
+	if k.IsHalted(ctx) {
+		t.Fatal("chain should NOT halt when no oracle update ever recorded (oracle not wired yet)")
+	}
+}
+
+func TestCheckOracleStaleness_AlreadyHalted_NoDoubleHalt(t *testing.T) {
+	k, _, ctx := setupKeeper(t)
+
+	params := k.GetParams(ctx)
+	params.CircuitOracleStalenessBlocks = 10
+	k.SetParams(ctx, params)
+
+	// Record at block 100, advance to block 115 (staleness=15 > threshold=10).
+	k.RecordOracleUpdate(ctx)
+	ctx = ctx.WithBlockHeight(115)
+
+	// First check → halts.
+	k.CheckOracleStaleness(ctx)
+	if !k.IsHalted(ctx) {
+		t.Fatal("expected halt after first CheckOracleStaleness")
+	}
+
+	// Manually verify status then call again → must not panic, must not change status.
+	k.CheckOracleStaleness(ctx)
+	if status := k.GetEmergencyStatus(ctx); status != types.StatusHalted {
+		t.Fatalf("status should remain StatusHalted after second call, got %s", status)
+	}
+}

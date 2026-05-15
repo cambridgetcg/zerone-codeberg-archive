@@ -361,3 +361,28 @@ func (k Keeper) SetParams(ctx context.Context, params *types.Params) {
 func sdkContext(ctx context.Context) sdk.Context {
 	return sdk.UnwrapSDKContext(ctx)
 }
+
+// --- Oracle staleness circuit breaker state (P-21b) ---
+
+// GetLastOracleUpdateBlock returns the block height of the most recent oracle
+// (TWAP) update recorded by the emergency module. Returns 0 if no update has
+// been recorded yet (fresh chain or oracle keeper not wired).
+func (k Keeper) GetLastOracleUpdateBlock(ctx context.Context) uint64 {
+	store := k.storeService.OpenKVStore(ctx)
+	bz, err := store.Get(types.LastOracleUpdateBlockKey)
+	if err != nil || len(bz) < 8 {
+		return 0
+	}
+	return binary.BigEndian.Uint64(bz)
+}
+
+// SetLastOracleUpdateBlock stores the block height of the most recent oracle
+// (TWAP) update.
+func (k Keeper) SetLastOracleUpdateBlock(ctx context.Context, height uint64) {
+	store := k.storeService.OpenKVStore(ctx)
+	bz := make([]byte, 8)
+	binary.BigEndian.PutUint64(bz, height)
+	if err := store.Set(types.LastOracleUpdateBlockKey, bz); err != nil {
+		panic("failed to set last oracle update block: " + err.Error())
+	}
+}
