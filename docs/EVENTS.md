@@ -19,6 +19,7 @@ identical events.
 - [channels](#channels)
 - [claiming_pot](#claiming_pot)
 - [compute_pool](#compute_pool)
+- [counterexamples](#counterexamples)
 - [discovery](#discovery)
 - [disputes](#disputes)
 - [emergency](#emergency)
@@ -27,10 +28,12 @@ identical events.
 - [home](#home)
 - [ibcratelimit](#ibcratelimit)
 - [icaauth](#icaauth)
+- [inquiry](#inquiry)
 - [knowledge](#knowledge)
 - [liquiditypool](#liquiditypool)
 - [ontology](#ontology)
 - [partnerships](#partnerships)
+- [private_corpus](#private_corpus)
 - [qualification](#qualification)
 - [research](#research)
 - [schedule](#schedule)
@@ -572,6 +575,35 @@ Governance parameter update.
 *BeginBlock.* Provider unbonding completed, removed.
 - `address` -- provider address
 - `stake_refunded` -- refunded stake
+
+---
+
+## counterexamples
+
+### zerone.counterexamples.proposed
+Counterexample proposed against an existing fact (Creed Commitment 15).
+- `counterexample_id` -- counterexample ID
+- `fact_id` -- target fact ID
+- `author` -- author address
+- `error_type` -- error classification (e.g. `COUNTEREXAMPLE_ERROR_TYPE_LOGICAL`)
+- `creed_commitment` -- always `"15"`
+
+### zerone.counterexamples.validation_recorded
+Validator cast a vote on a proposed counterexample.
+- `validation_id` -- sequential validation ID
+- `counterexample_id` -- counterexample being validated
+- `validator` -- validator address
+- `affirm` -- `"true"` if affirming the counterexample, `"false"` if rejecting
+- `creed_commitment` -- always `"15"`
+
+### zerone.counterexamples.resolved
+Counterexample resolved once minimum votes threshold is reached.
+- `counterexample_id` -- counterexample ID
+- `status` -- final status (`COUNTEREXAMPLE_STATUS_VALIDATED` or `COUNTEREXAMPLE_STATUS_REJECTED`)
+- `validations` -- affirming vote count
+- `rejections` -- rejecting vote count
+- `resolved_at_block` -- resolution block height
+- `creed_commitment` -- always `"15"`
 
 ---
 
@@ -1134,6 +1166,49 @@ Interchain transaction submitted.
 ### zerone.icaauth.params_updated
 Governance parameter update.
 - `authority` -- governance address
+
+---
+
+## inquiry
+
+### zerone.inquiry.submitted
+Open inquiry submitted — chain creates demand for unmapped territory (Creed Commitment 16).
+- `inquiry_id` -- inquiry ID
+- `asker` -- asker address
+- `domain` -- knowledge domain
+- `bounty` -- bounty amount (uzrn)
+- `expires_at_block` -- expiry block height
+- `creed_commitment` -- always `"16"`
+
+### zerone.inquiry.answer_submitted
+Answer linked to an open inquiry.
+- `answer_id` -- sequential answer ID
+- `inquiry_id` -- inquiry ID
+- `answerer` -- answerer address
+- `claim_id` -- linked claim ID
+- `creed_commitment` -- always `"16"`
+
+### zerone.inquiry.cancelled
+Inquiry cancelled by the asker (only allowed while no answers are in flight).
+- `inquiry_id` -- inquiry ID
+- `asker` -- asker address
+- `creed_commitment` -- always `"16"`
+
+### zerone.inquiry.resolved
+Inquiry resolved — bounty paid to the answerer whose claim was accepted.
+- `inquiry_id` -- inquiry ID
+- `winner` -- winning answerer address
+- `winning_fact_id` -- accepted fact ID
+- `bounty` -- bounty amount paid (uzrn)
+- `resolved_at_block` -- resolution block height
+- `creed_commitment` -- always `"16"`
+
+### zerone.inquiry.expired
+Inquiry expired without resolution — bounty refunded to asker.
+- `inquiry_id` -- inquiry ID
+- `asker` -- asker address
+- `resolved_at_block` -- expiry block height
+- `creed_commitment` -- always `"16"`
 
 ---
 
@@ -2106,6 +2181,47 @@ Domain dropped below the social saturation threshold (R31-5 Water effect).
 - `density` -- partnership density at detection
 - `threshold` -- configured social saturation threshold
 
+---
+
+## private_corpus
+
+### zerone.private_corpus.vault_registered
+Private corpus vault registered on-chain.
+- `vault_id` -- vault ID
+- `operator` -- operator address
+- `display_name` -- vault display name
+- `registered_at_block` -- registration block height
+
+### zerone.private_corpus.vault_updated
+Vault metadata updated.
+- `vault_id` -- vault ID
+- `status` -- new vault status (e.g. `VAULT_STATUS_ACTIVE`, `VAULT_STATUS_DEPRECATED`)
+- `updated_at_block` -- update block height
+
+### zerone.private_corpus.manifest_published
+Corpus manifest published to a vault.
+- `manifest_id` -- manifest ID
+- `vault_id` -- parent vault ID
+- `version` -- manifest version string
+- `content_hash` -- content hash of the corpus snapshot
+- `published_at_block` -- publication block height
+
+### zerone.private_corpus.manifest_withdrawn
+Published manifest withdrawn.
+- `manifest_id` -- manifest ID
+- `vault_id` -- parent vault ID
+- `reason` -- withdrawal reason
+- `withdrawn_at_block` -- withdrawal block height
+
+### zerone.private_corpus.access_recorded
+Corpus access event recorded by vault operator.
+- `seq` -- sequential access record number
+- `vault_id` -- vault ID
+- `manifest_id` -- manifest ID (empty if vault-level access)
+- `accessor` -- accessor address
+- `recorded_at_block` -- recording block height
+
+---
 
 ## qualification
 
