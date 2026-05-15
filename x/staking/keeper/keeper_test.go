@@ -3349,3 +3349,85 @@ func TestSlashValidatorByType_NotFound(t *testing.T) {
 		t.Error("expected no action for unknown validator")
 	}
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// SlashRateConfigs types-level tests
+// ────────────────────────────────────────────────────────────────────────────
+
+// TestDefaultSlashRateConfigs verifies all 4 types have non-zero rates and
+// rates are ordered by severity (double_vote > coordination > calibration > liveness).
+func TestDefaultSlashRateConfigs(t *testing.T) {
+	cfgs := types.DefaultSlashRateConfigs()
+	if len(cfgs) != 4 {
+		t.Fatalf("expected 4 default slash rate configs, got %d", len(cfgs))
+	}
+	rateFor := func(st types.SlashType) uint64 {
+		return types.GetSlashRate(&types.Params{SlashRateConfigs: cfgs}, st)
+	}
+	dvRate := rateFor(types.SlashType_SLASH_TYPE_DOUBLE_VOTE)
+	cvRate := rateFor(types.SlashType_SLASH_TYPE_COORDINATION_VIOLATION)
+	cfRate := rateFor(types.SlashType_SLASH_TYPE_CALIBRATION_FAULT)
+	lfRate := rateFor(types.SlashType_SLASH_TYPE_LIVENESS_FAULT)
+
+	if dvRate == 0 || lfRate == 0 || cfRate == 0 || cvRate == 0 {
+		t.Errorf("all default rates must be >0: dv=%d lf=%d cf=%d cv=%d", dvRate, lfRate, cfRate, cvRate)
+	}
+	// severity ordering: double_vote > coordination_violation > calibration_fault > liveness_fault
+	if !(dvRate > cvRate && cvRate > cfRate && cfRate > lfRate) {
+		t.Errorf("expected severity order dv>cv>cf>lf, got dv=%d cv=%d cf=%d lf=%d", dvRate, cvRate, cfRate, lfRate)
+	}
+}
+
+// TestGetSlashRate_Missing returns 0 for a type not in configs.
+func TestGetSlashRate_Missing(t *testing.T) {
+	params := &types.Params{
+		SlashRateConfigs: []*types.SlashRateConfig{
+			{SlashType: types.SlashType_SLASH_TYPE_LIVENESS_FAULT, RateBps: 10_000},
+		},
+	}
+	rate := types.GetSlashRate(params, types.SlashType_SLASH_TYPE_DOUBLE_VOTE)
+	if rate != 0 {
+		t.Errorf("expected 0 for unlisted type, got %d", rate)
+	}
+}
+
+// TestSlashRateConfigs_Validate rejects rate_bps > BPSScale.
+func TestSlashRateConfigs_Validate(t *testing.T) {
+	params := types.DefaultParams()
+	params.SlashRateConfigs = []*types.SlashRateConfig{
+		{SlashType: types.SlashType_SLASH_TYPE_DOUBLE_VOTE, RateBps: 1_000_001},
+	}
+	if err := params.Validate(); err == nil {
+		t.Error("expected validation error for rate_bps > 1_000_000")
+	}
+}
+
+// TestSlashRateConfigs_ValidateMaxAllowed accepts exactly 1_000_000.
+func TestSlashRateConfigs_ValidateMaxAllowed(t *testing.T) {
+	params := types.DefaultParams()
+	params.SlashRateConfigs = []*types.SlashRateConfig{
+		{SlashType: types.SlashType_SLASH_TYPE_DOUBLE_VOTE, RateBps: 1_000_000},
+	}
+	if err := params.Validate(); err != nil {
+		t.Errorf("expected valid for rate_bps=1_000_000, got %v", err)
+	}
+}
+
+// TestGetParamsBackfillsSlashRateConfigs verifies that GetParams fills in
+// default slash_rate_configs on a chain that upgraded before Gap2.
+func TestGetParamsBackfillsSlashRateConfigs(t *testing.T) {
+	k, ctx := setupBareKeeper(t)
+
+	// Store params with empty SlashRateConfigs (pre-Gap2 chain state).
+	params := types.DefaultParams()
+	params.SlashRateConfigs = nil
+	k.SetParams(ctx, params)
+
+	loaded := k.GetParams(ctx)
+	if len(loaded.SlashRateConfigs) == 0 {
+		t.Error("expected GetParams to backfill SlashRateConfigs from defaults")
+	}
+	if types.GetSlashRate(loaded, types.SlashType_SLASH_TYPE_DOUBLE_VOTE) == 0 {
+		t.Error("expected backfilled DOUBLE_VOTE rate to be non-zero")
+	}
+}
