@@ -717,6 +717,15 @@ message Claim {
   // partnership) formally rebuts a challenge. Stored on the challenge claim
   // so the full dispute is reconstructible from one record.
   string rebuttal_text       = 23;
+
+  // requires_human_verifiers: when true, only human-type accounts may join the
+  // verification panel for this claim. AI agents (account_type == "agent") are
+  // rejected at MsgSubmitCommitment with ErrAgentNotAllowedOnHumanPanel.
+  // Used for governance-sensitive claims where human judgment is mandatory —
+  // e.g., constitutional facts, legal interpretations, or emergency precedents.
+  // Default false (mixed panels allowed). Set true in MsgSubmitClaim by the
+  // claim submitter; propagated to the Claim on creation.
+  bool requires_human_verifiers = 24;
 }
 
 // VerificationRound tracks one commit-reveal verification cycle.

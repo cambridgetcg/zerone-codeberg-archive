@@ -4347,9 +4347,17 @@ type Claim struct {
 	// Optional rebuttal text. Attached when the original fact's submitter (or
 	// partnership) formally rebuts a challenge. Stored on the challenge claim
 	// so the full dispute is reconstructible from one record.
-	RebuttalText  string `protobuf:"bytes,23,opt,name=rebuttal_text,json=rebuttalText,proto3" json:"rebuttal_text,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	RebuttalText string `protobuf:"bytes,23,opt,name=rebuttal_text,json=rebuttalText,proto3" json:"rebuttal_text,omitempty"`
+	// requires_human_verifiers: when true, only human-type accounts may join the
+	// verification panel for this claim. AI agents (account_type == "agent") are
+	// rejected at MsgSubmitCommitment with ErrAgentNotAllowedOnHumanPanel.
+	// Used for governance-sensitive claims where human judgment is mandatory —
+	// e.g., constitutional facts, legal interpretations, or emergency precedents.
+	// Default false (mixed panels allowed). Set true in MsgSubmitClaim by the
+	// claim submitter; propagated to the Claim on creation.
+	RequiresHumanVerifiers bool `protobuf:"varint,24,opt,name=requires_human_verifiers,json=requiresHumanVerifiers,proto3" json:"requires_human_verifiers,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Claim) Reset() {
@@ -4541,6 +4549,13 @@ func (x *Claim) GetRebuttalText() string {
 		return x.RebuttalText
 	}
 	return ""
+}
+
+func (x *Claim) GetRequiresHumanVerifiers() bool {
+	if x != nil {
+		return x.RequiresHumanVerifiers
+	}
+	return false
 }
 
 // VerificationRound tracks one commit-reveal verification cycle.
@@ -8610,7 +8625,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\vpenalty_bps\x18\x05 \x01(\x04R\n" +
 	"penaltyBps\x12\x1f\n" +
 	"\vadded_block\x18\x06 \x01(\x04R\n" +
-	"addedBlock\"\xac\a\n" +
+	"addedBlock\"\xe6\a\n" +
 	"\x05Claim\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\ffact_content\x18\x02 \x01(\tR\vfactContent\x12\x16\n" +
@@ -8638,7 +8653,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\tmethod_id\x18\x14 \x01(\tR\bmethodId\x12'\n" +
 	"\x0freasoning_trace\x18\x15 \x01(\tR\x0ereasoningTrace\x12#\n" +
 	"\rargument_text\x18\x16 \x01(\tR\fargumentText\x12#\n" +
-	"\rrebuttal_text\x18\x17 \x01(\tR\frebuttalText\"\xd9\x04\n" +
+	"\rrebuttal_text\x18\x17 \x01(\tR\frebuttalText\x128\n" +
+	"\x18requires_human_verifiers\x18\x18 \x01(\bR\x16requiresHumanVerifiers\"\xd9\x04\n" +
 	"\x11VerificationRound\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\bclaim_id\x18\x02 \x01(\tR\aclaimId\x12(\n" +

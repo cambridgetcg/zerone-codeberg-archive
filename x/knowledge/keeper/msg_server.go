@@ -194,22 +194,23 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 	}
 
 	claim := &types.Claim{
-		Id:               claimID,
-		FactContent:      msg.FactContent,
-		Domain:           msg.Domain,
-		Category:         msg.Category,
-		Submitter:        msg.Submitter,
-		SubmittedAtBlock: height,
-		Status:           types.ClaimStatus_CLAIM_STATUS_PENDING,
-		References:       msg.References,
-		Stake:            msg.Stake,
-		PartnershipId:    msg.PartnershipId,
-		ContentHash:      contentHash,
-		ClaimType:        claimType,
-		Relations:        msg.Relations,
-		Structure:        msg.Structure,
-		CanonicalForm:    canonicalForm,
-		CanonicalHash:    canonicalHash,
+		Id:                     claimID,
+		FactContent:            msg.FactContent,
+		Domain:                 msg.Domain,
+		Category:               msg.Category,
+		Submitter:              msg.Submitter,
+		SubmittedAtBlock:       height,
+		Status:                 types.ClaimStatus_CLAIM_STATUS_PENDING,
+		References:             msg.References,
+		Stake:                  msg.Stake,
+		PartnershipId:          msg.PartnershipId,
+		ContentHash:            contentHash,
+		ClaimType:              claimType,
+		Relations:              msg.Relations,
+		Structure:              msg.Structure,
+		CanonicalForm:          canonicalForm,
+		CanonicalHash:          canonicalHash,
+		RequiresHumanVerifiers: msg.RequiresHumanVerifiers,
 	}
 
 	if err := m.keeper.SetClaim(ctx, claim); err != nil {
@@ -343,6 +344,20 @@ func (m *msgServer) SubmitCommitment(ctx context.Context, msg *types.MsgSubmitCo
 					"verifier", msg.Verifier, "domain", claim.Domain,
 					"qualified_count", len(qualifiedVals), "min_verifiers", params.MinVerifiers)
 			}
+		}
+	}
+
+	// Human-only panel gate (P-13): if the claim requires human verifiers, block
+	// agent-type accounts from committing. No fallback — this is a hard constraint
+	// set by the claim submitter, not a governance-tunable threshold. Agents that
+	// commit to human-only panels would undermine the purpose of the constraint.
+	if humanClaim, humanFound := m.keeper.GetClaim(ctx, round.ClaimId); humanFound &&
+		humanClaim.RequiresHumanVerifiers {
+		accountType := m.keeper.getAccountType(ctx, msg.Verifier)
+		if accountType == "agent" {
+			return nil, types.ErrAgentNotAllowedOnHumanPanel.Wrapf(
+				"verifier %s is an agent; claim %s requires human-only verification panel",
+				msg.Verifier, round.ClaimId)
 		}
 	}
 

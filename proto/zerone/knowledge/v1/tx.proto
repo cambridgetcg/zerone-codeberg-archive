@@ -227,6 +227,10 @@ message MsgSubmitClaim {
   // midpoint. 0 = no priority tip (default). Governance sets an upper bound via
   // MaxPriorityTipBps in Params; submissions exceeding the bound are rejected.
   uint64 priority_tip_bps  = 13;
+
+  // requires_human_verifiers: if true, only human accounts may verify this claim.
+  // See Claim.requires_human_verifiers for semantics. Defaults to false.
+  bool requires_human_verifiers = 14;
 }
 
 message MsgSubmitClaimResponse {

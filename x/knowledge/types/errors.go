@@ -86,4 +86,7 @@ var (
 
 	// ─── Verifier independence gate (83) — P-10a ─────────────────────────
 	ErrLowVerifierIndependence = errors.Register(ModuleName, 83, "verifier independence score below governance minimum")
+
+	// ─── Human-only panel gate (84) — P-13 ───────────────────────────────
+	ErrAgentNotAllowedOnHumanPanel = errors.Register(ModuleName, 84, "agent accounts may not verify human-only claims")
 )
