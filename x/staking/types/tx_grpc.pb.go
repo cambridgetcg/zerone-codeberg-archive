@@ -25,6 +25,7 @@ const (
 	Msg_Redelegate_FullMethodName           = "/zerone.staking.v1.Msg/Redelegate"
 	Msg_UpdateValidatorStake_FullMethodName = "/zerone.staking.v1.Msg/UpdateValidatorStake"
 	Msg_UpdateParams_FullMethodName         = "/zerone.staking.v1.Msg/UpdateParams"
+	Msg_SubmitSlashEvidence_FullMethodName  = "/zerone.staking.v1.Msg/SubmitSlashEvidence"
 )
 
 // MsgClient is the client API for Msg service.
@@ -39,6 +40,7 @@ type MsgClient interface {
 	Redelegate(ctx context.Context, in *MsgRedelegate, opts ...grpc.CallOption) (*MsgRedelegateResponse, error)
 	UpdateValidatorStake(ctx context.Context, in *MsgUpdateValidatorStake, opts ...grpc.CallOption) (*MsgUpdateValidatorStakeResponse, error)
 	UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error)
+	SubmitSlashEvidence(ctx context.Context, in *MsgSubmitSlashEvidence, opts ...grpc.CallOption) (*MsgSubmitSlashEvidenceResponse, error)
 }
 
 type msgClient struct {
@@ -109,6 +111,16 @@ func (c *msgClient) UpdateParams(ctx context.Context, in *MsgUpdateParams, opts 
 	return out, nil
 }
 
+func (c *msgClient) SubmitSlashEvidence(ctx context.Context, in *MsgSubmitSlashEvidence, opts ...grpc.CallOption) (*MsgSubmitSlashEvidenceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgSubmitSlashEvidenceResponse)
+	err := c.cc.Invoke(ctx, Msg_SubmitSlashEvidence_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MsgServer is the server API for Msg service.
 // All implementations must embed UnimplementedMsgServer
 // for forward compatibility.
@@ -121,6 +133,7 @@ type MsgServer interface {
 	Redelegate(context.Context, *MsgRedelegate) (*MsgRedelegateResponse, error)
 	UpdateValidatorStake(context.Context, *MsgUpdateValidatorStake) (*MsgUpdateValidatorStakeResponse, error)
 	UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error)
+	SubmitSlashEvidence(context.Context, *MsgSubmitSlashEvidence) (*MsgSubmitSlashEvidenceResponse, error)
 	mustEmbedUnimplementedMsgServer()
 }
 
@@ -148,6 +161,9 @@ func (UnimplementedMsgServer) UpdateValidatorStake(context.Context, *MsgUpdateVa
 }
 func (UnimplementedMsgServer) UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateParams not implemented")
+}
+func (UnimplementedMsgServer) SubmitSlashEvidence(context.Context, *MsgSubmitSlashEvidence) (*MsgSubmitSlashEvidenceResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SubmitSlashEvidence not implemented")
 }
 func (UnimplementedMsgServer) mustEmbedUnimplementedMsgServer() {}
 func (UnimplementedMsgServer) testEmbeddedByValue()             {}
@@ -278,6 +294,24 @@ func _Msg_UpdateParams_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Msg_SubmitSlashEvidence_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgSubmitSlashEvidence)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).SubmitSlashEvidence(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_SubmitSlashEvidence_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).SubmitSlashEvidence(ctx, req.(*MsgSubmitSlashEvidence))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Msg_ServiceDesc is the grpc.ServiceDesc for Msg service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -308,6 +342,10 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateParams",
 			Handler:    _Msg_UpdateParams_Handler,
+		},
+		{
+			MethodName: "SubmitSlashEvidence",
+			Handler:    _Msg_SubmitSlashEvidence_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

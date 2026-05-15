@@ -2325,6 +2325,23 @@ Validator slashed.
 - `amount` -- slashed amount
 - `reason` -- slash reason
 
+### zerone.staking.slash_evidence_submitted
+*Tx.* Third-party slash evidence queued for end-block processing.
+- `evidence_id` -- unique evidence identifier (hex, 16-byte sha256 prefix of submitter|validator|blockHeight)
+- `submitter` -- address that submitted the evidence
+- `validator` -- address of the accused validator
+- `slash_type` -- slash type string (e.g. `double_vote`, `liveness_fault`)
+- `evidence_hash` -- caller-provided hash of supporting evidence artefact
+
+### zerone.staking.slash_evidence_processed
+*EndBlock.* Queued slash evidence executed: validator slashed, tokens routed.
+- `evidence_id` -- evidence identifier matching the `slash_evidence_submitted` event
+- `submitter` -- evidence submitter address (may receive `evidence_reward_bps` fraction)
+- `validator` -- slashed validator address
+- `slash_type` -- slash type string
+- `slashed` -- actual amount slashed (after escalation, in uzrn)
+- `evidence_hash` -- hash of the evidence artefact
+
 ---
 
 ## tokens

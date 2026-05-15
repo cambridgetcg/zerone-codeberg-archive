@@ -21,6 +21,7 @@ func DefaultParams() *Params {
 		TierConfigs:              DefaultTierConfigs(),
 		SlashBurnFractionBps:     0,              // default: no burn (all routes to dev fund)
 		SlashRateConfigs:         DefaultSlashRateConfigs(),
+		EvidenceRewardBps:        0,              // default: disabled (no reward to evidence submitter)
 	}
 }
 

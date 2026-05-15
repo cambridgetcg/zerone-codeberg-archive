@@ -578,6 +578,108 @@ func (x *UnbondingEntry) GetStatus() string {
 	return ""
 }
 
+// SlashEvidence records an evidence submission for evidence-based slashing.
+// Stored in the queue until processed at EndBlock.
+type SlashEvidence struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                                                  // sha256(submitter|validator|submitted_at)
+	Submitter     string                 `protobuf:"bytes,2,opt,name=submitter,proto3" json:"submitter,omitempty"`                                                    // bech32 address of the evidence submitter
+	ValidatorAddr string                 `protobuf:"bytes,3,opt,name=validator_addr,json=validatorAddr,proto3" json:"validator_addr,omitempty"`                       // bech32 address of the validator to be slashed
+	SlashType     SlashType              `protobuf:"varint,4,opt,name=slash_type,json=slashType,proto3,enum=zerone.staking.v1.SlashType" json:"slash_type,omitempty"` // category of misbehavior
+	EvidenceHash  string                 `protobuf:"bytes,5,opt,name=evidence_hash,json=evidenceHash,proto3" json:"evidence_hash,omitempty"`                          // SHA256 of off-chain evidence content
+	WitnessData   string                 `protobuf:"bytes,6,opt,name=witness_data,json=witnessData,proto3" json:"witness_data,omitempty"`                             // optional on-chain summary / witness statement
+	SubmittedAt   uint64                 `protobuf:"varint,7,opt,name=submitted_at,json=submittedAt,proto3" json:"submitted_at,omitempty"`                            // block height at submission
+	Processed     bool                   `protobuf:"varint,8,opt,name=processed,proto3" json:"processed,omitempty"`                                                   // true after end-block processing
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SlashEvidence) Reset() {
+	*x = SlashEvidence{}
+	mi := &file_zerone_staking_v1_types_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SlashEvidence) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SlashEvidence) ProtoMessage() {}
+
+func (x *SlashEvidence) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_staking_v1_types_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SlashEvidence.ProtoReflect.Descriptor instead.
+func (*SlashEvidence) Descriptor() ([]byte, []int) {
+	return file_zerone_staking_v1_types_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *SlashEvidence) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *SlashEvidence) GetSubmitter() string {
+	if x != nil {
+		return x.Submitter
+	}
+	return ""
+}
+
+func (x *SlashEvidence) GetValidatorAddr() string {
+	if x != nil {
+		return x.ValidatorAddr
+	}
+	return ""
+}
+
+func (x *SlashEvidence) GetSlashType() SlashType {
+	if x != nil {
+		return x.SlashType
+	}
+	return SlashType_SLASH_TYPE_UNSPECIFIED
+}
+
+func (x *SlashEvidence) GetEvidenceHash() string {
+	if x != nil {
+		return x.EvidenceHash
+	}
+	return ""
+}
+
+func (x *SlashEvidence) GetWitnessData() string {
+	if x != nil {
+		return x.WitnessData
+	}
+	return ""
+}
+
+func (x *SlashEvidence) GetSubmittedAt() uint64 {
+	if x != nil {
+		return x.SubmittedAt
+	}
+	return 0
+}
+
+func (x *SlashEvidence) GetProcessed() bool {
+	if x != nil {
+		return x.Processed
+	}
+	return false
+}
+
 // TierConfig defines requirements and rewards for each validator tier.
 type TierConfig struct {
 	state                           protoimpl.MessageState `protogen:"open.v1"`
@@ -601,7 +703,7 @@ type TierConfig struct {
 
 func (x *TierConfig) Reset() {
 	*x = TierConfig{}
-	mi := &file_zerone_staking_v1_types_proto_msgTypes[4]
+	mi := &file_zerone_staking_v1_types_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -613,7 +715,7 @@ func (x *TierConfig) String() string {
 func (*TierConfig) ProtoMessage() {}
 
 func (x *TierConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_zerone_staking_v1_types_proto_msgTypes[4]
+	mi := &file_zerone_staking_v1_types_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -626,7 +728,7 @@ func (x *TierConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TierConfig.ProtoReflect.Descriptor instead.
 func (*TierConfig) Descriptor() ([]byte, []int) {
-	return file_zerone_staking_v1_types_proto_rawDescGZIP(), []int{4}
+	return file_zerone_staking_v1_types_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *TierConfig) GetTier() ValidatorTier {
@@ -778,7 +880,17 @@ const file_zerone_staking_v1_types_proto_rawDesc = "" +
 	"\x06amount\x18\x04 \x01(\tR\x06amount\x12*\n" +
 	"\x11created_at_height\x18\x05 \x01(\x04R\x0fcreatedAtHeight\x12.\n" +
 	"\x13completes_at_height\x18\x06 \x01(\x04R\x11completesAtHeight\x12\x16\n" +
-	"\x06status\x18\a \x01(\tR\x06status\"\x95\x05\n" +
+	"\x06status\x18\a \x01(\tR\x06status\"\xaa\x02\n" +
+	"\rSlashEvidence\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
+	"\tsubmitter\x18\x02 \x01(\tR\tsubmitter\x12%\n" +
+	"\x0evalidator_addr\x18\x03 \x01(\tR\rvalidatorAddr\x12;\n" +
+	"\n" +
+	"slash_type\x18\x04 \x01(\x0e2\x1c.zerone.staking.v1.SlashTypeR\tslashType\x12#\n" +
+	"\revidence_hash\x18\x05 \x01(\tR\fevidenceHash\x12!\n" +
+	"\fwitness_data\x18\x06 \x01(\tR\vwitnessData\x12!\n" +
+	"\fsubmitted_at\x18\a \x01(\x04R\vsubmittedAt\x12\x1c\n" +
+	"\tprocessed\x18\b \x01(\bR\tprocessed\"\x95\x05\n" +
 	"\n" +
 	"TierConfig\x124\n" +
 	"\x04tier\x18\x01 \x01(\x0e2 .zerone.staking.v1.ValidatorTierR\x04tier\x12\x12\n" +
@@ -822,7 +934,7 @@ func file_zerone_staking_v1_types_proto_rawDescGZIP() []byte {
 }
 
 var file_zerone_staking_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_zerone_staking_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_zerone_staking_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_zerone_staking_v1_types_proto_goTypes = []any{
 	(SlashType)(0),          // 0: zerone.staking.v1.SlashType
 	(ValidatorTier)(0),      // 1: zerone.staking.v1.ValidatorTier
@@ -830,17 +942,19 @@ var file_zerone_staking_v1_types_proto_goTypes = []any{
 	(*Validator)(nil),       // 3: zerone.staking.v1.Validator
 	(*Delegation)(nil),      // 4: zerone.staking.v1.Delegation
 	(*UnbondingEntry)(nil),  // 5: zerone.staking.v1.UnbondingEntry
-	(*TierConfig)(nil),      // 6: zerone.staking.v1.TierConfig
+	(*SlashEvidence)(nil),   // 6: zerone.staking.v1.SlashEvidence
+	(*TierConfig)(nil),      // 7: zerone.staking.v1.TierConfig
 }
 var file_zerone_staking_v1_types_proto_depIdxs = []int32{
 	0, // 0: zerone.staking.v1.SlashRateConfig.slash_type:type_name -> zerone.staking.v1.SlashType
 	1, // 1: zerone.staking.v1.Validator.tier:type_name -> zerone.staking.v1.ValidatorTier
-	1, // 2: zerone.staking.v1.TierConfig.tier:type_name -> zerone.staking.v1.ValidatorTier
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	0, // 2: zerone.staking.v1.SlashEvidence.slash_type:type_name -> zerone.staking.v1.SlashType
+	1, // 3: zerone.staking.v1.TierConfig.tier:type_name -> zerone.staking.v1.ValidatorTier
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_zerone_staking_v1_types_proto_init() }
@@ -854,7 +968,7 @@ func file_zerone_staking_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_zerone_staking_v1_types_proto_rawDesc), len(file_zerone_staking_v1_types_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

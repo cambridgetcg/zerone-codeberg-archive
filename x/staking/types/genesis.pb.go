@@ -51,8 +51,14 @@ type Params struct {
 	// Types not listed fall back to zero (no automatic slash amount — caller must supply).
 	// Governance can add/update entries via MsgUpdateParams.
 	SlashRateConfigs []*SlashRateConfig `protobuf:"bytes,16,rep,name=slash_rate_configs,json=slashRateConfigs,proto3" json:"slash_rate_configs,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// evidence_reward_bps: fraction of the slashed amount paid to the evidence
+	// submitter when MsgSubmitSlashEvidence triggers a successful slash.
+	// 0 = disabled (default). 100_000 = 10% of slashed amount.
+	// Reward comes out of the slashed pool before the remainder routes to
+	// the development fund — analogous to dispute arbiter rewards.
+	EvidenceRewardBps uint64 `protobuf:"varint,17,opt,name=evidence_reward_bps,json=evidenceRewardBps,proto3" json:"evidence_reward_bps,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -197,6 +203,13 @@ func (x *Params) GetSlashRateConfigs() []*SlashRateConfig {
 	return nil
 }
 
+func (x *Params) GetEvidenceRewardBps() uint64 {
+	if x != nil {
+		return x.EvidenceRewardBps
+	}
+	return 0
+}
+
 // GenesisState defines the staking module genesis state.
 type GenesisState struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
@@ -278,7 +291,7 @@ var File_zerone_staking_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_staking_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"\x1fzerone/staking/v1/genesis.proto\x12\x11zerone.staking.v1\x1a\x1dzerone/staking/v1/types.proto\"\x84\a\n" +
+	"\x1fzerone/staking/v1/genesis.proto\x12\x11zerone.staking.v1\x1a\x1dzerone/staking/v1/types.proto\"\xb4\a\n" +
 	"\x06Params\x12)\n" +
 	"\x10unbonding_period\x18\x01 \x01(\x04R\x0funbondingPeriod\x12#\n" +
 	"\rvirtual_stake\x18\x02 \x01(\tR\fvirtualStake\x12%\n" +
@@ -296,7 +309,8 @@ const file_zerone_staking_v1_genesis_proto_rawDesc = "" +
 	"\x1credelegation_cooldown_blocks\x18\r \x01(\x04R\x1aredelegationCooldownBlocks\x12@\n" +
 	"\ftier_configs\x18\x0e \x03(\v2\x1d.zerone.staking.v1.TierConfigR\vtierConfigs\x125\n" +
 	"\x17slash_burn_fraction_bps\x18\x0f \x01(\x04R\x14slashBurnFractionBps\x12P\n" +
-	"\x12slash_rate_configs\x18\x10 \x03(\v2\".zerone.staking.v1.SlashRateConfigR\x10slashRateConfigs\"\xb5\x02\n" +
+	"\x12slash_rate_configs\x18\x10 \x03(\v2\".zerone.staking.v1.SlashRateConfigR\x10slashRateConfigs\x12.\n" +
+	"\x13evidence_reward_bps\x18\x11 \x01(\x04R\x11evidenceRewardBps\"\xb5\x02\n" +
 	"\fGenesisState\x121\n" +
 	"\x06params\x18\x01 \x01(\v2\x19.zerone.staking.v1.ParamsR\x06params\x12<\n" +
 	"\n" +

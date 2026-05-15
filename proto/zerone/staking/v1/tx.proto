@@ -17,6 +17,7 @@ service Msg {
   rpc Redelegate(MsgRedelegate)               returns (MsgRedelegateResponse);
   rpc UpdateValidatorStake(MsgUpdateValidatorStake) returns (MsgUpdateValidatorStakeResponse);
   rpc UpdateParams(MsgUpdateParams)           returns (MsgUpdateParamsResponse);
+  rpc SubmitSlashEvidence(MsgSubmitSlashEvidence) returns (MsgSubmitSlashEvidenceResponse);
 }
 
 // MsgRegisterValidator registers a new validator.
@@ -96,3 +97,21 @@ message MsgUpdateParams {
 }
 
 message MsgUpdateParamsResponse {}
+
+// MsgSubmitSlashEvidence submits on-chain evidence of validator misbehavior.
+// The evidence is queued and processed at EndBlock. If valid (validator exists,
+// slash type has a configured rate), the validator is slashed and the submitter
+// receives evidence_reward_bps fraction of the slashed amount.
+message MsgSubmitSlashEvidence {
+  option (cosmos.msg.v1.signer) = "submitter";
+
+  string    submitter      = 1;
+  string    validator_addr = 2;
+  SlashType slash_type     = 3;
+  string    evidence_hash  = 4; // SHA256 of off-chain evidence content
+  string    witness_data   = 5; // optional on-chain summary (max 512 chars)
+}
+
+message MsgSubmitSlashEvidenceResponse {
+  string evidence_id = 1; // unique id assigned to the queued evidence
+}

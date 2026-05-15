@@ -23,7 +23,8 @@ var (
 	ValidatorByDIDPrefix           = []byte{0x06}
 	UnbondingSeqKey                = []byte{0x07}
 	RedelegationCooldownPrefix     = []byte{0x08}
-	ValidatorDelegationIndexPrefix = []byte{0x09} // reverse index: validator → delegators
+	ValidatorDelegationIndexPrefix  = []byte{0x09} // reverse index: validator → delegators
+	SlashEvidenceQueuePrefix        = []byte{0x0A} // pending evidence for end-block processing
 )
 
 // ValidatorKey returns the store key for a validator by operator address.
@@ -79,6 +80,11 @@ func TierConfigKey(tier ValidatorTier) []byte {
 // RedelegationCooldownKey returns the store key for a delegator's last redelegation height.
 func RedelegationCooldownKey(delegatorAddr string) []byte {
 	return append(RedelegationCooldownPrefix, []byte(delegatorAddr)...)
+}
+
+// SlashEvidenceKey returns the store key for a slash evidence item by ID.
+func SlashEvidenceKey(evidenceID string) []byte {
+	return append(SlashEvidenceQueuePrefix, []byte(evidenceID)...)
 }
 
 // Uint64ToBytes converts a uint64 to big-endian bytes.

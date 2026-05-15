@@ -75,6 +75,19 @@ message UnbondingEntry {
   string status              = 7; // "pending" or "completed"
 }
 
+// SlashEvidence records an evidence submission for evidence-based slashing.
+// Stored in the queue until processed at EndBlock.
+message SlashEvidence {
+  string    id             = 1; // sha256(submitter|validator|submitted_at)
+  string    submitter      = 2; // bech32 address of the evidence submitter
+  string    validator_addr = 3; // bech32 address of the validator to be slashed
+  SlashType slash_type     = 4; // category of misbehavior
+  string    evidence_hash  = 5; // SHA256 of off-chain evidence content
+  string    witness_data   = 6; // optional on-chain summary / witness statement
+  uint64    submitted_at   = 7; // block height at submission
+  bool      processed      = 8; // true after end-block processing
+}
+
 // TierConfig defines requirements and rewards for each validator tier.
 message TierConfig {
   ValidatorTier tier                             = 1;

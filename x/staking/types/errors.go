@@ -24,4 +24,7 @@ var (
 	ErrValidatorJailed          = errors.Register(ModuleName, 20, "validator is jailed")
 	ErrSlashRateLimited         = errors.Register(ModuleName, 21, "slash rate limited for this epoch")
 	ErrDisbursementQuorum       = errors.Register(ModuleName, 22, "invalid disbursement quorum bps")
+	ErrInvalidEvidence          = errors.Register(ModuleName, 23, "invalid slash evidence")
+	ErrEvidenceAlreadySubmitted = errors.Register(ModuleName, 24, "slash evidence already submitted by this address for this validator this block")
+	ErrValidatorNotSlashable    = errors.Register(ModuleName, 25, "validator cannot be slashed (no configured rate for slash type)")
 )

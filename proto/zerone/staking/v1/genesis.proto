@@ -34,6 +34,12 @@ message Params {
   // Types not listed fall back to zero (no automatic slash amount — caller must supply).
   // Governance can add/update entries via MsgUpdateParams.
   repeated SlashRateConfig slash_rate_configs       = 16;
+  // evidence_reward_bps: fraction of the slashed amount paid to the evidence
+  // submitter when MsgSubmitSlashEvidence triggers a successful slash.
+  // 0 = disabled (default). 100_000 = 10% of slashed amount.
+  // Reward comes out of the slashed pool before the remainder routes to
+  // the development fund — analogous to dispute arbiter rewards.
+  uint64              evidence_reward_bps           = 17;
 }
 
 // GenesisState defines the staking module genesis state.

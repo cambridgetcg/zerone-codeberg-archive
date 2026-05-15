@@ -306,6 +306,9 @@ func (p *Params) Validate() error {
 	if p.SlashBurnFractionBps > BPSScale {
 		return fmt.Errorf("slash burn fraction bps exceeds maximum (%d)", BPSScale)
 	}
+	if p.EvidenceRewardBps > BPSScale {
+		return fmt.Errorf("evidence reward bps exceeds maximum (%d)", BPSScale)
+	}
 
 	// Validate slash_rate_configs: each rate must fit within BPS scale.
 	for i, cfg := range p.SlashRateConfigs {
@@ -374,4 +377,34 @@ func (m *MsgUpdateValidatorStake) GetSigners() []sdk.AccAddress {
 func (m *MsgUpdateParams) GetSigners() []sdk.AccAddress {
 	addr, _ := sdk.AccAddressFromBech32(m.Authority)
 	return []sdk.AccAddress{addr}
+}
+
+func (m *MsgSubmitSlashEvidence) GetSigners() []sdk.AccAddress {
+	addr, _ := sdk.AccAddressFromBech32(m.Submitter)
+	return []sdk.AccAddress{addr}
+}
+
+func (m *MsgSubmitSlashEvidence) ValidateBasic() error {
+	if m.Submitter == "" {
+		return fmt.Errorf("submitter cannot be empty")
+	}
+	if _, err := sdk.AccAddressFromBech32(m.Submitter); err != nil {
+		return fmt.Errorf("invalid submitter address: %w", err)
+	}
+	if m.ValidatorAddr == "" {
+		return fmt.Errorf("validator_addr cannot be empty")
+	}
+	if _, err := sdk.AccAddressFromBech32(m.ValidatorAddr); err != nil {
+		return fmt.Errorf("invalid validator address: %w", err)
+	}
+	if m.SlashType == SlashType_SLASH_TYPE_UNSPECIFIED {
+		return fmt.Errorf("slash_type cannot be unspecified")
+	}
+	if m.EvidenceHash == "" {
+		return fmt.Errorf("evidence_hash cannot be empty")
+	}
+	if len(m.WitnessData) > 512 {
+		return fmt.Errorf("witness_data exceeds maximum length of 512 characters")
+	}
+	return nil
 }
