@@ -448,6 +448,12 @@ func (k Keeper) GetParams(ctx sdk.Context) *types.Params {
 		params.RedelegationCooldownBlocks = defaults.RedelegationCooldownBlocks
 	}
 
+	// Fill slash_rate_configs from defaults on upgraded chains (field empty pre-Gap2).
+	// SlashBurnFractionBps defaults to 0 — no backfill needed (zero is correct default).
+	if len(params.SlashRateConfigs) == 0 {
+		params.SlashRateConfigs = types.DefaultSlashRateConfigs()
+	}
+
 	return &params
 }
 
@@ -541,12 +547,26 @@ func (k Keeper) SlashValidator(ctx sdk.Context, validatorAddr string, amount *bi
 		slashInt.Add(slashInt, overflow)
 	}
 
-	// Route slashed tokens to development fund
+	// Route slashed tokens: burn fraction first, remainder to development fund.
 	if slashInt.Sign() > 0 {
-		slashCoins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(slashInt)))
-		if err := k.bankKeeper.SendCoinsFromModuleToModule(ctx, types.ModuleName, "development_fund", slashCoins); err != nil {
-			// Abort slash on routing failure
-			return
+		burnAmt := new(big.Int)
+		if params.SlashBurnFractionBps > 0 {
+			burnAmt.Mul(slashInt, new(big.Int).SetUint64(params.SlashBurnFractionBps))
+			burnAmt.Div(burnAmt, new(big.Int).SetUint64(types.BPSScale))
+		}
+		restAmt := new(big.Int).Sub(slashInt, burnAmt)
+
+		if burnAmt.Sign() > 0 {
+			burnCoins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(burnAmt)))
+			if err := k.bankKeeper.BurnCoins(ctx, types.ModuleName, burnCoins); err != nil {
+				return // abort on burn failure
+			}
+		}
+		if restAmt.Sign() > 0 {
+			restCoins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(restAmt)))
+			if err := k.bankKeeper.SendCoinsFromModuleToModule(ctx, types.ModuleName, "development_fund", restCoins); err != nil {
+				return // abort on routing failure
+			}
 		}
 
 		selfStake.Sub(selfStake, new(big.Int).Sub(slashInt, new(big.Int)))
@@ -661,12 +681,26 @@ func (k Keeper) SlashValidatorToModule(ctx sdk.Context, validatorAddr string, am
 		slashInt.Add(slashInt, overflow)
 	}
 
-	// Route slashed tokens to the specified destination module
+	// Route slashed tokens: burn fraction first, remainder to destModule.
 	if slashInt.Sign() > 0 {
-		slashCoins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(slashInt)))
-		if err := k.bankKeeper.SendCoinsFromModuleToModule(ctx, types.ModuleName, destModule, slashCoins); err != nil {
-			// Abort slash on routing failure
-			return new(big.Int)
+		burnAmt := new(big.Int)
+		if params.SlashBurnFractionBps > 0 {
+			burnAmt.Mul(slashInt, new(big.Int).SetUint64(params.SlashBurnFractionBps))
+			burnAmt.Div(burnAmt, new(big.Int).SetUint64(types.BPSScale))
+		}
+		restAmt := new(big.Int).Sub(slashInt, burnAmt)
+
+		if burnAmt.Sign() > 0 {
+			burnCoins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(burnAmt)))
+			if err := k.bankKeeper.BurnCoins(ctx, types.ModuleName, burnCoins); err != nil {
+				return new(big.Int) // abort on burn failure
+			}
+		}
+		if restAmt.Sign() > 0 {
+			restCoins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(restAmt)))
+			if err := k.bankKeeper.SendCoinsFromModuleToModule(ctx, types.ModuleName, destModule, restCoins); err != nil {
+				return new(big.Int) // abort on routing failure
+			}
 		}
 	}
 
@@ -725,6 +759,36 @@ func (k Keeper) SlashValidatorToModule(ctx sdk.Context, validatorAddr string, am
 	))
 
 	return slashInt
+}
+
+// SlashValidatorByType slashes a validator using a per-type rate from params.
+// The slash amount is computed as: totalStake × rate_bps / BPSScale.
+// If the given slashType has no configured rate (or rate=0), this is a no-op.
+// After computing the amount it delegates to SlashValidator with the reason
+// string set to types.SlashTypeString(slashType) for event attribution.
+//
+// This is the preferred path for automated, classification-based slashing.
+// Callers that already have a computed amount should use SlashValidator directly.
+func (k Keeper) SlashValidatorByType(ctx sdk.Context, validatorAddr string, slashType types.SlashType) {
+	val, found := k.GetValidator(ctx, validatorAddr)
+	if !found {
+		return
+	}
+	params := k.GetParams(ctx)
+	rateBps := types.GetSlashRate(params, slashType)
+	if rateBps == 0 {
+		return // type not configured or rate=0
+	}
+	totalStake, ok := new(big.Int).SetString(val.TotalStake, 10)
+	if !ok || totalStake.Sign() <= 0 {
+		return
+	}
+	amount := new(big.Int).Mul(totalStake, new(big.Int).SetUint64(rateBps))
+	amount.Div(amount, new(big.Int).SetUint64(types.BPSScale))
+	if amount.Sign() <= 0 {
+		return
+	}
+	k.SlashValidator(ctx, validatorAddr, amount, types.SlashTypeString(slashType))
 }
 
 // ---------- Genesis ----------

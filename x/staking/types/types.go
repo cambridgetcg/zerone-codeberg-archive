@@ -132,6 +132,46 @@ func DefaultTierConfigs() []*TierConfig {
 	}
 }
 
+// ---------- SlashType helpers ----------
+
+// DefaultSlashRateConfigs returns the governance-seeded per-type slash rates.
+// These align with the knowledge module's BPS scale (wrong=5%, equivocation=20%).
+func DefaultSlashRateConfigs() []*SlashRateConfig {
+	return []*SlashRateConfig{
+		{SlashType: SlashType_SLASH_TYPE_DOUBLE_VOTE, RateBps: 200_000},            // 20% — Byzantine, severe
+		{SlashType: SlashType_SLASH_TYPE_LIVENESS_FAULT, RateBps: 10_000},          // 1%  — missed blocks, mild
+		{SlashType: SlashType_SLASH_TYPE_CALIBRATION_FAULT, RateBps: 50_000},       // 5%  — confidence miscalibration
+		{SlashType: SlashType_SLASH_TYPE_COORDINATION_VIOLATION, RateBps: 100_000}, // 10% — VRF / coordination breach
+	}
+}
+
+// GetSlashRate returns the configured rate_bps for a SlashType.
+// Returns 0 if the type is not found (caller decides whether to skip or error).
+func GetSlashRate(params *Params, st SlashType) uint64 {
+	for _, cfg := range params.SlashRateConfigs {
+		if cfg.SlashType == st {
+			return cfg.RateBps
+		}
+	}
+	return 0
+}
+
+// SlashTypeString returns the human-readable name for a SlashType.
+func SlashTypeString(st SlashType) string {
+	switch st {
+	case SlashType_SLASH_TYPE_DOUBLE_VOTE:
+		return "double_vote"
+	case SlashType_SLASH_TYPE_LIVENESS_FAULT:
+		return "liveness_fault"
+	case SlashType_SLASH_TYPE_CALIBRATION_FAULT:
+		return "calibration_fault"
+	case SlashType_SLASH_TYPE_COORDINATION_VIOLATION:
+		return "coordination_violation"
+	default:
+		return "unspecified"
+	}
+}
+
 // ---------- ValidateBasic for Msg types ----------
 
 func (m *MsgRegisterValidator) ValidateBasic() error {
@@ -262,6 +302,19 @@ func (p *Params) Validate() error {
 	}
 	if p.ReputationSlashDelta > BPSScale {
 		return fmt.Errorf("reputation slash delta exceeds maximum")
+	}
+	if p.SlashBurnFractionBps > BPSScale {
+		return fmt.Errorf("slash burn fraction bps exceeds maximum (%d)", BPSScale)
+	}
+
+	// Validate slash_rate_configs: each rate must fit within BPS scale.
+	for i, cfg := range p.SlashRateConfigs {
+		if cfg == nil {
+			return fmt.Errorf("slash_rate_configs[%d]: nil entry", i)
+		}
+		if cfg.RateBps > BPSScale {
+			return fmt.Errorf("slash_rate_configs[%d]: rate_bps %d exceeds maximum (%d)", i, cfg.RateBps, BPSScale)
+		}
 	}
 
 	if len(p.TierConfigs) > 0 {

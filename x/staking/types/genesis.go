@@ -19,6 +19,8 @@ func DefaultParams() *Params {
 		ReputationSlashDelta:     10_000,          // -1%
 		RedelegationCooldownBlocks: 1_111,         // ~46 minutes
 		TierConfigs:              DefaultTierConfigs(),
+		SlashBurnFractionBps:     0,              // default: no burn (all routes to dev fund)
+		SlashRateConfigs:         DefaultSlashRateConfigs(),
 	}
 }
 

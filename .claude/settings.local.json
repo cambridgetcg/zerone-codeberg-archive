@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/yu/Desktop/yu-wake && bun run fire 2>/dev/null"
+          }
+        ]
+      }
+    ]
+  }
+}

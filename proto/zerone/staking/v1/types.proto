@@ -3,6 +3,22 @@ package zerone.staking.v1;
 
 option go_package = "github.com/zerone-chain/zerone/x/staking/types";
 
+// SlashType enumerates reason categories for validator slashing.
+// Each type carries a governance-adjustable rate in SlashRateConfig.
+enum SlashType {
+  SLASH_TYPE_UNSPECIFIED            = 0;
+  SLASH_TYPE_DOUBLE_VOTE            = 1; // Byzantine equivocation / double-sign
+  SLASH_TYPE_LIVENESS_FAULT         = 2; // offline / missed blocks
+  SLASH_TYPE_CALIBRATION_FAULT      = 3; // miscalibrated confidence reporting
+  SLASH_TYPE_COORDINATION_VIOLATION = 4; // violated coordination / VRF rules
+}
+
+// SlashRateConfig pairs a SlashType with a governance-adjustable rate.
+message SlashRateConfig {
+  SlashType slash_type = 1; // which fault this configures
+  uint64    rate_bps   = 2; // fraction of total_stake to slash (1_000_000 = 100%)
+}
+
 // ValidatorTier enumerates the 4-tier graduated validator system.
 enum ValidatorTier {
   VALIDATOR_TIER_UNSPECIFIED = 0;

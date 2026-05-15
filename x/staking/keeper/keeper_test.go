@@ -35,8 +35,9 @@ func init() {
 // ---------- Mock BankKeeper ----------
 
 type mockBankKeeper struct {
-	balances   map[string]sdk.Coins
-	moduleSent sdk.Coins
+	balances    map[string]sdk.Coins
+	moduleSent  sdk.Coins
+	burnedCoins sdk.Coins
 }
 
 func newMockBankKeeper() *mockBankKeeper {
@@ -70,6 +71,11 @@ func (m *mockBankKeeper) SpendableCoins(_ context.Context, _ sdk.AccAddress) sdk
 }
 
 func (m *mockBankKeeper) MintCoins(_ context.Context, _ string, _ sdk.Coins) error {
+	return nil
+}
+
+func (m *mockBankKeeper) BurnCoins(_ context.Context, _ string, amt sdk.Coins) error {
+	m.burnedCoins = m.burnedCoins.Add(amt...)
 	return nil
 }
 
@@ -152,6 +158,31 @@ func setupBareKeeper(t *testing.T) (keeper.Keeper, sdk.Context) {
 	ctx := sdk.NewContext(stateStore, cmtproto.Header{Height: 100}, false, log.NewNopLogger())
 
 	return k, ctx
+}
+
+// setupKeeperWithBank returns the keeper, context, and the underlying mock
+// bank keeper so tests can inspect burn/send amounts directly.
+func setupKeeperWithBank(t *testing.T) (keeper.Keeper, sdk.Context, *mockBankKeeper) {
+	t.Helper()
+
+	storeKey := storetypes.NewKVStoreKey(types.StoreKey)
+	db := dbm.NewMemDB()
+	stateStore := store.NewCommitMultiStore(db, log.NewNopLogger(), storemetrics.NewNoOpMetrics())
+	stateStore.MountStoreWithDB(storeKey, storetypes.StoreTypeIAVL, db)
+	if err := stateStore.LoadLatestVersion(); err != nil {
+		t.Fatalf("failed to load latest version: %v", err)
+	}
+
+	registry := codectypes.NewInterfaceRegistry()
+	cdc := codec.NewProtoCodec(registry)
+	bk := newMockBankKeeper()
+	ak := &mockAccountKeeper{}
+
+	k := keeper.NewKeeper(cdc, storeKey, ak, bk, "authority")
+	ctx := sdk.NewContext(stateStore, cmtproto.Header{Height: 100}, false, log.NewNopLogger())
+	k.InitGenesis(ctx, types.DefaultGenesisState())
+
+	return k, ctx, bk
 }
 
 // testAddr creates a deterministic bech32 address from a seed.
@@ -3107,5 +3138,214 @@ func TestGuardianDemotion_OnSlash(t *testing.T) {
 	if val.Tier < types.TierScholar {
 		t.Errorf("expected at least Scholar after Guardian demotion, got %s",
 			types.ValidatorTierString(val.Tier))
+	}
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// SlashBurnFractionBps tests
+// ────────────────────────────────────────────────────────────────────────────
+
+// TestSlashBurnFraction_Disabled verifies backward-compat: BurnBps=0 sends
+// the full slash to the development fund and nothing is burned.
+func TestSlashBurnFraction_Disabled(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+	addr := testAddr("burn_disabled")
+	registerTestValidator(t, k, ctx, addr, "", "10000000")
+
+	params := k.GetParams(ctx)
+	params.SlashBurnFractionBps = 0 // explicitly disabled
+	k.SetParams(ctx, params)
+
+	k.SlashValidator(ctx, addr, big.NewInt(1_000_000), "test")
+
+	// Nothing burned.
+	if len(bk.burnedCoins) != 0 {
+		t.Errorf("expected 0 burned, got %v", bk.burnedCoins)
+	}
+	// Full amount sent to module routing (development_fund).
+	if bk.moduleSent.IsZero() {
+		t.Error("expected non-zero module routing when burn=0")
+	}
+}
+
+// TestSlashBurnFraction_Half verifies that BurnBps=500_000 burns exactly 50%
+// and routes the remaining 50% to development_fund.
+func TestSlashBurnFraction_Half(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+	addr := testAddr("burn_half")
+	registerTestValidator(t, k, ctx, addr, "", "10000000")
+
+	params := k.GetParams(ctx)
+	params.SlashBurnFractionBps = 500_000 // 50%
+	params.SlashEscalationBps = 0        // disable escalation for clean math
+	k.SetParams(ctx, params)
+
+	slashAmt := int64(2_000_000)
+	k.SlashValidator(ctx, addr, big.NewInt(slashAmt), "test")
+
+	burnedAmt := bk.burnedCoins.AmountOf("uzrn").Int64()
+	sentAmt := bk.moduleSent.AmountOf("uzrn").Int64()
+
+	if burnedAmt != slashAmt/2 {
+		t.Errorf("expected burned=%d, got %d", slashAmt/2, burnedAmt)
+	}
+	if sentAmt != slashAmt/2 {
+		t.Errorf("expected sent=%d, got %d", slashAmt/2, sentAmt)
+	}
+}
+
+// TestSlashBurnFraction_Full verifies that BurnBps=1_000_000 burns 100% of
+// the slash with nothing routed to the development fund.
+func TestSlashBurnFraction_Full(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+	addr := testAddr("burn_full")
+	registerTestValidator(t, k, ctx, addr, "", "10000000")
+
+	params := k.GetParams(ctx)
+	params.SlashBurnFractionBps = 1_000_000 // 100%
+	params.SlashEscalationBps = 0
+	k.SetParams(ctx, params)
+
+	slashAmt := int64(1_000_000)
+	k.SlashValidator(ctx, addr, big.NewInt(slashAmt), "test")
+
+	burnedAmt := bk.burnedCoins.AmountOf("uzrn").Int64()
+	sentAmt := bk.moduleSent.AmountOf("uzrn").Int64()
+
+	if burnedAmt != slashAmt {
+		t.Errorf("expected burned=%d (100%%), got %d", slashAmt, burnedAmt)
+	}
+	if sentAmt != 0 {
+		t.Errorf("expected sent=0 when burn=100%%, got %d", sentAmt)
+	}
+}
+
+// TestSlashBurnFraction_ToModule verifies that SlashValidatorToModule also
+// applies the burn fraction before routing to the destination module.
+func TestSlashBurnFraction_ToModule(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+	addr := testAddr("burn_to_mod")
+	registerTestValidator(t, k, ctx, addr, "", "10000000")
+
+	params := k.GetParams(ctx)
+	params.SlashBurnFractionBps = 200_000 // 20%
+	params.SlashEscalationBps = 0
+	k.SetParams(ctx, params)
+
+	slashAmt := int64(1_000_000)
+	k.SlashValidatorToModule(ctx, addr, big.NewInt(slashAmt), "vindication_escrow", "test")
+
+	burnedAmt := bk.burnedCoins.AmountOf("uzrn").Int64()
+	sentAmt := bk.moduleSent.AmountOf("uzrn").Int64()
+	expectedBurn := slashAmt * 200_000 / 1_000_000
+	expectedSent := slashAmt - expectedBurn
+
+	if burnedAmt != expectedBurn {
+		t.Errorf("expected burned=%d (20%%), got %d", expectedBurn, burnedAmt)
+	}
+	if sentAmt != expectedSent {
+		t.Errorf("expected sent=%d (80%%), got %d", expectedSent, sentAmt)
+	}
+}
+
+// TestSlashBurnFraction_Validate rejects BurnBps > 1_000_000.
+func TestSlashBurnFraction_Validate(t *testing.T) {
+	params := types.DefaultParams()
+	params.SlashBurnFractionBps = 1_000_001 // over 100%
+	if err := params.Validate(); err == nil {
+		t.Error("expected validation error for SlashBurnFractionBps > 1_000_000")
+	}
+}
+
+// TestSlashBurnFraction_ValidateMaxAllowed verifies that exactly 1_000_000 is accepted.
+func TestSlashBurnFraction_ValidateMaxAllowed(t *testing.T) {
+	params := types.DefaultParams()
+	params.SlashBurnFractionBps = 1_000_000
+	if err := params.Validate(); err != nil {
+		t.Errorf("expected valid for SlashBurnFractionBps=1_000_000, got %v", err)
+	}
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// SlashValidatorByType tests
+// ────────────────────────────────────────────────────────────────────────────
+
+// TestSlashValidatorByType_DoubleVote verifies the 20% configured rate is applied.
+func TestSlashValidatorByType_DoubleVote(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+	addr := testAddr("by_type_double_vote")
+	stake := int64(10_000_000)
+	registerTestValidator(t, k, ctx, addr, "", fmt.Sprintf("%d", stake))
+
+	params := k.GetParams(ctx)
+	params.SlashEscalationBps = 0 // clean math
+	k.SetParams(ctx, params)
+
+	k.SlashValidatorByType(ctx, addr, types.SlashType_SLASH_TYPE_DOUBLE_VOTE)
+
+	// Default DOUBLE_VOTE rate = 200_000 bps = 20%
+	expectedSlash := stake * 200_000 / 1_000_000
+	sentAmt := bk.moduleSent.AmountOf("uzrn").Int64()
+	if sentAmt != expectedSlash {
+		t.Errorf("expected slash=%d (20%%), got %d", expectedSlash, sentAmt)
+	}
+
+	val, _ := k.GetValidator(ctx, addr)
+	if val.SlashCount != 1 {
+		t.Errorf("expected slash_count=1, got %d", val.SlashCount)
+	}
+}
+
+// TestSlashValidatorByType_LivenessFault verifies the 1% configured rate.
+func TestSlashValidatorByType_LivenessFault(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+	addr := testAddr("by_type_liveness")
+	stake := int64(10_000_000)
+	registerTestValidator(t, k, ctx, addr, "", fmt.Sprintf("%d", stake))
+
+	params := k.GetParams(ctx)
+	params.SlashEscalationBps = 0
+	k.SetParams(ctx, params)
+
+	k.SlashValidatorByType(ctx, addr, types.SlashType_SLASH_TYPE_LIVENESS_FAULT)
+
+	// Default LIVENESS_FAULT rate = 10_000 bps = 1%
+	expectedSlash := stake * 10_000 / 1_000_000
+	sentAmt := bk.moduleSent.AmountOf("uzrn").Int64()
+	if sentAmt != expectedSlash {
+		t.Errorf("expected slash=%d (1%%), got %d", expectedSlash, sentAmt)
+	}
+}
+
+// TestSlashValidatorByType_NoRate is a no-op when the type has no configured rate.
+// Note: GetParams backfills nil configs from defaults (upgrade-compat behaviour), so
+// we set a non-nil config list that simply omits DOUBLE_VOTE to trigger the no-rate path.
+func TestSlashValidatorByType_NoRate(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+	addr := testAddr("by_type_no_rate")
+	registerTestValidator(t, k, ctx, addr, "", "10000000")
+
+	// Only liveness_fault configured — double_vote has no entry.
+	params := k.GetParams(ctx)
+	params.SlashRateConfigs = []*types.SlashRateConfig{
+		{SlashType: types.SlashType_SLASH_TYPE_LIVENESS_FAULT, RateBps: 10_000},
+	}
+	k.SetParams(ctx, params)
+
+	k.SlashValidatorByType(ctx, addr, types.SlashType_SLASH_TYPE_DOUBLE_VOTE)
+
+	if !bk.moduleSent.IsZero() {
+		t.Errorf("expected no slash when double_vote not in configs, got %v", bk.moduleSent)
+	}
+}
+
+// TestSlashValidatorByType_NotFound is a no-op for an unknown validator.
+func TestSlashValidatorByType_NotFound(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+
+	k.SlashValidatorByType(ctx, testAddr("nonexistent"), types.SlashType_SLASH_TYPE_DOUBLE_VOTE)
+
+	if !bk.moduleSent.IsZero() || !bk.burnedCoins.IsZero() {
+		t.Error("expected no action for unknown validator")
 	}
 }

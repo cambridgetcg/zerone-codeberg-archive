@@ -39,8 +39,20 @@ type Params struct {
 	ReputationSlashDelta       uint64                 `protobuf:"varint,12,opt,name=reputation_slash_delta,json=reputationSlashDelta,proto3" json:"reputation_slash_delta,omitempty"`             // BPS subtracted on slash
 	RedelegationCooldownBlocks uint64                 `protobuf:"varint,13,opt,name=redelegation_cooldown_blocks,json=redelegationCooldownBlocks,proto3" json:"redelegation_cooldown_blocks,omitempty"`
 	TierConfigs                []*TierConfig          `protobuf:"bytes,14,rep,name=tier_configs,json=tierConfigs,proto3" json:"tier_configs,omitempty"`
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	// slash_burn_fraction_bps: fraction of every slashed amount destroyed (burned)
+	// before the remainder routes to the development fund or vindication escrow.
+	// 0 = disabled (default, no change to existing behaviour).
+	// 1_000_000 = 100% burned (nothing routes to fund).
+	// EIP-1559 analogue for validator slashing — reduces perverse incentive
+	// where the fund benefits from misbehaviour it governs.
+	SlashBurnFractionBps uint64 `protobuf:"varint,15,opt,name=slash_burn_fraction_bps,json=slashBurnFractionBps,proto3" json:"slash_burn_fraction_bps,omitempty"`
+	// slash_rate_configs: per-SlashType governance-adjustable slash rates.
+	// Each entry maps a SlashType to a rate_bps (fraction of total_stake).
+	// Types not listed fall back to zero (no automatic slash amount — caller must supply).
+	// Governance can add/update entries via MsgUpdateParams.
+	SlashRateConfigs []*SlashRateConfig `protobuf:"bytes,16,rep,name=slash_rate_configs,json=slashRateConfigs,proto3" json:"slash_rate_configs,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -171,6 +183,20 @@ func (x *Params) GetTierConfigs() []*TierConfig {
 	return nil
 }
 
+func (x *Params) GetSlashBurnFractionBps() uint64 {
+	if x != nil {
+		return x.SlashBurnFractionBps
+	}
+	return 0
+}
+
+func (x *Params) GetSlashRateConfigs() []*SlashRateConfig {
+	if x != nil {
+		return x.SlashRateConfigs
+	}
+	return nil
+}
+
 // GenesisState defines the staking module genesis state.
 type GenesisState struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
@@ -252,7 +278,7 @@ var File_zerone_staking_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_staking_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"\x1fzerone/staking/v1/genesis.proto\x12\x11zerone.staking.v1\x1a\x1dzerone/staking/v1/types.proto\"\xfb\x05\n" +
+	"\x1fzerone/staking/v1/genesis.proto\x12\x11zerone.staking.v1\x1a\x1dzerone/staking/v1/types.proto\"\x84\a\n" +
 	"\x06Params\x12)\n" +
 	"\x10unbonding_period\x18\x01 \x01(\x04R\x0funbondingPeriod\x12#\n" +
 	"\rvirtual_stake\x18\x02 \x01(\tR\fvirtualStake\x12%\n" +
@@ -268,7 +294,9 @@ const file_zerone_staking_v1_genesis_proto_rawDesc = "" +
 	"\x1areputation_incorrect_delta\x18\v \x01(\x04R\x18reputationIncorrectDelta\x124\n" +
 	"\x16reputation_slash_delta\x18\f \x01(\x04R\x14reputationSlashDelta\x12@\n" +
 	"\x1credelegation_cooldown_blocks\x18\r \x01(\x04R\x1aredelegationCooldownBlocks\x12@\n" +
-	"\ftier_configs\x18\x0e \x03(\v2\x1d.zerone.staking.v1.TierConfigR\vtierConfigs\"\xb5\x02\n" +
+	"\ftier_configs\x18\x0e \x03(\v2\x1d.zerone.staking.v1.TierConfigR\vtierConfigs\x125\n" +
+	"\x17slash_burn_fraction_bps\x18\x0f \x01(\x04R\x14slashBurnFractionBps\x12P\n" +
+	"\x12slash_rate_configs\x18\x10 \x03(\v2\".zerone.staking.v1.SlashRateConfigR\x10slashRateConfigs\"\xb5\x02\n" +
 	"\fGenesisState\x121\n" +
 	"\x06params\x18\x01 \x01(\v2\x19.zerone.staking.v1.ParamsR\x06params\x12<\n" +
 	"\n" +
@@ -292,24 +320,26 @@ func file_zerone_staking_v1_genesis_proto_rawDescGZIP() []byte {
 
 var file_zerone_staking_v1_genesis_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_zerone_staking_v1_genesis_proto_goTypes = []any{
-	(*Params)(nil),         // 0: zerone.staking.v1.Params
-	(*GenesisState)(nil),   // 1: zerone.staking.v1.GenesisState
-	(*TierConfig)(nil),     // 2: zerone.staking.v1.TierConfig
-	(*Validator)(nil),      // 3: zerone.staking.v1.Validator
-	(*Delegation)(nil),     // 4: zerone.staking.v1.Delegation
-	(*UnbondingEntry)(nil), // 5: zerone.staking.v1.UnbondingEntry
+	(*Params)(nil),          // 0: zerone.staking.v1.Params
+	(*GenesisState)(nil),    // 1: zerone.staking.v1.GenesisState
+	(*TierConfig)(nil),      // 2: zerone.staking.v1.TierConfig
+	(*SlashRateConfig)(nil), // 3: zerone.staking.v1.SlashRateConfig
+	(*Validator)(nil),       // 4: zerone.staking.v1.Validator
+	(*Delegation)(nil),      // 5: zerone.staking.v1.Delegation
+	(*UnbondingEntry)(nil),  // 6: zerone.staking.v1.UnbondingEntry
 }
 var file_zerone_staking_v1_genesis_proto_depIdxs = []int32{
 	2, // 0: zerone.staking.v1.Params.tier_configs:type_name -> zerone.staking.v1.TierConfig
-	0, // 1: zerone.staking.v1.GenesisState.params:type_name -> zerone.staking.v1.Params
-	3, // 2: zerone.staking.v1.GenesisState.validators:type_name -> zerone.staking.v1.Validator
-	4, // 3: zerone.staking.v1.GenesisState.delegations:type_name -> zerone.staking.v1.Delegation
-	5, // 4: zerone.staking.v1.GenesisState.unbonding_entries:type_name -> zerone.staking.v1.UnbondingEntry
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	3, // 1: zerone.staking.v1.Params.slash_rate_configs:type_name -> zerone.staking.v1.SlashRateConfig
+	0, // 2: zerone.staking.v1.GenesisState.params:type_name -> zerone.staking.v1.Params
+	4, // 3: zerone.staking.v1.GenesisState.validators:type_name -> zerone.staking.v1.Validator
+	5, // 4: zerone.staking.v1.GenesisState.delegations:type_name -> zerone.staking.v1.Delegation
+	6, // 5: zerone.staking.v1.GenesisState.unbonding_entries:type_name -> zerone.staking.v1.UnbondingEntry
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_zerone_staking_v1_genesis_proto_init() }

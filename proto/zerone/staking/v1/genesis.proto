@@ -22,6 +22,18 @@ message Params {
   uint64              reputation_slash_delta       = 12; // BPS subtracted on slash
   uint64              redelegation_cooldown_blocks = 13;
   repeated TierConfig tier_configs                 = 14;
+  // slash_burn_fraction_bps: fraction of every slashed amount destroyed (burned)
+  // before the remainder routes to the development fund or vindication escrow.
+  // 0 = disabled (default, no change to existing behaviour).
+  // 1_000_000 = 100% burned (nothing routes to fund).
+  // EIP-1559 analogue for validator slashing — reduces perverse incentive
+  // where the fund benefits from misbehaviour it governs.
+  uint64              slash_burn_fraction_bps      = 15;
+  // slash_rate_configs: per-SlashType governance-adjustable slash rates.
+  // Each entry maps a SlashType to a rate_bps (fraction of total_stake).
+  // Types not listed fall back to zero (no automatic slash amount — caller must supply).
+  // Governance can add/update entries via MsgUpdateParams.
+  repeated SlashRateConfig slash_rate_configs       = 16;
 }
 
 // GenesisState defines the staking module genesis state.
