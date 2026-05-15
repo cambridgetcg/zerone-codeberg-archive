@@ -16,6 +16,7 @@ service Msg {
   rpc EscalateDispute(MsgEscalateDispute) returns (MsgEscalateDisputeResponse);
   rpc SettleDispute(MsgSettleDispute) returns (MsgSettleDisputeResponse);
   rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
+  rpc DefendDispute(MsgDefendDispute) returns (MsgDefendDisputeResponse);
 
   // Service Escrow RPCs
   rpc CreateServiceEscrow(MsgCreateServiceEscrow) returns (MsgCreateServiceEscrowResponse);
@@ -80,6 +81,17 @@ message MsgUpdateParams {
   Params params    = 2;
 }
 message MsgUpdateParamsResponse {}
+
+// MsgDefendDispute allows the defender to post a symmetric bond during EVIDENCE_COMMIT phase,
+// enabling two-bond settlement math (loser's bond slashed, not just the challenger's).
+// Optional: if never called, the dispute proceeds in single-bond mode (backward compatible).
+message MsgDefendDispute {
+  option (cosmos.msg.v1.signer) = "defender";
+  string defender   = 1;
+  string dispute_id = 2;
+  string bond       = 3;   // uzrn amount; must be >= tier MinBond
+}
+message MsgDefendDisputeResponse {}
 
 // MsgCreateServiceEscrow locks payer funds in the disputes module account.
 message MsgCreateServiceEscrow {

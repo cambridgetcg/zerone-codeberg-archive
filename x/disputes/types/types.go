@@ -333,3 +333,24 @@ func (msg *MsgDisputeServiceEscrow) ValidateBasic() error {
 	}
 	return nil
 }
+
+// ---- Defender Bond Msg types ----
+
+func (msg *MsgDefendDispute) GetSigners() []sdk.AccAddress {
+	addr, _ := sdk.AccAddressFromBech32(msg.Defender)
+	return []sdk.AccAddress{addr}
+}
+
+func (msg *MsgDefendDispute) ValidateBasic() error {
+	if _, err := sdk.AccAddressFromBech32(msg.Defender); err != nil {
+		return fmt.Errorf("invalid defender address: %w", err)
+	}
+	if msg.DisputeId == "" {
+		return fmt.Errorf("dispute_id cannot be empty")
+	}
+	bond := new(big.Int)
+	if _, ok := bond.SetString(msg.Bond, 10); !ok || bond.Sign() <= 0 {
+		return fmt.Errorf("bond must be a positive integer")
+	}
+	return nil
+}

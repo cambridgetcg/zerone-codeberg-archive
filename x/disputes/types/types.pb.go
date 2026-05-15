@@ -313,6 +313,7 @@ type Dispute struct {
 	VotingDeadline   uint64                 `protobuf:"varint,13,opt,name=voting_deadline,json=votingDeadline,proto3" json:"voting_deadline,omitempty"`
 	Arbiters         []string               `protobuf:"bytes,14,rep,name=arbiters,proto3" json:"arbiters,omitempty"`
 	EvidenceCount    uint32                 `protobuf:"varint,15,opt,name=evidence_count,json=evidenceCount,proto3" json:"evidence_count,omitempty"`
+	DefenderBond     string                 `protobuf:"bytes,16,opt,name=defender_bond,json=defenderBond,proto3" json:"defender_bond,omitempty"` // uzrn staked by defender (optional; empty = single-bond mode)
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -450,6 +451,13 @@ func (x *Dispute) GetEvidenceCount() uint32 {
 		return x.EvidenceCount
 	}
 	return 0
+}
+
+func (x *Dispute) GetDefenderBond() string {
+	if x != nil {
+		return x.DefenderBond
+	}
+	return ""
 }
 
 type DisputeEvidence struct {
@@ -910,7 +918,7 @@ var File_zerone_disputes_v1_types_proto protoreflect.FileDescriptor
 
 const file_zerone_disputes_v1_types_proto_rawDesc = "" +
 	"\n" +
-	"\x1ezerone/disputes/v1/types.proto\x12\x12zerone.disputes.v1\"\xa8\x04\n" +
+	"\x1ezerone/disputes/v1/types.proto\x12\x12zerone.disputes.v1\"\xcd\x04\n" +
 	"\aDispute\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\ttarget_id\x18\x02 \x01(\tR\btargetId\x12F\n" +
@@ -931,7 +939,8 @@ const file_zerone_disputes_v1_types_proto_rawDesc = "" +
 	"\x11evidence_deadline\x18\f \x01(\x04R\x10evidenceDeadline\x12'\n" +
 	"\x0fvoting_deadline\x18\r \x01(\x04R\x0evotingDeadline\x12\x1a\n" +
 	"\barbiters\x18\x0e \x03(\tR\barbiters\x12%\n" +
-	"\x0eevidence_count\x18\x0f \x01(\rR\revidenceCount\"\xaf\x01\n" +
+	"\x0eevidence_count\x18\x0f \x01(\rR\revidenceCount\x12#\n" +
+	"\rdefender_bond\x18\x10 \x01(\tR\fdefenderBond\"\xaf\x01\n" +
 	"\x0fDisputeEvidence\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +

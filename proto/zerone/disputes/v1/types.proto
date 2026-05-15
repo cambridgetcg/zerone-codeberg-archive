@@ -18,6 +18,7 @@ message Dispute {
   uint64 voting_deadline = 13;
   repeated string arbiters = 14;
   uint32 evidence_count = 15;
+  string defender_bond = 16;          // uzrn staked by defender (optional; empty = single-bond mode)
 }
 
 message DisputeEvidence {

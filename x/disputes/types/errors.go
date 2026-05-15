@@ -33,4 +33,8 @@ var (
 	ErrUnauthorizedEscrow    = errors.Register(ModuleName, 27, "sender is not authorized for this escrow action")
 	ErrInvalidEscrowAmount   = errors.Register(ModuleName, 28, "invalid escrow amount")
 	ErrEscrowDisputeWindow   = errors.Register(ModuleName, 29, "dispute window has closed for this escrow")
+
+	// Defender Bond errors
+	ErrDefenderBondExists    = errors.Register(ModuleName, 30, "defender bond already posted")
+	ErrNotDefender           = errors.Register(ModuleName, 31, "sender is not the dispute defender")
 )

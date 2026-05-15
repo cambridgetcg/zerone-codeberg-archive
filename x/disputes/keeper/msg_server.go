@@ -559,6 +559,76 @@ func (m msgServer) CompleteServiceEscrow(goCtx context.Context, msg *types.MsgCo
 	return &types.MsgCompleteServiceEscrowResponse{}, nil
 }
 
+// ---------- Defender Bond handler ----------
+
+// DefendDispute allows the dispute defender to post a symmetric bond during
+// the EVIDENCE_COMMIT phase, opting into two-bond settlement math. If not called,
+// the dispute proceeds in single-bond mode (backward compatible: only the challenger's
+// bond is at stake). When two bonds are present, the loser's bond is slashed rather
+// than always the challenger's.
+func (m msgServer) DefendDispute(goCtx context.Context, msg *types.MsgDefendDispute) (*types.MsgDefendDisputeResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+
+	dispute, found := m.GetDispute(ctx, msg.DisputeId)
+	if !found {
+		return nil, fmt.Errorf("%w: %s", types.ErrDisputeNotFound, msg.DisputeId)
+	}
+
+	// Must be in EVIDENCE_COMMIT phase (before reveal begins).
+	if dispute.Phase != types.DisputePhase_DISPUTE_PHASE_EVIDENCE_COMMIT {
+		return nil, fmt.Errorf("%w: expected EVIDENCE_COMMIT, got %s", types.ErrWrongPhase, dispute.Phase.String())
+	}
+
+	// Caller must be the dispute's defender.
+	if msg.Defender != dispute.Defender {
+		return nil, fmt.Errorf("%w: %s is not the defender", types.ErrNotDefender, msg.Defender)
+	}
+
+	// Defender bond must not already be posted.
+	if dispute.DefenderBond != "" && dispute.DefenderBond != "0" {
+		return nil, fmt.Errorf("%w: defender already posted %s", types.ErrDefenderBondExists, dispute.DefenderBond)
+	}
+
+	// Validate and escrow the bond.
+	bondAmt := new(big.Int)
+	if _, ok := bondAmt.SetString(msg.Bond, 10); !ok || bondAmt.Sign() <= 0 {
+		return nil, fmt.Errorf("%w: %s", types.ErrInvalidBond, msg.Bond)
+	}
+
+	// Must meet tier minimum.
+	params := m.GetParams(ctx)
+	tierCfg := types.GetTierConfig(params, dispute.Tier)
+	if tierCfg != nil {
+		minBond := new(big.Int)
+		minBond.SetString(tierCfg.MinBond, 10)
+		if bondAmt.Cmp(minBond) < 0 {
+			return nil, fmt.Errorf("%w: need %s, got %s", types.ErrInsufficientBond, tierCfg.MinBond, msg.Bond)
+		}
+	}
+
+	defenderAddr, err := sdk.AccAddressFromBech32(msg.Defender)
+	if err != nil {
+		return nil, fmt.Errorf("invalid defender address: %w", err)
+	}
+
+	coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(bondAmt)))
+	if err := m.bankKeeper.SendCoinsFromAccountToModule(ctx, defenderAddr, types.ModuleName, coins); err != nil {
+		return nil, fmt.Errorf("failed to escrow defender bond: %w", err)
+	}
+
+	dispute.DefenderBond = msg.Bond
+	m.SetDispute(ctx, dispute)
+
+	ctx.EventManager().EmitEvent(sdk.NewEvent(
+		"zerone.disputes.defender_bond_posted",
+		sdk.NewAttribute("dispute_id", msg.DisputeId),
+		sdk.NewAttribute("defender", msg.Defender),
+		sdk.NewAttribute("bond", msg.Bond),
+	))
+
+	return &types.MsgDefendDisputeResponse{}, nil
+}
+
 // DisputeServiceEscrow is called by the payer to contest a completed escrow within
 // the dispute window. Funds remain locked in the module account pending governance
 // resolution; EndBlock will NOT auto-release a DISPUTED escrow.

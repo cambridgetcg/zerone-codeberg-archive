@@ -3735,3 +3735,354 @@ func TestProcessExpiredEscrows_DisputedImmune(t *testing.T) {
 		t.Errorf("expected DISPUTED, got %v", escrow.Status)
 	}
 }
+
+// ---------- Defender Bond tests ----------
+
+// TestDefendDispute_Success verifies that a defender can post bond during EVIDENCE_COMMIT
+// and the dispute's DefenderBond field is updated.
+func TestDefendDispute_Success(t *testing.T) {
+	ms, k, ctx, bk, _, kk := setupMsgServer(t)
+
+	challenger := testAddr("defend-c")
+	defender := testAddr("defend-d")
+	kk.addFact("fact-db", defender)
+	bk.setBalance(challenger, "uzrn", 10_000_000)
+	bk.setBalance(defender, "uzrn", 10_000_000)
+
+	initResp, err := ms.InitiateDispute(ctx, &types.MsgInitiateDispute{
+		Challenger: challenger,
+		TargetType: types.DisputeTargetType_DISPUTE_TARGET_TYPE_FACT,
+		TargetId:   "fact-db",
+		Reason:     "bad fact",
+		Bond:       "1000000",
+	})
+	if err != nil {
+		t.Fatalf("InitiateDispute failed: %v", err)
+	}
+
+	_, err = ms.DefendDispute(ctx, &types.MsgDefendDispute{
+		Defender:  defender,
+		DisputeId: initResp.DisputeId,
+		Bond:      "1000000",
+	})
+	if err != nil {
+		t.Fatalf("DefendDispute failed: %v", err)
+	}
+
+	dispute, found := k.GetDispute(ctx, initResp.DisputeId)
+	if !found {
+		t.Fatal("dispute not found")
+	}
+	if dispute.DefenderBond != "1000000" {
+		t.Errorf("expected DefenderBond 1000000, got %q", dispute.DefenderBond)
+	}
+	// Defender's balance should be reduced by bond amount.
+	if bk.balances[defender]["uzrn"] != 9_000_000 {
+		t.Errorf("expected defender balance 9000000, got %d", bk.balances[defender]["uzrn"])
+	}
+}
+
+// TestDefendDispute_WrongPhase verifies that posting bond fails outside EVIDENCE_COMMIT.
+// The test directly injects a dispute in ARBITRATION phase (bypassing BeginBlock phase
+// advancement) to verify that DefendDispute rejects non-EVIDENCE_COMMIT phases.
+func TestDefendDispute_WrongPhase(t *testing.T) {
+	ms, k, ctx, bk, _, _ := setupMsgServer(t)
+
+	challenger := testAddr("defend-wp-c")
+	defender := testAddr("defend-wp-d")
+	bk.setBalance(defender, "uzrn", 10_000_000)
+
+	// Inject a dispute already in ARBITRATION phase.
+	dispute := &types.Dispute{
+		Id:               "wp-dispute",
+		TargetId:         "fact-wp",
+		Challenger:       challenger,
+		Defender:         defender,
+		Bond:             "1000000",
+		Tier:             1,
+		Phase:            types.DisputePhase_DISPUTE_PHASE_ARBITRATION,
+		Outcome:          types.DisputeOutcome_DISPUTE_OUTCOME_UNSPECIFIED,
+		EvidenceDeadline: 1,
+		VotingDeadline:   2000,
+	}
+	k.SetDispute(ctx, dispute)
+
+	_, err := ms.DefendDispute(ctx, &types.MsgDefendDispute{
+		Defender:  defender,
+		DisputeId: dispute.Id,
+		Bond:      "1000000",
+	})
+	if err == nil {
+		t.Fatal("expected error for wrong phase, got nil")
+	}
+}
+
+// TestDefendDispute_NotDefender verifies that a non-defender cannot post bond.
+func TestDefendDispute_NotDefender(t *testing.T) {
+	ms, _, ctx, bk, _, kk := setupMsgServer(t)
+
+	challenger := testAddr("defend-nd-c")
+	defender := testAddr("defend-nd-d")
+	impostor := testAddr("defend-nd-imp")
+	kk.addFact("fact-nd", defender)
+	bk.setBalance(challenger, "uzrn", 10_000_000)
+	bk.setBalance(impostor, "uzrn", 10_000_000)
+
+	initResp, _ := ms.InitiateDispute(ctx, &types.MsgInitiateDispute{
+		Challenger: challenger,
+		TargetType: types.DisputeTargetType_DISPUTE_TARGET_TYPE_FACT,
+		TargetId:   "fact-nd",
+		Reason:     "bad fact",
+		Bond:       "1000000",
+	})
+
+	_, err := ms.DefendDispute(ctx, &types.MsgDefendDispute{
+		Defender:  impostor,
+		DisputeId: initResp.DisputeId,
+		Bond:      "1000000",
+	})
+	if err == nil {
+		t.Fatal("expected error for non-defender, got nil")
+	}
+}
+
+// TestDefendDispute_AlreadyPosted verifies that double-posting bond is rejected.
+func TestDefendDispute_AlreadyPosted(t *testing.T) {
+	ms, _, ctx, bk, _, kk := setupMsgServer(t)
+
+	challenger := testAddr("defend-dup-c")
+	defender := testAddr("defend-dup-d")
+	kk.addFact("fact-dup", defender)
+	bk.setBalance(challenger, "uzrn", 10_000_000)
+	bk.setBalance(defender, "uzrn", 10_000_000)
+
+	initResp, _ := ms.InitiateDispute(ctx, &types.MsgInitiateDispute{
+		Challenger: challenger,
+		TargetType: types.DisputeTargetType_DISPUTE_TARGET_TYPE_FACT,
+		TargetId:   "fact-dup",
+		Reason:     "bad fact",
+		Bond:       "1000000",
+	})
+
+	_, err := ms.DefendDispute(ctx, &types.MsgDefendDispute{
+		Defender:  defender,
+		DisputeId: initResp.DisputeId,
+		Bond:      "1000000",
+	})
+	if err != nil {
+		t.Fatalf("first DefendDispute failed: %v", err)
+	}
+
+	_, err = ms.DefendDispute(ctx, &types.MsgDefendDispute{
+		Defender:  defender,
+		DisputeId: initResp.DisputeId,
+		Bond:      "1000000",
+	})
+	if err == nil {
+		t.Fatal("expected error for duplicate bond post, got nil")
+	}
+}
+
+// TestTwoBond_ChallengerWins verifies two-bond settlement when challenger wins:
+// - Defender's bond is slashed.
+// - Challenger receives own bond back in full plus winner reward.
+// - Defender receives unslashed portion of their bond.
+// - Burn remainder routes to development_fund.
+func TestTwoBond_ChallengerWins(t *testing.T) {
+	k, ctx, bk, _, _ := setupKeeper(t)
+
+	challenger := testAddr("twob-cw-c")
+	defender := testAddr("twob-cw-d")
+	arb1 := testAddr("twob-cw-arb1")
+
+	// Bond = 1_000_000 (challenger). DefenderBond = 1_000_000.
+	// Params: SlashRateLoserBps=500_000 (50%), RewardRateWinnerBps=400_000 (40%), ArbiterRewardBps=100_000 (10%).
+	// Loser (defender): slashAmt = 1_000_000 x 50% = 500_000
+	//   winnerReward = 500_000 x 40% = 200_000
+	//   arbiterReward = 500_000 x 10% = 50_000
+	//   burnAmt = 500_000 - 200_000 - 50_000 = 250_000
+	//   defenderRefund = 1_000_000 - 500_000 = 500_000
+	// Challenger receives: own bond (1_000_000) + winner reward (200_000) = 1_200_000
+	dispute := &types.Dispute{
+		Id:           "twob-cw",
+		TargetId:     "fact-cw",
+		Challenger:   challenger,
+		Defender:     defender,
+		Bond:         "1000000",
+		DefenderBond: "1000000",
+		Tier:         1,
+		Outcome:      types.DisputeOutcome_DISPUTE_OUTCOME_CHALLENGER_WINS,
+		Phase:        types.DisputePhase_DISPUTE_PHASE_SETTLED,
+		Arbiters:     []string{arb1},
+	}
+	k.SetDispute(ctx, dispute)
+
+	// Arbiter voted for challenger (correct side).
+	k.SetVote(ctx, &types.DisputeVote{
+		DisputeId: dispute.Id,
+		Arbiter:   arb1,
+		Vote:      types.ArbiterDecision_ARBITER_DECISION_CHALLENGER,
+		Stake:     "1",
+	})
+
+	// Fund module with both bonds.
+	bk.moduleBalances[types.ModuleName] = map[string]int64{"uzrn": 2_000_000}
+
+	err := k.DistributeSettlement(ctx, dispute)
+	if err != nil {
+		t.Fatalf("DistributeSettlement failed: %v", err)
+	}
+
+	if bk.balances[challenger]["uzrn"] != 1_200_000 {
+		t.Errorf("expected challenger 1_200_000, got %d", bk.balances[challenger]["uzrn"])
+	}
+	if bk.balances[defender]["uzrn"] != 500_000 {
+		t.Errorf("expected defender 500_000 refund, got %d", bk.balances[defender]["uzrn"])
+	}
+	if bk.balances[arb1]["uzrn"] != 50_000 {
+		t.Errorf("expected arb1 50_000, got %d", bk.balances[arb1]["uzrn"])
+	}
+	if bk.moduleBalances["development_fund"]["uzrn"] != 250_000 {
+		t.Errorf("expected development_fund 250_000, got %d", bk.moduleBalances["development_fund"]["uzrn"])
+	}
+}
+
+// TestTwoBond_DefenderWins verifies two-bond settlement when defender wins:
+// - Challenger's bond is slashed.
+// - Defender receives own bond back in full plus winner reward.
+// - Challenger receives unslashed portion of their bond.
+func TestTwoBond_DefenderWins(t *testing.T) {
+	k, ctx, bk, _, _ := setupKeeper(t)
+
+	challenger := testAddr("twob-dw-c")
+	defender := testAddr("twob-dw-d")
+	arb1 := testAddr("twob-dw-arb1")
+
+	// Loser (challenger): slashAmt = 500_000; winnerReward = 200_000; arbiterReward = 50_000; burn = 250_000
+	// Challenger refund = 1_000_000 - 500_000 = 500_000
+	// Defender receives: own bond (1_000_000) + winner reward (200_000) = 1_200_000
+	dispute := &types.Dispute{
+		Id:           "twob-dw",
+		TargetId:     "fact-dw",
+		Challenger:   challenger,
+		Defender:     defender,
+		Bond:         "1000000",
+		DefenderBond: "1000000",
+		Tier:         1,
+		Outcome:      types.DisputeOutcome_DISPUTE_OUTCOME_DEFENDER_WINS,
+		Phase:        types.DisputePhase_DISPUTE_PHASE_SETTLED,
+		Arbiters:     []string{arb1},
+	}
+	k.SetDispute(ctx, dispute)
+
+	k.SetVote(ctx, &types.DisputeVote{
+		DisputeId: dispute.Id,
+		Arbiter:   arb1,
+		Vote:      types.ArbiterDecision_ARBITER_DECISION_DEFENDER,
+		Stake:     "1",
+	})
+
+	bk.moduleBalances[types.ModuleName] = map[string]int64{"uzrn": 2_000_000}
+
+	err := k.DistributeSettlement(ctx, dispute)
+	if err != nil {
+		t.Fatalf("DistributeSettlement failed: %v", err)
+	}
+
+	if bk.balances[defender]["uzrn"] != 1_200_000 {
+		t.Errorf("expected defender 1_200_000, got %d", bk.balances[defender]["uzrn"])
+	}
+	if bk.balances[challenger]["uzrn"] != 500_000 {
+		t.Errorf("expected challenger 500_000 refund, got %d", bk.balances[challenger]["uzrn"])
+	}
+	if bk.moduleBalances["development_fund"]["uzrn"] != 250_000 {
+		t.Errorf("expected development_fund 250_000, got %d", bk.moduleBalances["development_fund"]["uzrn"])
+	}
+}
+
+// TestTwoBond_Draw verifies two-bond draw: each party pays ArbiterRewardBps fraction
+// of their own bond as arbiter fee; remainder returned.
+func TestTwoBond_Draw(t *testing.T) {
+	k, ctx, bk, _, _ := setupKeeper(t)
+
+	challenger := testAddr("twob-draw-c")
+	defender := testAddr("twob-draw-d")
+	arb1 := testAddr("twob-draw-arb")
+
+	// Bond = 2_000_000 each. ArbiterRewardBps = 100_000 (10%).
+	// challengerFee = 2_000_000 x 10% = 200_000; refund 1_800_000
+	// defenderFee   = 2_000_000 x 10% = 200_000; refund 1_800_000
+	// totalArbiterFee = 400_000; arb1 gets 400_000
+	dispute := &types.Dispute{
+		Id:           "twob-draw",
+		TargetId:     "fact-draw2",
+		Challenger:   challenger,
+		Defender:     defender,
+		Bond:         "2000000",
+		DefenderBond: "2000000",
+		Tier:         1,
+		Outcome:      types.DisputeOutcome_DISPUTE_OUTCOME_DRAW,
+		Phase:        types.DisputePhase_DISPUTE_PHASE_SETTLED,
+		Arbiters:     []string{arb1},
+	}
+	k.SetDispute(ctx, dispute)
+
+	k.SetVote(ctx, &types.DisputeVote{
+		DisputeId: dispute.Id,
+		Arbiter:   arb1,
+		Vote:      types.ArbiterDecision_ARBITER_DECISION_ABSTAIN,
+		Stake:     "1",
+	})
+
+	bk.moduleBalances[types.ModuleName] = map[string]int64{"uzrn": 4_000_000}
+
+	err := k.DistributeSettlement(ctx, dispute)
+	if err != nil {
+		t.Fatalf("DistributeSettlement failed: %v", err)
+	}
+
+	if bk.balances[challenger]["uzrn"] != 1_800_000 {
+		t.Errorf("expected challenger 1_800_000, got %d", bk.balances[challenger]["uzrn"])
+	}
+	if bk.balances[defender]["uzrn"] != 1_800_000 {
+		t.Errorf("expected defender 1_800_000, got %d", bk.balances[defender]["uzrn"])
+	}
+	if bk.balances[arb1]["uzrn"] != 400_000 {
+		t.Errorf("expected arb1 400_000, got %d", bk.balances[arb1]["uzrn"])
+	}
+}
+
+// TestTwoBond_Timeout verifies two-bond timeout: both bonds returned in full, no penalty.
+func TestTwoBond_Timeout(t *testing.T) {
+	k, ctx, bk, _, _ := setupKeeper(t)
+
+	challenger := testAddr("twob-to-c")
+	defender := testAddr("twob-to-d")
+
+	dispute := &types.Dispute{
+		Id:           "twob-timeout",
+		TargetId:     "fact-to2",
+		Challenger:   challenger,
+		Defender:     defender,
+		Bond:         "1500000",
+		DefenderBond: "1500000",
+		Tier:         1,
+		Outcome:      types.DisputeOutcome_DISPUTE_OUTCOME_TIMED_OUT,
+		Phase:        types.DisputePhase_DISPUTE_PHASE_TIMED_OUT,
+	}
+	k.SetDispute(ctx, dispute)
+
+	bk.moduleBalances[types.ModuleName] = map[string]int64{"uzrn": 3_000_000}
+
+	err := k.DistributeSettlement(ctx, dispute)
+	if err != nil {
+		t.Fatalf("DistributeSettlement failed: %v", err)
+	}
+
+	if bk.balances[challenger]["uzrn"] != 1_500_000 {
+		t.Errorf("expected challenger 1_500_000, got %d", bk.balances[challenger]["uzrn"])
+	}
+	if bk.balances[defender]["uzrn"] != 1_500_000 {
+		t.Errorf("expected defender 1_500_000, got %d", bk.balances[defender]["uzrn"])
+	}
+}
