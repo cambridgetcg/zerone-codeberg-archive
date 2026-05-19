@@ -83,6 +83,8 @@ const (
 	DisputePhase_DISPUTE_PHASE_ESCALATED       DisputePhase = 4
 	DisputePhase_DISPUTE_PHASE_SETTLED         DisputePhase = 5
 	DisputePhase_DISPUTE_PHASE_TIMED_OUT       DisputePhase = 6
+	DisputePhase_DISPUTE_PHASE_APPEAL_WINDOW   DisputePhase = 7 // verdict rendered; appeal may be filed until settled_at_block + appeal_window_blocks
+	DisputePhase_DISPUTE_PHASE_APPEALED        DisputePhase = 8 // appeal filed; higher-tier arbiters are deliberating
 )
 
 // Enum value maps for DisputePhase.
@@ -95,6 +97,8 @@ var (
 		4: "DISPUTE_PHASE_ESCALATED",
 		5: "DISPUTE_PHASE_SETTLED",
 		6: "DISPUTE_PHASE_TIMED_OUT",
+		7: "DISPUTE_PHASE_APPEAL_WINDOW",
+		8: "DISPUTE_PHASE_APPEALED",
 	}
 	DisputePhase_value = map[string]int32{
 		"DISPUTE_PHASE_UNSPECIFIED":     0,
@@ -104,6 +108,8 @@ var (
 		"DISPUTE_PHASE_ESCALATED":       4,
 		"DISPUTE_PHASE_SETTLED":         5,
 		"DISPUTE_PHASE_TIMED_OUT":       6,
+		"DISPUTE_PHASE_APPEAL_WINDOW":   7,
+		"DISPUTE_PHASE_APPEALED":        8,
 	}
 )
 
@@ -313,7 +319,10 @@ type Dispute struct {
 	VotingDeadline   uint64                 `protobuf:"varint,13,opt,name=voting_deadline,json=votingDeadline,proto3" json:"voting_deadline,omitempty"`
 	Arbiters         []string               `protobuf:"bytes,14,rep,name=arbiters,proto3" json:"arbiters,omitempty"`
 	EvidenceCount    uint32                 `protobuf:"varint,15,opt,name=evidence_count,json=evidenceCount,proto3" json:"evidence_count,omitempty"`
-	DefenderBond     string                 `protobuf:"bytes,16,opt,name=defender_bond,json=defenderBond,proto3" json:"defender_bond,omitempty"` // uzrn staked by defender (optional; empty = single-bond mode)
+	DefenderBond     string                 `protobuf:"bytes,16,opt,name=defender_bond,json=defenderBond,proto3" json:"defender_bond,omitempty"`          // uzrn staked by defender (optional; empty = single-bond mode)
+	SettledAtBlock   uint64                 `protobuf:"varint,17,opt,name=settled_at_block,json=settledAtBlock,proto3" json:"settled_at_block,omitempty"` // block height when original verdict was rendered (set during APPEAL_WINDOW entry)
+	AppealBond       string                 `protobuf:"bytes,18,opt,name=appeal_bond,json=appealBond,proto3" json:"appeal_bond,omitempty"`                // uzrn posted by appealer (empty if no appeal filed)
+	Appealer         string                 `protobuf:"bytes,19,opt,name=appealer,proto3" json:"appealer,omitempty"`                                      // bech32 address of the party who filed the appeal (empty if no appeal)
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -456,6 +465,27 @@ func (x *Dispute) GetEvidenceCount() uint32 {
 func (x *Dispute) GetDefenderBond() string {
 	if x != nil {
 		return x.DefenderBond
+	}
+	return ""
+}
+
+func (x *Dispute) GetSettledAtBlock() uint64 {
+	if x != nil {
+		return x.SettledAtBlock
+	}
+	return 0
+}
+
+func (x *Dispute) GetAppealBond() string {
+	if x != nil {
+		return x.AppealBond
+	}
+	return ""
+}
+
+func (x *Dispute) GetAppealer() string {
+	if x != nil {
+		return x.Appealer
 	}
 	return ""
 }
@@ -713,16 +743,18 @@ func (x *DisputeVote) GetVotedAt() uint64 {
 }
 
 type TierConfig struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Tier           uint32                 `protobuf:"varint,1,opt,name=tier,proto3" json:"tier,omitempty"`
-	ArbiterCount   uint32                 `protobuf:"varint,2,opt,name=arbiter_count,json=arbiterCount,proto3" json:"arbiter_count,omitempty"`       // how many arbiters needed
-	MinBond        string                 `protobuf:"bytes,3,opt,name=min_bond,json=minBond,proto3" json:"min_bond,omitempty"`                       // uzrn minimum challenger bond
-	EvidencePeriod uint64                 `protobuf:"varint,4,opt,name=evidence_period,json=evidencePeriod,proto3" json:"evidence_period,omitempty"` // blocks for evidence submission
-	VotingPeriod   uint64                 `protobuf:"varint,5,opt,name=voting_period,json=votingPeriod,proto3" json:"voting_period,omitempty"`       // blocks for arbiter voting
-	QuorumBps      uint64                 `protobuf:"varint,6,opt,name=quorum_bps,json=quorumBps,proto3" json:"quorum_bps,omitempty"`                // 1M scale
-	MajorityBps    uint64                 `protobuf:"varint,7,opt,name=majority_bps,json=majorityBps,proto3" json:"majority_bps,omitempty"`          // 1M scale (e.g. 666667 = 2/3)
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state                   protoimpl.MessageState `protogen:"open.v1"`
+	Tier                    uint32                 `protobuf:"varint,1,opt,name=tier,proto3" json:"tier,omitempty"`
+	ArbiterCount            uint32                 `protobuf:"varint,2,opt,name=arbiter_count,json=arbiterCount,proto3" json:"arbiter_count,omitempty"`                                      // how many arbiters needed
+	MinBond                 string                 `protobuf:"bytes,3,opt,name=min_bond,json=minBond,proto3" json:"min_bond,omitempty"`                                                      // uzrn minimum challenger bond
+	EvidencePeriod          uint64                 `protobuf:"varint,4,opt,name=evidence_period,json=evidencePeriod,proto3" json:"evidence_period,omitempty"`                                // blocks for evidence submission
+	VotingPeriod            uint64                 `protobuf:"varint,5,opt,name=voting_period,json=votingPeriod,proto3" json:"voting_period,omitempty"`                                      // blocks for arbiter voting
+	QuorumBps               uint64                 `protobuf:"varint,6,opt,name=quorum_bps,json=quorumBps,proto3" json:"quorum_bps,omitempty"`                                               // 1M scale
+	MajorityBps             uint64                 `protobuf:"varint,7,opt,name=majority_bps,json=majorityBps,proto3" json:"majority_bps,omitempty"`                                         // 1M scale (e.g. 666667 = 2/3)
+	AppealWindowBlocks      uint64                 `protobuf:"varint,8,opt,name=appeal_window_blocks,json=appealWindowBlocks,proto3" json:"appeal_window_blocks,omitempty"`                  // blocks after verdict during which an appeal may be filed (0 = appeals disabled)
+	AppealBondMultiplierBps uint64                 `protobuf:"varint,9,opt,name=appeal_bond_multiplier_bps,json=appealBondMultiplierBps,proto3" json:"appeal_bond_multiplier_bps,omitempty"` // appeal_bond = original_bond × this / 1_000_000 (required if appeal_window_blocks > 0)
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *TierConfig) Reset() {
@@ -800,6 +832,20 @@ func (x *TierConfig) GetQuorumBps() uint64 {
 func (x *TierConfig) GetMajorityBps() uint64 {
 	if x != nil {
 		return x.MajorityBps
+	}
+	return 0
+}
+
+func (x *TierConfig) GetAppealWindowBlocks() uint64 {
+	if x != nil {
+		return x.AppealWindowBlocks
+	}
+	return 0
+}
+
+func (x *TierConfig) GetAppealBondMultiplierBps() uint64 {
+	if x != nil {
+		return x.AppealBondMultiplierBps
 	}
 	return 0
 }
@@ -918,7 +964,7 @@ var File_zerone_disputes_v1_types_proto protoreflect.FileDescriptor
 
 const file_zerone_disputes_v1_types_proto_rawDesc = "" +
 	"\n" +
-	"\x1ezerone/disputes/v1/types.proto\x12\x12zerone.disputes.v1\"\xcd\x04\n" +
+	"\x1ezerone/disputes/v1/types.proto\x12\x12zerone.disputes.v1\"\xb4\x05\n" +
 	"\aDispute\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\ttarget_id\x18\x02 \x01(\tR\btargetId\x12F\n" +
@@ -940,7 +986,11 @@ const file_zerone_disputes_v1_types_proto_rawDesc = "" +
 	"\x0fvoting_deadline\x18\r \x01(\x04R\x0evotingDeadline\x12\x1a\n" +
 	"\barbiters\x18\x0e \x03(\tR\barbiters\x12%\n" +
 	"\x0eevidence_count\x18\x0f \x01(\rR\revidenceCount\x12#\n" +
-	"\rdefender_bond\x18\x10 \x01(\tR\fdefenderBond\"\xaf\x01\n" +
+	"\rdefender_bond\x18\x10 \x01(\tR\fdefenderBond\x12(\n" +
+	"\x10settled_at_block\x18\x11 \x01(\x04R\x0esettledAtBlock\x12\x1f\n" +
+	"\vappeal_bond\x18\x12 \x01(\tR\n" +
+	"appealBond\x12\x1a\n" +
+	"\bappealer\x18\x13 \x01(\tR\bappealer\"\xaf\x01\n" +
 	"\x0fDisputeEvidence\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -964,7 +1014,7 @@ const file_zerone_disputes_v1_types_proto_rawDesc = "" +
 	"\x04vote\x18\x03 \x01(\x0e2#.zerone.disputes.v1.ArbiterDecisionR\x04vote\x12\x14\n" +
 	"\x05stake\x18\x04 \x01(\tR\x05stake\x12\x1c\n" +
 	"\trationale\x18\x05 \x01(\tR\trationale\x12\x19\n" +
-	"\bvoted_at\x18\x06 \x01(\x04R\avotedAt\"\xf0\x01\n" +
+	"\bvoted_at\x18\x06 \x01(\x04R\avotedAt\"\xdf\x02\n" +
 	"\n" +
 	"TierConfig\x12\x12\n" +
 	"\x04tier\x18\x01 \x01(\rR\x04tier\x12#\n" +
@@ -974,7 +1024,9 @@ const file_zerone_disputes_v1_types_proto_rawDesc = "" +
 	"\rvoting_period\x18\x05 \x01(\x04R\fvotingPeriod\x12\x1d\n" +
 	"\n" +
 	"quorum_bps\x18\x06 \x01(\x04R\tquorumBps\x12!\n" +
-	"\fmajority_bps\x18\a \x01(\x04R\vmajorityBps\"\xa3\x02\n" +
+	"\fmajority_bps\x18\a \x01(\x04R\vmajorityBps\x120\n" +
+	"\x14appeal_window_blocks\x18\b \x01(\x04R\x12appealWindowBlocks\x12;\n" +
+	"\x1aappeal_bond_multiplier_bps\x18\t \x01(\x04R\x17appealBondMultiplierBps\"\xa3\x02\n" +
 	"\rServiceEscrow\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05payer\x18\x02 \x01(\tR\x05payer\x12\x1a\n" +
@@ -992,7 +1044,7 @@ const file_zerone_disputes_v1_types_proto_rawDesc = "" +
 	"\x1fDISPUTE_TARGET_TYPE_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18DISPUTE_TARGET_TYPE_FACT\x10\x01\x12 \n" +
 	"\x1cDISPUTE_TARGET_TYPE_EVIDENCE\x10\x02\x12!\n" +
-	"\x1dDISPUTE_TARGET_TYPE_VALIDATOR\x10\x03*\xe7\x01\n" +
+	"\x1dDISPUTE_TARGET_TYPE_VALIDATOR\x10\x03*\xa4\x02\n" +
 	"\fDisputePhase\x12\x1d\n" +
 	"\x19DISPUTE_PHASE_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dDISPUTE_PHASE_EVIDENCE_COMMIT\x10\x01\x12!\n" +
@@ -1000,7 +1052,9 @@ const file_zerone_disputes_v1_types_proto_rawDesc = "" +
 	"\x19DISPUTE_PHASE_ARBITRATION\x10\x03\x12\x1b\n" +
 	"\x17DISPUTE_PHASE_ESCALATED\x10\x04\x12\x19\n" +
 	"\x15DISPUTE_PHASE_SETTLED\x10\x05\x12\x1b\n" +
-	"\x17DISPUTE_PHASE_TIMED_OUT\x10\x06*\x91\x01\n" +
+	"\x17DISPUTE_PHASE_TIMED_OUT\x10\x06\x12\x1f\n" +
+	"\x1bDISPUTE_PHASE_APPEAL_WINDOW\x10\a\x12\x1a\n" +
+	"\x16DISPUTE_PHASE_APPEALED\x10\b*\x91\x01\n" +
 	"\x0fArbiterDecision\x12 \n" +
 	"\x1cARBITER_DECISION_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bARBITER_DECISION_CHALLENGER\x10\x01\x12\x1d\n" +

@@ -412,16 +412,29 @@ func (m msgServer) SettleDispute(goCtx context.Context, msg *types.MsgSettleDisp
 	// Tally votes
 	outcome := m.TallyVotes(ctx, dispute)
 	dispute.Outcome = outcome
-	if outcome == types.DisputeOutcome_DISPUTE_OUTCOME_TIMED_OUT {
-		dispute.Phase = types.DisputePhase_DISPUTE_PHASE_TIMED_OUT
-	} else {
-		dispute.Phase = types.DisputePhase_DISPUTE_PHASE_SETTLED
-	}
-	m.SetDispute(ctx, dispute)
 
-	// Distribute bonds
-	if err := m.DistributeSettlement(ctx, dispute); err != nil {
-		return nil, fmt.Errorf("failed to distribute settlement: %w", err)
+	if outcome == types.DisputeOutcome_DISPUTE_OUTCOME_TIMED_OUT {
+		// Timeouts are never appealable — finalize immediately.
+		dispute.Phase = types.DisputePhase_DISPUTE_PHASE_TIMED_OUT
+		m.SetDispute(ctx, dispute)
+		if err := m.DistributeSettlement(ctx, dispute); err != nil {
+			return nil, fmt.Errorf("failed to distribute settlement: %w", err)
+		}
+	} else {
+		// Non-timeout: enter appeal window if configured, otherwise finalize immediately.
+		params := m.GetParams(ctx)
+		tierCfg := types.GetTierConfig(params, dispute.Tier)
+		if tierCfg != nil && tierCfg.AppealWindowBlocks > 0 {
+			dispute.SettledAtBlock = uint64(ctx.BlockHeight())
+			dispute.Phase = types.DisputePhase_DISPUTE_PHASE_APPEAL_WINDOW
+			m.SetDispute(ctx, dispute)
+		} else {
+			dispute.Phase = types.DisputePhase_DISPUTE_PHASE_SETTLED
+			m.SetDispute(ctx, dispute)
+			if err := m.DistributeSettlement(ctx, dispute); err != nil {
+				return nil, fmt.Errorf("failed to distribute settlement: %w", err)
+			}
+		}
 	}
 
 	ctx.EventManager().EmitEvent(
@@ -666,4 +679,24 @@ func (m msgServer) DisputeServiceEscrow(goCtx context.Context, msg *types.MsgDis
 	))
 
 	return &types.MsgDisputeServiceEscrowResponse{}, nil
+}
+
+// AppealDispute handles MsgAppealDispute — files an appeal against a settled verdict.
+func (m msgServer) AppealDispute(goCtx context.Context, msg *types.MsgAppealDispute) (*types.MsgAppealDisputeResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+
+	if err := m.Keeper.AppealDispute(ctx, msg.DisputeId, msg.Appealer, msg.AppealBond); err != nil {
+		return nil, err
+	}
+
+	dispute, _ := m.GetDispute(ctx, msg.DisputeId)
+	ctx.EventManager().EmitEvent(sdk.NewEvent(
+		"zerone.disputes.appeal_filed",
+		sdk.NewAttribute("dispute_id", msg.DisputeId),
+		sdk.NewAttribute("appealer", msg.Appealer),
+		sdk.NewAttribute("appeal_bond", msg.AppealBond),
+		sdk.NewAttribute("original_outcome", dispute.Outcome.String()),
+	))
+
+	return &types.MsgAppealDisputeResponse{}, nil
 }

@@ -377,6 +377,28 @@ func (k Keeper) GetVotesByDispute(ctx context.Context, disputeID string) []*type
 	return votes
 }
 
+// ClearVotesByDispute deletes all votes for a dispute from the store.
+// Used when starting an appeal round to give the new arbiter panel a clean slate.
+func (k Keeper) ClearVotesByDispute(ctx context.Context, disputeID string) {
+	kvStore := k.storeService.OpenKVStore(ctx)
+	prefix := types.VoteByDisputePrefix(disputeID)
+	iter, err := kvStore.Iterator(prefix, prefixEndBytes(prefix))
+	if err != nil {
+		return
+	}
+	// Collect keys first (can't delete while iterating in all store implementations)
+	var keys [][]byte
+	for ; iter.Valid(); iter.Next() {
+		keyCopy := make([]byte, len(iter.Key()))
+		copy(keyCopy, iter.Key())
+		keys = append(keys, keyCopy)
+	}
+	iter.Close()
+	for _, key := range keys {
+		_ = kvStore.Delete(key)
+	}
+}
+
 // ---------- Arbiter Selection ----------
 
 // SelectArbiters selects arbiters for a dispute from qualified validators.
@@ -921,14 +943,57 @@ func (k Keeper) ProcessPhaseTransitions(ctx context.Context, currentBlock uint64
 				// Auto-settle: tally votes
 				outcome := k.TallyVotes(ctx, dispute)
 				dispute.Outcome = outcome
+
+				// Check if this tier has an appeal window configured.
+				params := k.GetParams(ctx)
+				tierCfg := types.GetTierConfig(params, dispute.Tier)
+				if tierCfg != nil && tierCfg.AppealWindowBlocks > 0 {
+					// Hold settlement — enter appeal window.
+					// DistributeSettlement is deferred until window expires or appeal resolves.
+					dispute.SettledAtBlock = currentBlock
+					dispute.Phase = types.DisputePhase_DISPUTE_PHASE_APPEAL_WINDOW
+					k.SetDispute(ctx, dispute)
+				} else {
+					// No appeal window — settle immediately (backward compat).
+					dispute.Phase = types.DisputePhase_DISPUTE_PHASE_SETTLED
+					if outcome == types.DisputeOutcome_DISPUTE_OUTCOME_TIMED_OUT {
+						dispute.Phase = types.DisputePhase_DISPUTE_PHASE_TIMED_OUT
+					}
+					k.SetDispute(ctx, dispute)
+					if err := k.DistributeSettlement(ctx, dispute); err != nil {
+						k.Logger(ctx).Error("failed to distribute settlement", "dispute_id", dispute.Id, "error", err)
+					}
+				}
+			}
+
+		case types.DisputePhase_DISPUTE_PHASE_APPEAL_WINDOW:
+			// Appealer is empty → no appeal filed yet.
+			// If the window has expired without an appeal, execute the original settlement.
+			if dispute.Appealer == "" {
+				params := k.GetParams(ctx)
+				tierCfg := types.GetTierConfig(params, dispute.Tier)
+				windowExpired := tierCfg == nil || currentBlock > dispute.SettledAtBlock+tierCfg.AppealWindowBlocks
+				if windowExpired {
+					dispute.Phase = types.DisputePhase_DISPUTE_PHASE_SETTLED
+					if dispute.Outcome == types.DisputeOutcome_DISPUTE_OUTCOME_TIMED_OUT {
+						dispute.Phase = types.DisputePhase_DISPUTE_PHASE_TIMED_OUT
+					}
+					k.SetDispute(ctx, dispute)
+					if err := k.DistributeSettlement(ctx, dispute); err != nil {
+						k.Logger(ctx).Error("failed to distribute post-appeal-window settlement", "dispute_id", dispute.Id, "error", err)
+					}
+				}
+			}
+
+		case types.DisputePhase_DISPUTE_PHASE_APPEALED:
+			// Appeal round uses dispute.VotingDeadline (set to currentBlock + appealTier.VotingPeriod at appeal time).
+			if currentBlock > dispute.VotingDeadline {
+				appealOutcome := k.TallyVotes(ctx, dispute)
+				if err := k.distributeAppealResult(ctx, dispute, appealOutcome); err != nil {
+					k.Logger(ctx).Error("failed to distribute appeal result", "dispute_id", dispute.Id, "error", err)
+				}
 				dispute.Phase = types.DisputePhase_DISPUTE_PHASE_SETTLED
-				if outcome == types.DisputeOutcome_DISPUTE_OUTCOME_TIMED_OUT {
-					dispute.Phase = types.DisputePhase_DISPUTE_PHASE_TIMED_OUT
-				}
 				k.SetDispute(ctx, dispute)
-				if err := k.DistributeSettlement(ctx, dispute); err != nil {
-					k.Logger(ctx).Error("failed to distribute settlement", "dispute_id", dispute.Id, "error", err)
-				}
 			}
 		}
 	}
@@ -948,10 +1013,203 @@ func isActivePhase(phase types.DisputePhase) bool {
 	case types.DisputePhase_DISPUTE_PHASE_EVIDENCE_COMMIT,
 		types.DisputePhase_DISPUTE_PHASE_EVIDENCE_REVEAL,
 		types.DisputePhase_DISPUTE_PHASE_ARBITRATION,
-		types.DisputePhase_DISPUTE_PHASE_ESCALATED:
+		types.DisputePhase_DISPUTE_PHASE_ESCALATED,
+		types.DisputePhase_DISPUTE_PHASE_APPEAL_WINDOW,
+		types.DisputePhase_DISPUTE_PHASE_APPEALED:
 		return true
 	}
 	return false
+}
+
+// ---------- Appeal ----------
+
+// AppealDispute files an appeal against a settled verdict.
+//
+// Rules:
+//  - Dispute must be in APPEAL_WINDOW phase.
+//  - Only the challenger or defender may appeal, and only once per dispute.
+//  - The appeal window must not have expired (currentBlock <= settled_at_block + appeal_window_blocks).
+//  - appeal_bond >= original_bond × AppealBondMultiplierBps / 1_000_000.
+//
+// On success the dispute moves to APPEALED phase with a fresh higher-tier arbiter panel.
+func (k Keeper) AppealDispute(ctx context.Context, disputeID, appealer, appealBond string) error {
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+	currentBlock := uint64(sdkCtx.BlockHeight())
+
+	dispute, found := k.GetDispute(ctx, disputeID)
+	if !found {
+		return types.ErrDisputeNotFound
+	}
+
+	// Phase check
+	if dispute.Phase != types.DisputePhase_DISPUTE_PHASE_APPEAL_WINDOW {
+		return types.ErrWrongPhase
+	}
+
+	// Already appealed check
+	if dispute.Appealer != "" {
+		return types.ErrAlreadyAppealed
+	}
+
+	// Party check
+	if appealer != dispute.Challenger && appealer != dispute.Defender {
+		return types.ErrNotPartyToDispute
+	}
+
+	// Appeal window open check
+	params := k.GetParams(ctx)
+	tierCfg := types.GetTierConfig(params, dispute.Tier)
+	if tierCfg == nil || tierCfg.AppealWindowBlocks == 0 {
+		return types.ErrNoAppealWindow
+	}
+	if currentBlock > dispute.SettledAtBlock+tierCfg.AppealWindowBlocks {
+		return types.ErrAppealWindowClosed
+	}
+
+	// Appeal bond minimum check: original_bond × AppealBondMultiplierBps / 1_000_000
+	originalBond := new(big.Int)
+	if _, ok := originalBond.SetString(dispute.Bond, 10); !ok || originalBond.Sign() <= 0 {
+		return types.ErrInvalidBond
+	}
+	scale := new(big.Int).SetUint64(1_000_000)
+	minAppealBond := new(big.Int).Mul(originalBond, new(big.Int).SetUint64(tierCfg.AppealBondMultiplierBps))
+	minAppealBond.Div(minAppealBond, scale)
+
+	appealBondInt := new(big.Int)
+	if _, ok := appealBondInt.SetString(appealBond, 10); !ok || appealBondInt.Sign() <= 0 {
+		return types.ErrInvalidBond
+	}
+	if appealBondInt.Cmp(minAppealBond) < 0 {
+		return types.ErrAppealBondInsufficient
+	}
+
+	// Lock appeal bond from appealer
+	appealerAddr, err := sdk.AccAddressFromBech32(appealer)
+	if err != nil {
+		return fmt.Errorf("invalid appealer address: %w", err)
+	}
+	appealCoin := sdk.NewInt64Coin("uzrn", appealBondInt.Int64())
+	if err := k.bankKeeper.SendCoinsFromAccountToModule(ctx, appealerAddr, types.ModuleName, sdk.NewCoins(appealCoin)); err != nil {
+		return fmt.Errorf("failed to lock appeal bond: %w", err)
+	}
+
+	// Select higher-tier arbiters for appeal round.
+	// Use tier+1 capped at the highest configured tier.
+	appealTierNum := dispute.Tier + 1
+	maxTier := uint32(0)
+	for _, tc := range params.TierConfigs {
+		if tc.Tier > maxTier {
+			maxTier = tc.Tier
+		}
+	}
+	if appealTierNum > maxTier {
+		appealTierNum = maxTier
+	}
+	appealTierCfg := types.GetTierConfig(params, appealTierNum)
+	if appealTierCfg == nil {
+		appealTierCfg = tierCfg // fall back to same tier config if higher unavailable
+	}
+
+	// Clear first-instance votes so the appeal round starts with a clean slate.
+	k.ClearVotesByDispute(ctx, disputeID)
+
+	// Select new appeal arbiters.
+	newArbiters, err := k.SelectArbiters(ctx, int(appealTierCfg.ArbiterCount), dispute.Challenger, dispute.Defender, currentBlock)
+	if err != nil {
+		return fmt.Errorf("failed to select appeal arbiters: %w", err)
+	}
+
+	// Update dispute for appeal round.
+	dispute.Appealer = appealer
+	dispute.AppealBond = appealBond
+	dispute.Arbiters = newArbiters
+	dispute.VotingDeadline = currentBlock + appealTierCfg.VotingPeriod
+	dispute.Phase = types.DisputePhase_DISPUTE_PHASE_APPEALED
+	k.SetDispute(ctx, dispute)
+
+	return nil
+}
+
+// distributeAppealResult executes final settlement after an appeal round.
+//
+// - REVERSED (appealOutcome != originalOutcome and appealOutcome is not TIMED_OUT):
+//   The appealer was correct. Execute settlement with the new outcome; return appeal bond to appealer.
+//
+// - CONFIRMED (appealOutcome == originalOutcome):
+//   The original verdict stands. Execute original settlement; slash appeal bond to original winner.
+//
+// - INCONCLUSIVE (appeal TIMED_OUT or DRAW when original was DRAW):
+//   Fall back to original outcome. Execute original settlement; return appeal bond to appealer.
+func (k Keeper) distributeAppealResult(ctx context.Context, dispute *types.Dispute, appealOutcome types.DisputeOutcome) error {
+	originalOutcome := dispute.Outcome
+
+	appealBondInt := new(big.Int)
+	hasAppealBond := dispute.AppealBond != "" && dispute.AppealBond != "0"
+	if hasAppealBond {
+		if _, ok := appealBondInt.SetString(dispute.AppealBond, 10); !ok || appealBondInt.Sign() <= 0 {
+			hasAppealBond = false
+		}
+	}
+
+	appealerAddr, _ := sdk.AccAddressFromBech32(dispute.Appealer)
+
+	// Determine disposition.
+	reversed := appealOutcome != types.DisputeOutcome_DISPUTE_OUTCOME_TIMED_OUT &&
+		appealOutcome != types.DisputeOutcome_DISPUTE_OUTCOME_UNSPECIFIED &&
+		appealOutcome != originalOutcome
+
+	if reversed {
+		// New outcome overrides — execute settlement with reversed outcome.
+		dispute.Outcome = appealOutcome
+		if err := k.DistributeSettlement(ctx, dispute); err != nil {
+			return fmt.Errorf("failed to distribute reversed settlement: %w", err)
+		}
+		// Return appeal bond to appealer.
+		if hasAppealBond && appealerAddr != nil {
+			appealCoin := sdk.NewInt64Coin("uzrn", appealBondInt.Int64())
+			_ = k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, appealerAddr, sdk.NewCoins(appealCoin))
+		}
+		return nil
+	}
+
+	// Confirmed or inconclusive — execute original settlement.
+	if err := k.DistributeSettlement(ctx, dispute); err != nil {
+		return fmt.Errorf("failed to distribute confirmed settlement: %w", err)
+	}
+
+	if !hasAppealBond {
+		return nil
+	}
+
+	appealCoin := sdk.NewInt64Coin("uzrn", appealBondInt.Int64())
+	if appealOutcome == originalOutcome {
+		// CONFIRMED: slash appeal bond to original winner.
+		winner := k.originalWinner(dispute)
+		if winner != "" {
+			winnerAddr, err := sdk.AccAddressFromBech32(winner)
+			if err == nil {
+				_ = k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, winnerAddr, sdk.NewCoins(appealCoin))
+				return nil
+			}
+		}
+	}
+	// INCONCLUSIVE (TIMED_OUT appeal or no winner to pay): return appeal bond to appealer.
+	if appealerAddr != nil {
+		_ = k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, appealerAddr, sdk.NewCoins(appealCoin))
+	}
+	return nil
+}
+
+// originalWinner returns the bech32 address of the party who won the original verdict,
+// or empty string if the outcome has no clear winner (DRAW, TIMED_OUT).
+func (k Keeper) originalWinner(dispute *types.Dispute) string {
+	switch dispute.Outcome {
+	case types.DisputeOutcome_DISPUTE_OUTCOME_CHALLENGER_WINS:
+		return dispute.Challenger
+	case types.DisputeOutcome_DISPUTE_OUTCOME_DEFENDER_WINS:
+		return dispute.Defender
+	}
+	return ""
 }
 
 // ---------- Service Escrow CRUD ----------

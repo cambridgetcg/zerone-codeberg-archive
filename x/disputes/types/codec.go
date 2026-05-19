@@ -19,6 +19,7 @@ func RegisterCodec(cdc *codec.LegacyAmino) {
 	cdc.RegisterConcrete(&MsgCompleteServiceEscrow{}, "zerone_disputes/CompleteServiceEscrow", nil)
 	cdc.RegisterConcrete(&MsgDisputeServiceEscrow{}, "zerone_disputes/DisputeServiceEscrow", nil)
 	cdc.RegisterConcrete(&MsgDefendDispute{}, "zerone_disputes/DefendDispute", nil)
+	cdc.RegisterConcrete(&MsgAppealDispute{}, "zerone_disputes/AppealDispute", nil)
 }
 
 // RegisterInterfaces registers the disputes module interface implementations.
@@ -35,5 +36,6 @@ func RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
 		&MsgCompleteServiceEscrow{},
 		&MsgDisputeServiceEscrow{},
 		&MsgDefendDispute{},
+		&MsgAppealDispute{},
 	)
 }

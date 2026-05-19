@@ -37,4 +37,11 @@ var (
 	// Defender Bond errors
 	ErrDefenderBondExists    = errors.Register(ModuleName, 30, "defender bond already posted")
 	ErrNotDefender           = errors.Register(ModuleName, 31, "sender is not the dispute defender")
+
+	// Appeal errors
+	ErrNoAppealWindow        = errors.Register(ModuleName, 32, "appeal window not configured for this tier")
+	ErrAppealWindowClosed    = errors.Register(ModuleName, 33, "appeal window has closed")
+	ErrAlreadyAppealed       = errors.Register(ModuleName, 34, "dispute has already been appealed")
+	ErrAppealBondInsufficient = errors.Register(ModuleName, 35, "appeal bond below required minimum")
+	ErrNotPartyToDispute     = errors.Register(ModuleName, 36, "appealer is not a party to the dispute")
 )

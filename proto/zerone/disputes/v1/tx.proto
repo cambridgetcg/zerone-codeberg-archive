@@ -18,6 +18,9 @@ service Msg {
   rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
   rpc DefendDispute(MsgDefendDispute) returns (MsgDefendDisputeResponse);
 
+  // Appeal RPC
+  rpc AppealDispute(MsgAppealDispute) returns (MsgAppealDisputeResponse);
+
   // Service Escrow RPCs
   rpc CreateServiceEscrow(MsgCreateServiceEscrow) returns (MsgCreateServiceEscrowResponse);
   rpc CompleteServiceEscrow(MsgCompleteServiceEscrow) returns (MsgCompleteServiceEscrowResponse);
@@ -92,6 +95,20 @@ message MsgDefendDispute {
   string bond       = 3;   // uzrn amount; must be >= tier MinBond
 }
 message MsgDefendDisputeResponse {}
+
+// MsgAppealDispute files an appeal against a settled verdict during the appeal window.
+// Only the challenger or defender may appeal, and only once per dispute.
+// The appealer must post appeal_bond = original_bond × AppealBondMultiplierBps / 1_000_000.
+// A higher-tier arbiter panel is convened; if the verdict is reversed, the appeal bond is
+// returned to the appealer and the new outcome is executed. If confirmed, the appeal bond
+// goes to the original winning party.
+message MsgAppealDispute {
+  option (cosmos.msg.v1.signer) = "appealer";
+  string appealer   = 1;
+  string dispute_id = 2;
+  string appeal_bond = 3;  // uzrn; must be >= original_bond × AppealBondMultiplierBps / 1_000_000
+}
+message MsgAppealDisputeResponse {}
 
 // MsgCreateServiceEscrow locks payer funds in the disputes module account.
 message MsgCreateServiceEscrow {

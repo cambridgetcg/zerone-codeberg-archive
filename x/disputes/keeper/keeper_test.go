@@ -4086,3 +4086,290 @@ func TestTwoBond_Timeout(t *testing.T) {
 		t.Errorf("expected defender 1_500_000, got %d", bk.balances[defender]["uzrn"])
 	}
 }
+
+// ---------- Appeal Tests ----------
+
+// appealParams returns Params with tier 1 configured for appeals:
+// 100-block appeal window, appeal bond = 2× original.
+func appealParams() *types.Params {
+	p := types.DefaultParams()
+	p.TierConfigs[0].AppealWindowBlocks = 100
+	p.TierConfigs[0].AppealBondMultiplierBps = 2_000_000 // 2× original bond
+	return p
+}
+
+// setupAppealDispute creates a dispute in APPEAL_WINDOW phase with a CHALLENGER_WINS verdict.
+// Challenger bond = 1_000_000 uzrn; settled_at_block = 200.
+func setupAppealDispute(t *testing.T) (types.MsgServer, keeper.Keeper, sdk.Context, *mockBankKeeper, string, string) {
+	t.Helper()
+	ms, k, ctx, bk, _, kk := setupMsgServer(t)
+
+	challenger := testAddr("appeal-c")
+	defender := testAddr("appeal-d")
+	kk.addFact("fact-ap", defender)
+	bk.setBalance(challenger, "uzrn", 10_000_000)
+	bk.setBalance(defender, "uzrn", 10_000_000)
+
+	k.SetParams(ctx, appealParams())
+
+	initResp, err := ms.InitiateDispute(ctx, &types.MsgInitiateDispute{
+		Challenger: challenger,
+		TargetType: types.DisputeTargetType_DISPUTE_TARGET_TYPE_FACT,
+		TargetId:   "fact-ap",
+		Reason:     "test",
+		Bond:       "1000000",
+	})
+	if err != nil {
+		t.Fatalf("InitiateDispute: %v", err)
+	}
+	dID := initResp.DisputeId
+
+	// Inject APPEAL_WINDOW phase directly (arbitration already completed).
+	dispute, _ := k.GetDispute(ctx, dID)
+	dispute.Phase = types.DisputePhase_DISPUTE_PHASE_APPEAL_WINDOW
+	dispute.Outcome = types.DisputeOutcome_DISPUTE_OUTCOME_CHALLENGER_WINS
+	dispute.SettledAtBlock = 200
+	k.SetDispute(ctx, dispute)
+
+	// ctx starts at height 100; for appeal window tests advance to 201 (within window: 200+100=300).
+	ctx = ctx.WithBlockHeight(201)
+
+	return ms, k, ctx, bk, challenger, defender
+}
+
+// TestAppealDispute_Success verifies that a valid appeal transitions the dispute to APPEALED.
+func TestAppealDispute_Success(t *testing.T) {
+	ms, k, ctx, bk, _, defender := setupAppealDispute(t)
+
+	// Defender appeals (lost the original verdict).
+	// Appeal bond required: 1_000_000 × 2_000_000 / 1_000_000 = 2_000_000.
+	_, err := ms.AppealDispute(ctx, &types.MsgAppealDispute{
+		Appealer:   defender,
+		DisputeId:  "ap-", // will be overridden; use the real ID below
+		AppealBond: "2000000",
+	})
+	// We need the real dispute ID, so use k directly.
+	disputes := k.GetActiveDisputes(ctx)
+	if len(disputes) == 0 {
+		t.Fatal("no active disputes")
+	}
+	dID := disputes[0].Id
+
+	_, err = ms.AppealDispute(ctx, &types.MsgAppealDispute{
+		Appealer:   defender,
+		DisputeId:  dID,
+		AppealBond: "2000000",
+	})
+	if err != nil {
+		t.Fatalf("AppealDispute failed: %v", err)
+	}
+
+	dispute, _ := k.GetDispute(ctx, dID)
+	if dispute.Phase != types.DisputePhase_DISPUTE_PHASE_APPEALED {
+		t.Errorf("expected APPEALED phase, got %s", dispute.Phase)
+	}
+	if dispute.Appealer != defender {
+		t.Errorf("expected appealer=%s, got %s", defender, dispute.Appealer)
+	}
+	if dispute.AppealBond != "2000000" {
+		t.Errorf("expected appeal_bond=2000000, got %s", dispute.AppealBond)
+	}
+	// Appeal bond locked from defender's balance.
+	if bk.balances[defender]["uzrn"] != 8_000_000 {
+		t.Errorf("expected defender balance 8000000 after bond lock, got %d", bk.balances[defender]["uzrn"])
+	}
+}
+
+// TestAppealDispute_NotParty verifies that a non-party cannot appeal.
+func TestAppealDispute_NotParty(t *testing.T) {
+	ms, k, ctx, bk, _, _ := setupAppealDispute(t)
+	bk.setBalance(testAddr("outsider"), "uzrn", 10_000_000)
+
+	disputes := k.GetActiveDisputes(ctx)
+	dID := disputes[0].Id
+
+	_, err := ms.AppealDispute(ctx, &types.MsgAppealDispute{
+		Appealer:   testAddr("outsider"),
+		DisputeId:  dID,
+		AppealBond: "2000000",
+	})
+	if err == nil {
+		t.Fatal("expected error for non-party appeal, got nil")
+	}
+}
+
+// TestAppealDispute_WindowClosed verifies that filing after the window is rejected.
+func TestAppealDispute_WindowClosed(t *testing.T) {
+	ms, k, ctx, bk, _, defender := setupAppealDispute(t)
+	bk.setBalance(defender, "uzrn", 10_000_000)
+
+	disputes := k.GetActiveDisputes(ctx)
+	dID := disputes[0].Id
+
+	// Advance past window: settled_at=200, window=100 → expires at block 300.
+	ctx = ctx.WithBlockHeight(301)
+
+	_, err := ms.AppealDispute(ctx, &types.MsgAppealDispute{
+		Appealer:   defender,
+		DisputeId:  dID,
+		AppealBond: "2000000",
+	})
+	if err == nil {
+		t.Fatal("expected error for closed window, got nil")
+	}
+}
+
+// TestAppealDispute_AlreadyAppealed verifies that a second appeal is rejected.
+func TestAppealDispute_AlreadyAppealed(t *testing.T) {
+	ms, k, ctx, bk, challenger, defender := setupAppealDispute(t)
+	bk.setBalance(defender, "uzrn", 10_000_000)
+
+	disputes := k.GetActiveDisputes(ctx)
+	dID := disputes[0].Id
+
+	// First appeal by defender succeeds.
+	_, err := ms.AppealDispute(ctx, &types.MsgAppealDispute{
+		Appealer:  defender,
+		DisputeId: dID,
+		AppealBond: "2000000",
+	})
+	if err != nil {
+		t.Fatalf("first appeal failed: %v", err)
+	}
+
+	// Transition back to APPEAL_WINDOW to test double-appeal rejection.
+	dispute, _ := k.GetDispute(ctx, dID)
+	dispute.Phase = types.DisputePhase_DISPUTE_PHASE_APPEAL_WINDOW
+	k.SetDispute(ctx, dispute)
+
+	bk.setBalance(challenger, "uzrn", 10_000_000)
+	_, err = ms.AppealDispute(ctx, &types.MsgAppealDispute{
+		Appealer:   challenger,
+		DisputeId:  dID,
+		AppealBond: "2000000",
+	})
+	if err == nil {
+		t.Fatal("expected error for already-appealed dispute, got nil")
+	}
+}
+
+// TestAppealDispute_BondInsufficient verifies that an appeal bond below minimum is rejected.
+func TestAppealDispute_BondInsufficient(t *testing.T) {
+	ms, k, ctx, bk, _, defender := setupAppealDispute(t)
+	bk.setBalance(defender, "uzrn", 10_000_000)
+
+	disputes := k.GetActiveDisputes(ctx)
+	dID := disputes[0].Id
+
+	// Minimum is 2_000_000; post only 500_000.
+	_, err := ms.AppealDispute(ctx, &types.MsgAppealDispute{
+		Appealer:   defender,
+		DisputeId:  dID,
+		AppealBond: "500000",
+	})
+	if err == nil {
+		t.Fatal("expected insufficient bond error, got nil")
+	}
+}
+
+// TestPhaseTransition_AppealWindowExpires verifies that a dispute in APPEAL_WINDOW
+// auto-settles when the window expires with no appeal filed.
+func TestPhaseTransition_AppealWindowExpires(t *testing.T) {
+	_, k, ctx, bk, challenger, _ := setupAppealDispute(t)
+
+	disputes := k.GetActiveDisputes(ctx)
+	dID := disputes[0].Id
+
+	// Fund the module account (settlement will try to distribute).
+	bk.moduleBalances[types.ModuleName] = map[string]int64{"uzrn": 1_000_000}
+
+	// Advance past window: settled_at=200 + 100 = 300.
+	ctx = ctx.WithBlockHeight(301)
+	k.ProcessPhaseTransitions(ctx, 301)
+
+	dispute, _ := k.GetDispute(ctx, dID)
+	if dispute.Phase != types.DisputePhase_DISPUTE_PHASE_SETTLED {
+		t.Errorf("expected SETTLED after window expiry, got %s", dispute.Phase)
+	}
+	_ = challenger // balance assertions depend on settlement math, outcome already verified elsewhere
+}
+
+// TestAppealDispute_WrongPhase verifies that AppealDispute rejects disputes not in APPEAL_WINDOW.
+func TestAppealDispute_WrongPhase(t *testing.T) {
+	ms, k, ctx, bk, _, defender := setupAppealDispute(t)
+	bk.setBalance(defender, "uzrn", 10_000_000)
+
+	disputes := k.GetActiveDisputes(ctx)
+	dID := disputes[0].Id
+
+	// Move to SETTLED phase directly.
+	dispute, _ := k.GetDispute(ctx, dID)
+	dispute.Phase = types.DisputePhase_DISPUTE_PHASE_SETTLED
+	k.SetDispute(ctx, dispute)
+
+	_, err := ms.AppealDispute(ctx, &types.MsgAppealDispute{
+		Appealer:   defender,
+		DisputeId:  dID,
+		AppealBond: "2000000",
+	})
+	if err == nil {
+		t.Fatal("expected error for wrong phase, got nil")
+	}
+}
+
+// TestAppealDispute_NoWindow verifies that AppealDispute rejects disputes on tiers with no appeal window.
+func TestAppealDispute_NoWindow(t *testing.T) {
+	ms, k, ctx, bk, _, defender := setupAppealDispute(t)
+	bk.setBalance(defender, "uzrn", 10_000_000)
+
+	disputes := k.GetActiveDisputes(ctx)
+	dID := disputes[0].Id
+
+	// Remove appeal window from tier 1.
+	p := k.GetParams(ctx)
+	p.TierConfigs[0].AppealWindowBlocks = 0
+	p.TierConfigs[0].AppealBondMultiplierBps = 0
+	k.SetParams(ctx, p)
+
+	_, err := ms.AppealDispute(ctx, &types.MsgAppealDispute{
+		Appealer:   defender,
+		DisputeId:  dID,
+		AppealBond: "2000000",
+	})
+	if err == nil {
+		t.Fatal("expected error for no appeal window, got nil")
+	}
+}
+
+// TestPhaseTransition_AppealedSettles verifies that after appeal voting deadline,
+// the dispute settles via distributeAppealResult.
+func TestPhaseTransition_AppealedSettles(t *testing.T) {
+	ms, k, ctx, bk, _, defender := setupAppealDispute(t)
+
+	disputes := k.GetActiveDisputes(ctx)
+	dID := disputes[0].Id
+
+	// Fund module account.
+	bk.moduleBalances[types.ModuleName] = map[string]int64{"uzrn": 3_000_000}
+
+	// File appeal.
+	bk.setBalance(defender, "uzrn", 10_000_000)
+	_, err := ms.AppealDispute(ctx, &types.MsgAppealDispute{
+		Appealer:   defender,
+		DisputeId:  dID,
+		AppealBond: "2000000",
+	})
+	if err != nil {
+		t.Fatalf("AppealDispute: %v", err)
+	}
+
+	// Advance past appeal voting deadline.
+	dispute, _ := k.GetDispute(ctx, dID)
+	ctx = ctx.WithBlockHeight(int64(dispute.VotingDeadline) + 1)
+	k.ProcessPhaseTransitions(ctx, dispute.VotingDeadline+1)
+
+	dispute, _ = k.GetDispute(ctx, dID)
+	if dispute.Phase != types.DisputePhase_DISPUTE_PHASE_SETTLED {
+		t.Errorf("expected SETTLED after appeal resolution, got %s", dispute.Phase)
+	}
+}

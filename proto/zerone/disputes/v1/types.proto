@@ -19,6 +19,9 @@ message Dispute {
   repeated string arbiters = 14;
   uint32 evidence_count = 15;
   string defender_bond = 16;          // uzrn staked by defender (optional; empty = single-bond mode)
+  uint64 settled_at_block = 17;       // block height when original verdict was rendered (set during APPEAL_WINDOW entry)
+  string appeal_bond = 18;            // uzrn posted by appealer (empty if no appeal filed)
+  string appealer = 19;               // bech32 address of the party who filed the appeal (empty if no appeal)
 }
 
 message DisputeEvidence {
@@ -56,6 +59,8 @@ message TierConfig {
   uint64 voting_period = 5;       // blocks for arbiter voting
   uint64 quorum_bps = 6;          // 1M scale
   uint64 majority_bps = 7;        // 1M scale (e.g. 666667 = 2/3)
+  uint64 appeal_window_blocks = 8;        // blocks after verdict during which an appeal may be filed (0 = appeals disabled)
+  uint64 appeal_bond_multiplier_bps = 9;  // appeal_bond = original_bond × this / 1_000_000 (required if appeal_window_blocks > 0)
 }
 
 enum DisputeTargetType {
@@ -73,6 +78,8 @@ enum DisputePhase {
   DISPUTE_PHASE_ESCALATED = 4;
   DISPUTE_PHASE_SETTLED = 5;
   DISPUTE_PHASE_TIMED_OUT = 6;
+  DISPUTE_PHASE_APPEAL_WINDOW = 7;  // verdict rendered; appeal may be filed until settled_at_block + appeal_window_blocks
+  DISPUTE_PHASE_APPEALED = 8;       // appeal filed; higher-tier arbiters are deliberating
 }
 
 enum ArbiterDecision {

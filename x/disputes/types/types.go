@@ -97,6 +97,12 @@ func (p *Params) Validate() error {
 	}
 	// EscrowDisputeWindowBlocks=0 means dispute window is disabled (payer cannot dispute after completion).
 	// Any non-zero value is valid.
+	// Validate appeal config per tier: if appeal_window_blocks > 0, multiplier must also be > 0.
+	for _, tc := range p.TierConfigs {
+		if tc.AppealWindowBlocks > 0 && tc.AppealBondMultiplierBps == 0 {
+			return fmt.Errorf("tier %d: appeal_bond_multiplier_bps must be > 0 when appeal_window_blocks > 0", tc.Tier)
+		}
+	}
 	return nil
 }
 
@@ -351,6 +357,27 @@ func (msg *MsgDefendDispute) ValidateBasic() error {
 	bond := new(big.Int)
 	if _, ok := bond.SetString(msg.Bond, 10); !ok || bond.Sign() <= 0 {
 		return fmt.Errorf("bond must be a positive integer")
+	}
+	return nil
+}
+
+// ---- Appeal Msg types ----
+
+func (msg *MsgAppealDispute) GetSigners() []sdk.AccAddress {
+	addr, _ := sdk.AccAddressFromBech32(msg.Appealer)
+	return []sdk.AccAddress{addr}
+}
+
+func (msg *MsgAppealDispute) ValidateBasic() error {
+	if _, err := sdk.AccAddressFromBech32(msg.Appealer); err != nil {
+		return fmt.Errorf("invalid appealer address: %w", err)
+	}
+	if msg.DisputeId == "" {
+		return fmt.Errorf("dispute_id cannot be empty")
+	}
+	bond := new(big.Int)
+	if _, ok := bond.SetString(msg.AppealBond, 10); !ok || bond.Sign() <= 0 {
+		return fmt.Errorf("appeal_bond must be a positive integer")
 	}
 	return nil
 }
