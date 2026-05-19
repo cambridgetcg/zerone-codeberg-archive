@@ -4373,3 +4373,123 @@ func TestPhaseTransition_AppealedSettles(t *testing.T) {
 		t.Errorf("expected SETTLED after appeal resolution, got %s", dispute.Phase)
 	}
 }
+
+// TestSettleDispute_EntersAppealWindow verifies that SettleDispute transitions to
+// APPEAL_WINDOW (not SETTLED) when the tier has an appeal window configured.
+func TestSettleDispute_EntersAppealWindow(t *testing.T) {
+	k, ctx, bk, _, kk := setupKeeper(t)
+	msgSrv := keeper.NewMsgServerImpl(k)
+
+	challenger := testAddr("saw-c")
+	defender := testAddr("saw-d")
+	bk.setBalance(challenger, "uzrn", 10_000_000)
+	kk.addFact("fact-saw", defender)
+
+	// Enable appeal window on tier 1.
+	k.SetParams(ctx, appealParams())
+
+	resp, err := msgSrv.InitiateDispute(ctx, &types.MsgInitiateDispute{
+		Challenger: challenger,
+		TargetType: types.DisputeTargetType_DISPUTE_TARGET_TYPE_FACT,
+		TargetId:   "fact-saw",
+		Reason:     "test",
+		Bond:       "1000000",
+	})
+	if err != nil {
+		t.Fatalf("InitiateDispute: %v", err)
+	}
+
+	// Advance to arbitration.
+	dispute, _ := k.GetDispute(ctx, resp.DisputeId)
+	dispute.Phase = types.DisputePhase_DISPUTE_PHASE_ARBITRATION
+	dispute.VotingDeadline = 2000
+	k.SetDispute(ctx, dispute)
+
+	// Cast votes for challenger (all 3 arbiters → challenger wins).
+	for _, arb := range dispute.Arbiters {
+		_, _ = msgSrv.ArbiterVote(ctx, &types.MsgArbiterVote{
+			Arbiter:   arb,
+			DisputeId: resp.DisputeId,
+			Vote:      types.ArbiterDecision_ARBITER_DECISION_CHALLENGER,
+			Reasoning: "test",
+		})
+	}
+
+	// Settle via authority.
+	_, err = msgSrv.SettleDispute(ctx, &types.MsgSettleDispute{
+		Authority: "zrn1authority",
+		DisputeId: resp.DisputeId,
+	})
+	if err != nil {
+		t.Fatalf("SettleDispute failed: %v", err)
+	}
+
+	// With appeals configured the dispute should be in APPEAL_WINDOW, not SETTLED.
+	dispute, _ = k.GetDispute(ctx, resp.DisputeId)
+	if dispute.Phase != types.DisputePhase_DISPUTE_PHASE_APPEAL_WINDOW {
+		t.Errorf("expected APPEAL_WINDOW, got %s", dispute.Phase)
+	}
+	if dispute.Outcome != types.DisputeOutcome_DISPUTE_OUTCOME_CHALLENGER_WINS {
+		t.Errorf("expected CHALLENGER_WINS outcome recorded, got %s", dispute.Outcome)
+	}
+	if dispute.SettledAtBlock == 0 {
+		t.Error("expected SettledAtBlock to be set")
+	}
+	// Settlement deferred: challenger's bond must still be in the module account.
+	if bk.moduleBalances[types.ModuleName]["uzrn"] <= 0 {
+		t.Error("expected challenger bond still escrowed in module account")
+	}
+}
+
+// TestAppealResult_ReversedVerdictReturnsBond verifies that when the appeal panel
+// reverses the original verdict, the appeal bond is returned to the appealer.
+func TestAppealResult_ReversedVerdictReturnsBond(t *testing.T) {
+	ms, k, ctx, bk, _, defender := setupAppealDispute(t)
+
+	disputes := k.GetActiveDisputes(ctx)
+	dID := disputes[0].Id
+
+	// Fund module: challenger bond (1_000_000) + appeal bond (2_000_000) = 3_000_000.
+	bk.moduleBalances[types.ModuleName] = map[string]int64{"uzrn": 3_000_000}
+
+	// File appeal as defender.
+	bk.setBalance(defender, "uzrn", 10_000_000)
+	_, err := ms.AppealDispute(ctx, &types.MsgAppealDispute{
+		Appealer:   defender,
+		DisputeId:  dID,
+		AppealBond: "2000000",
+	})
+	if err != nil {
+		t.Fatalf("AppealDispute: %v", err)
+	}
+
+	// After filing, module should hold original bond (1_000_000) + appeal bond (2_000_000) = 3_000_000.
+	// No need to reset — bk already reflected the lock above via SendCoinsFromAccountToModule.
+
+	// Cast appeal votes: all appeal arbiters vote DEFENDER_WINS → reverses CHALLENGER_WINS.
+	dispute, _ := k.GetDispute(ctx, dID)
+	for _, arb := range dispute.Arbiters {
+		k.SetVote(ctx, &types.DisputeVote{
+			DisputeId: dID,
+			Arbiter:   arb,
+			Vote:      types.ArbiterDecision_ARBITER_DECISION_DEFENDER,
+			Stake:     "1000000",
+		})
+	}
+
+	// Advance past appeal voting deadline.
+	ctx = ctx.WithBlockHeight(int64(dispute.VotingDeadline) + 1)
+	k.ProcessPhaseTransitions(ctx, dispute.VotingDeadline+1)
+
+	dispute, _ = k.GetDispute(ctx, dID)
+	if dispute.Phase != types.DisputePhase_DISPUTE_PHASE_SETTLED {
+		t.Errorf("expected SETTLED, got %s", dispute.Phase)
+	}
+	if dispute.Outcome != types.DisputeOutcome_DISPUTE_OUTCOME_DEFENDER_WINS {
+		t.Errorf("expected DEFENDER_WINS (reversed), got %s", dispute.Outcome)
+	}
+	// Appeal bond (2_000_000) should be returned to defender (the appealer).
+	if bk.balances[defender]["uzrn"] < 2_000_000 {
+		t.Errorf("expected defender to receive appeal bond back, got %d uzrn", bk.balances[defender]["uzrn"])
+	}
+}
