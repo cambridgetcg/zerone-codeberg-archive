@@ -541,6 +541,222 @@ func (x *MsgRemoveLiquidityResponse) GetAmountB() string {
 	return ""
 }
 
+type MsgCreateLiquidityMiningPeriod struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Authority      string                 `protobuf:"bytes,1,opt,name=authority,proto3" json:"authority,omitempty"` // governance authority address
+	PoolId         string                 `protobuf:"bytes,2,opt,name=pool_id,json=poolId,proto3" json:"pool_id,omitempty"`
+	AmountPerBlock string                 `protobuf:"bytes,3,opt,name=amount_per_block,json=amountPerBlock,proto3" json:"amount_per_block,omitempty"` // uzrn bigint string per block
+	StartBlock     uint64                 `protobuf:"varint,4,opt,name=start_block,json=startBlock,proto3" json:"start_block,omitempty"`
+	EndBlock       uint64                 `protobuf:"varint,5,opt,name=end_block,json=endBlock,proto3" json:"end_block,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *MsgCreateLiquidityMiningPeriod) Reset() {
+	*x = MsgCreateLiquidityMiningPeriod{}
+	mi := &file_zerone_liquiditypool_v1_tx_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MsgCreateLiquidityMiningPeriod) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MsgCreateLiquidityMiningPeriod) ProtoMessage() {}
+
+func (x *MsgCreateLiquidityMiningPeriod) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_liquiditypool_v1_tx_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MsgCreateLiquidityMiningPeriod.ProtoReflect.Descriptor instead.
+func (*MsgCreateLiquidityMiningPeriod) Descriptor() ([]byte, []int) {
+	return file_zerone_liquiditypool_v1_tx_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *MsgCreateLiquidityMiningPeriod) GetAuthority() string {
+	if x != nil {
+		return x.Authority
+	}
+	return ""
+}
+
+func (x *MsgCreateLiquidityMiningPeriod) GetPoolId() string {
+	if x != nil {
+		return x.PoolId
+	}
+	return ""
+}
+
+func (x *MsgCreateLiquidityMiningPeriod) GetAmountPerBlock() string {
+	if x != nil {
+		return x.AmountPerBlock
+	}
+	return ""
+}
+
+func (x *MsgCreateLiquidityMiningPeriod) GetStartBlock() uint64 {
+	if x != nil {
+		return x.StartBlock
+	}
+	return 0
+}
+
+func (x *MsgCreateLiquidityMiningPeriod) GetEndBlock() uint64 {
+	if x != nil {
+		return x.EndBlock
+	}
+	return 0
+}
+
+type MsgCreateLiquidityMiningPeriodResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PeriodId      string                 `protobuf:"bytes,1,opt,name=period_id,json=periodId,proto3" json:"period_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MsgCreateLiquidityMiningPeriodResponse) Reset() {
+	*x = MsgCreateLiquidityMiningPeriodResponse{}
+	mi := &file_zerone_liquiditypool_v1_tx_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MsgCreateLiquidityMiningPeriodResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MsgCreateLiquidityMiningPeriodResponse) ProtoMessage() {}
+
+func (x *MsgCreateLiquidityMiningPeriodResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_liquiditypool_v1_tx_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MsgCreateLiquidityMiningPeriodResponse.ProtoReflect.Descriptor instead.
+func (*MsgCreateLiquidityMiningPeriodResponse) Descriptor() ([]byte, []int) {
+	return file_zerone_liquiditypool_v1_tx_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *MsgCreateLiquidityMiningPeriodResponse) GetPeriodId() string {
+	if x != nil {
+		return x.PeriodId
+	}
+	return ""
+}
+
+type MsgClaimLiquidityRewards struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Sender        string                 `protobuf:"bytes,1,opt,name=sender,proto3" json:"sender,omitempty"`
+	PoolId        string                 `protobuf:"bytes,2,opt,name=pool_id,json=poolId,proto3" json:"pool_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MsgClaimLiquidityRewards) Reset() {
+	*x = MsgClaimLiquidityRewards{}
+	mi := &file_zerone_liquiditypool_v1_tx_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MsgClaimLiquidityRewards) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MsgClaimLiquidityRewards) ProtoMessage() {}
+
+func (x *MsgClaimLiquidityRewards) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_liquiditypool_v1_tx_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MsgClaimLiquidityRewards.ProtoReflect.Descriptor instead.
+func (*MsgClaimLiquidityRewards) Descriptor() ([]byte, []int) {
+	return file_zerone_liquiditypool_v1_tx_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *MsgClaimLiquidityRewards) GetSender() string {
+	if x != nil {
+		return x.Sender
+	}
+	return ""
+}
+
+func (x *MsgClaimLiquidityRewards) GetPoolId() string {
+	if x != nil {
+		return x.PoolId
+	}
+	return ""
+}
+
+type MsgClaimLiquidityRewardsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ClaimedAmount string                 `protobuf:"bytes,1,opt,name=claimed_amount,json=claimedAmount,proto3" json:"claimed_amount,omitempty"` // uzrn bigint string
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MsgClaimLiquidityRewardsResponse) Reset() {
+	*x = MsgClaimLiquidityRewardsResponse{}
+	mi := &file_zerone_liquiditypool_v1_tx_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MsgClaimLiquidityRewardsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MsgClaimLiquidityRewardsResponse) ProtoMessage() {}
+
+func (x *MsgClaimLiquidityRewardsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_liquiditypool_v1_tx_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MsgClaimLiquidityRewardsResponse.ProtoReflect.Descriptor instead.
+func (*MsgClaimLiquidityRewardsResponse) Descriptor() ([]byte, []int) {
+	return file_zerone_liquiditypool_v1_tx_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *MsgClaimLiquidityRewardsResponse) GetClaimedAmount() string {
+	if x != nil {
+		return x.ClaimedAmount
+	}
+	return ""
+}
+
 type MsgUpdateParams struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Authority     string                 `protobuf:"bytes,1,opt,name=authority,proto3" json:"authority,omitempty"`
@@ -551,7 +767,7 @@ type MsgUpdateParams struct {
 
 func (x *MsgUpdateParams) Reset() {
 	*x = MsgUpdateParams{}
-	mi := &file_zerone_liquiditypool_v1_tx_proto_msgTypes[8]
+	mi := &file_zerone_liquiditypool_v1_tx_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -563,7 +779,7 @@ func (x *MsgUpdateParams) String() string {
 func (*MsgUpdateParams) ProtoMessage() {}
 
 func (x *MsgUpdateParams) ProtoReflect() protoreflect.Message {
-	mi := &file_zerone_liquiditypool_v1_tx_proto_msgTypes[8]
+	mi := &file_zerone_liquiditypool_v1_tx_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -576,7 +792,7 @@ func (x *MsgUpdateParams) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MsgUpdateParams.ProtoReflect.Descriptor instead.
 func (*MsgUpdateParams) Descriptor() ([]byte, []int) {
-	return file_zerone_liquiditypool_v1_tx_proto_rawDescGZIP(), []int{8}
+	return file_zerone_liquiditypool_v1_tx_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *MsgUpdateParams) GetAuthority() string {
@@ -601,7 +817,7 @@ type MsgUpdateParamsResponse struct {
 
 func (x *MsgUpdateParamsResponse) Reset() {
 	*x = MsgUpdateParamsResponse{}
-	mi := &file_zerone_liquiditypool_v1_tx_proto_msgTypes[9]
+	mi := &file_zerone_liquiditypool_v1_tx_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -613,7 +829,7 @@ func (x *MsgUpdateParamsResponse) String() string {
 func (*MsgUpdateParamsResponse) ProtoMessage() {}
 
 func (x *MsgUpdateParamsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_zerone_liquiditypool_v1_tx_proto_msgTypes[9]
+	mi := &file_zerone_liquiditypool_v1_tx_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -626,7 +842,7 @@ func (x *MsgUpdateParamsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MsgUpdateParamsResponse.ProtoReflect.Descriptor instead.
 func (*MsgUpdateParamsResponse) Descriptor() ([]byte, []int) {
-	return file_zerone_liquiditypool_v1_tx_proto_rawDescGZIP(), []int{9}
+	return file_zerone_liquiditypool_v1_tx_proto_rawDescGZIP(), []int{13}
 }
 
 var File_zerone_liquiditypool_v1_tx_proto protoreflect.FileDescriptor
@@ -674,17 +890,33 @@ const file_zerone_liquiditypool_v1_tx_proto_rawDesc = "" +
 	"minAmountB\"R\n" +
 	"\x1aMsgRemoveLiquidityResponse\x12\x19\n" +
 	"\bamount_a\x18\x01 \x01(\tR\aamountA\x12\x19\n" +
-	"\bamount_b\x18\x02 \x01(\tR\aamountB\"h\n" +
+	"\bamount_b\x18\x02 \x01(\tR\aamountB\"\xbf\x01\n" +
+	"\x1eMsgCreateLiquidityMiningPeriod\x12\x1c\n" +
+	"\tauthority\x18\x01 \x01(\tR\tauthority\x12\x17\n" +
+	"\apool_id\x18\x02 \x01(\tR\x06poolId\x12(\n" +
+	"\x10amount_per_block\x18\x03 \x01(\tR\x0eamountPerBlock\x12\x1f\n" +
+	"\vstart_block\x18\x04 \x01(\x04R\n" +
+	"startBlock\x12\x1b\n" +
+	"\tend_block\x18\x05 \x01(\x04R\bendBlock\"E\n" +
+	"&MsgCreateLiquidityMiningPeriodResponse\x12\x1b\n" +
+	"\tperiod_id\x18\x01 \x01(\tR\bperiodId\"K\n" +
+	"\x18MsgClaimLiquidityRewards\x12\x16\n" +
+	"\x06sender\x18\x01 \x01(\tR\x06sender\x12\x17\n" +
+	"\apool_id\x18\x02 \x01(\tR\x06poolId\"I\n" +
+	" MsgClaimLiquidityRewardsResponse\x12%\n" +
+	"\x0eclaimed_amount\x18\x01 \x01(\tR\rclaimedAmount\"h\n" +
 	"\x0fMsgUpdateParams\x12\x1c\n" +
 	"\tauthority\x18\x01 \x01(\tR\tauthority\x127\n" +
 	"\x06params\x18\x02 \x01(\v2\x1f.zerone.liquiditypool.v1.ParamsR\x06params\"\x19\n" +
-	"\x17MsgUpdateParamsResponse2\x8c\x04\n" +
+	"\x17MsgUpdateParamsResponse2\xae\x06\n" +
 	"\x03Msg\x12d\n" +
 	"\n" +
 	"CreatePool\x12&.zerone.liquiditypool.v1.MsgCreatePool\x1a..zerone.liquiditypool.v1.MsgCreatePoolResponse\x12R\n" +
 	"\x04Swap\x12 .zerone.liquiditypool.v1.MsgSwap\x1a(.zerone.liquiditypool.v1.MsgSwapResponse\x12j\n" +
 	"\fAddLiquidity\x12(.zerone.liquiditypool.v1.MsgAddLiquidity\x1a0.zerone.liquiditypool.v1.MsgAddLiquidityResponse\x12s\n" +
-	"\x0fRemoveLiquidity\x12+.zerone.liquiditypool.v1.MsgRemoveLiquidity\x1a3.zerone.liquiditypool.v1.MsgRemoveLiquidityResponse\x12j\n" +
+	"\x0fRemoveLiquidity\x12+.zerone.liquiditypool.v1.MsgRemoveLiquidity\x1a3.zerone.liquiditypool.v1.MsgRemoveLiquidityResponse\x12\x97\x01\n" +
+	"\x1bCreateLiquidityMiningPeriod\x127.zerone.liquiditypool.v1.MsgCreateLiquidityMiningPeriod\x1a?.zerone.liquiditypool.v1.MsgCreateLiquidityMiningPeriodResponse\x12\x85\x01\n" +
+	"\x15ClaimLiquidityRewards\x121.zerone.liquiditypool.v1.MsgClaimLiquidityRewards\x1a9.zerone.liquiditypool.v1.MsgClaimLiquidityRewardsResponse\x12j\n" +
 	"\fUpdateParams\x12(.zerone.liquiditypool.v1.MsgUpdateParams\x1a0.zerone.liquiditypool.v1.MsgUpdateParamsResponseB6Z4github.com/zerone-chain/zerone/x/liquiditypool/typesb\x06proto3"
 
 var (
@@ -699,34 +931,42 @@ func file_zerone_liquiditypool_v1_tx_proto_rawDescGZIP() []byte {
 	return file_zerone_liquiditypool_v1_tx_proto_rawDescData
 }
 
-var file_zerone_liquiditypool_v1_tx_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_zerone_liquiditypool_v1_tx_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_zerone_liquiditypool_v1_tx_proto_goTypes = []any{
-	(*MsgCreatePool)(nil),              // 0: zerone.liquiditypool.v1.MsgCreatePool
-	(*MsgCreatePoolResponse)(nil),      // 1: zerone.liquiditypool.v1.MsgCreatePoolResponse
-	(*MsgSwap)(nil),                    // 2: zerone.liquiditypool.v1.MsgSwap
-	(*MsgSwapResponse)(nil),            // 3: zerone.liquiditypool.v1.MsgSwapResponse
-	(*MsgAddLiquidity)(nil),            // 4: zerone.liquiditypool.v1.MsgAddLiquidity
-	(*MsgAddLiquidityResponse)(nil),    // 5: zerone.liquiditypool.v1.MsgAddLiquidityResponse
-	(*MsgRemoveLiquidity)(nil),         // 6: zerone.liquiditypool.v1.MsgRemoveLiquidity
-	(*MsgRemoveLiquidityResponse)(nil), // 7: zerone.liquiditypool.v1.MsgRemoveLiquidityResponse
-	(*MsgUpdateParams)(nil),            // 8: zerone.liquiditypool.v1.MsgUpdateParams
-	(*MsgUpdateParamsResponse)(nil),    // 9: zerone.liquiditypool.v1.MsgUpdateParamsResponse
-	(*Params)(nil),                     // 10: zerone.liquiditypool.v1.Params
+	(*MsgCreatePool)(nil),                          // 0: zerone.liquiditypool.v1.MsgCreatePool
+	(*MsgCreatePoolResponse)(nil),                  // 1: zerone.liquiditypool.v1.MsgCreatePoolResponse
+	(*MsgSwap)(nil),                                // 2: zerone.liquiditypool.v1.MsgSwap
+	(*MsgSwapResponse)(nil),                        // 3: zerone.liquiditypool.v1.MsgSwapResponse
+	(*MsgAddLiquidity)(nil),                        // 4: zerone.liquiditypool.v1.MsgAddLiquidity
+	(*MsgAddLiquidityResponse)(nil),                // 5: zerone.liquiditypool.v1.MsgAddLiquidityResponse
+	(*MsgRemoveLiquidity)(nil),                     // 6: zerone.liquiditypool.v1.MsgRemoveLiquidity
+	(*MsgRemoveLiquidityResponse)(nil),             // 7: zerone.liquiditypool.v1.MsgRemoveLiquidityResponse
+	(*MsgCreateLiquidityMiningPeriod)(nil),         // 8: zerone.liquiditypool.v1.MsgCreateLiquidityMiningPeriod
+	(*MsgCreateLiquidityMiningPeriodResponse)(nil), // 9: zerone.liquiditypool.v1.MsgCreateLiquidityMiningPeriodResponse
+	(*MsgClaimLiquidityRewards)(nil),               // 10: zerone.liquiditypool.v1.MsgClaimLiquidityRewards
+	(*MsgClaimLiquidityRewardsResponse)(nil),       // 11: zerone.liquiditypool.v1.MsgClaimLiquidityRewardsResponse
+	(*MsgUpdateParams)(nil),                        // 12: zerone.liquiditypool.v1.MsgUpdateParams
+	(*MsgUpdateParamsResponse)(nil),                // 13: zerone.liquiditypool.v1.MsgUpdateParamsResponse
+	(*Params)(nil),                                 // 14: zerone.liquiditypool.v1.Params
 }
 var file_zerone_liquiditypool_v1_tx_proto_depIdxs = []int32{
-	10, // 0: zerone.liquiditypool.v1.MsgUpdateParams.params:type_name -> zerone.liquiditypool.v1.Params
+	14, // 0: zerone.liquiditypool.v1.MsgUpdateParams.params:type_name -> zerone.liquiditypool.v1.Params
 	0,  // 1: zerone.liquiditypool.v1.Msg.CreatePool:input_type -> zerone.liquiditypool.v1.MsgCreatePool
 	2,  // 2: zerone.liquiditypool.v1.Msg.Swap:input_type -> zerone.liquiditypool.v1.MsgSwap
 	4,  // 3: zerone.liquiditypool.v1.Msg.AddLiquidity:input_type -> zerone.liquiditypool.v1.MsgAddLiquidity
 	6,  // 4: zerone.liquiditypool.v1.Msg.RemoveLiquidity:input_type -> zerone.liquiditypool.v1.MsgRemoveLiquidity
-	8,  // 5: zerone.liquiditypool.v1.Msg.UpdateParams:input_type -> zerone.liquiditypool.v1.MsgUpdateParams
-	1,  // 6: zerone.liquiditypool.v1.Msg.CreatePool:output_type -> zerone.liquiditypool.v1.MsgCreatePoolResponse
-	3,  // 7: zerone.liquiditypool.v1.Msg.Swap:output_type -> zerone.liquiditypool.v1.MsgSwapResponse
-	5,  // 8: zerone.liquiditypool.v1.Msg.AddLiquidity:output_type -> zerone.liquiditypool.v1.MsgAddLiquidityResponse
-	7,  // 9: zerone.liquiditypool.v1.Msg.RemoveLiquidity:output_type -> zerone.liquiditypool.v1.MsgRemoveLiquidityResponse
-	9,  // 10: zerone.liquiditypool.v1.Msg.UpdateParams:output_type -> zerone.liquiditypool.v1.MsgUpdateParamsResponse
-	6,  // [6:11] is the sub-list for method output_type
-	1,  // [1:6] is the sub-list for method input_type
+	8,  // 5: zerone.liquiditypool.v1.Msg.CreateLiquidityMiningPeriod:input_type -> zerone.liquiditypool.v1.MsgCreateLiquidityMiningPeriod
+	10, // 6: zerone.liquiditypool.v1.Msg.ClaimLiquidityRewards:input_type -> zerone.liquiditypool.v1.MsgClaimLiquidityRewards
+	12, // 7: zerone.liquiditypool.v1.Msg.UpdateParams:input_type -> zerone.liquiditypool.v1.MsgUpdateParams
+	1,  // 8: zerone.liquiditypool.v1.Msg.CreatePool:output_type -> zerone.liquiditypool.v1.MsgCreatePoolResponse
+	3,  // 9: zerone.liquiditypool.v1.Msg.Swap:output_type -> zerone.liquiditypool.v1.MsgSwapResponse
+	5,  // 10: zerone.liquiditypool.v1.Msg.AddLiquidity:output_type -> zerone.liquiditypool.v1.MsgAddLiquidityResponse
+	7,  // 11: zerone.liquiditypool.v1.Msg.RemoveLiquidity:output_type -> zerone.liquiditypool.v1.MsgRemoveLiquidityResponse
+	9,  // 12: zerone.liquiditypool.v1.Msg.CreateLiquidityMiningPeriod:output_type -> zerone.liquiditypool.v1.MsgCreateLiquidityMiningPeriodResponse
+	11, // 13: zerone.liquiditypool.v1.Msg.ClaimLiquidityRewards:output_type -> zerone.liquiditypool.v1.MsgClaimLiquidityRewardsResponse
+	13, // 14: zerone.liquiditypool.v1.Msg.UpdateParams:output_type -> zerone.liquiditypool.v1.MsgUpdateParamsResponse
+	8,  // [8:15] is the sub-list for method output_type
+	1,  // [1:8] is the sub-list for method input_type
 	1,  // [1:1] is the sub-list for extension type_name
 	1,  // [1:1] is the sub-list for extension extendee
 	0,  // [0:1] is the sub-list for field type_name
@@ -745,7 +985,7 @@ func file_zerone_liquiditypool_v1_tx_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_zerone_liquiditypool_v1_tx_proto_rawDesc), len(file_zerone_liquiditypool_v1_tx_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

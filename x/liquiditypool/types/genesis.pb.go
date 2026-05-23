@@ -116,10 +116,12 @@ func (x *Params) GetMaxSwapFractionBps() uint64 {
 
 // GenesisState defines the liquiditypool module genesis state.
 type GenesisState struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	Params           *Params                `protobuf:"bytes,1,opt,name=params,proto3" json:"params,omitempty"`
-	Pools            []*Pool                `protobuf:"bytes,2,rep,name=pools,proto3" json:"pools,omitempty"`
-	TwapAccumulators []*TWAPAccumulator     `protobuf:"bytes,3,rep,name=twap_accumulators,json=twapAccumulators,proto3" json:"twap_accumulators,omitempty"`
+	state            protoimpl.MessageState   `protogen:"open.v1"`
+	Params           *Params                  `protobuf:"bytes,1,opt,name=params,proto3" json:"params,omitempty"`
+	Pools            []*Pool                  `protobuf:"bytes,2,rep,name=pools,proto3" json:"pools,omitempty"`
+	TwapAccumulators []*TWAPAccumulator       `protobuf:"bytes,3,rep,name=twap_accumulators,json=twapAccumulators,proto3" json:"twap_accumulators,omitempty"`
+	MiningPeriods    []*LiquidityMiningPeriod `protobuf:"bytes,4,rep,name=mining_periods,json=miningPeriods,proto3" json:"mining_periods,omitempty"`
+	MinerPositions   []*LpMinerPosition       `protobuf:"bytes,5,rep,name=miner_positions,json=minerPositions,proto3" json:"miner_positions,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -175,6 +177,20 @@ func (x *GenesisState) GetTwapAccumulators() []*TWAPAccumulator {
 	return nil
 }
 
+func (x *GenesisState) GetMiningPeriods() []*LiquidityMiningPeriod {
+	if x != nil {
+		return x.MiningPeriods
+	}
+	return nil
+}
+
+func (x *GenesisState) GetMinerPositions() []*LpMinerPosition {
+	if x != nil {
+		return x.MinerPositions
+	}
+	return nil
+}
+
 var File_zerone_liquiditypool_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_liquiditypool_v1_genesis_proto_rawDesc = "" +
@@ -188,11 +204,13 @@ const file_zerone_liquiditypool_v1_genesis_proto_rawDesc = "" +
 	"\x10protocol_fee_bps\x18\x05 \x01(\x04R\x0eprotocolFeeBps\x12\x1f\n" +
 	"\vmin_reserve\x18\x06 \x01(\tR\n" +
 	"minReserve\x121\n" +
-	"\x15max_swap_fraction_bps\x18\a \x01(\x04R\x12maxSwapFractionBps\"\xd3\x01\n" +
+	"\x15max_swap_fraction_bps\x18\a \x01(\x04R\x12maxSwapFractionBps\"\xfd\x02\n" +
 	"\fGenesisState\x127\n" +
 	"\x06params\x18\x01 \x01(\v2\x1f.zerone.liquiditypool.v1.ParamsR\x06params\x123\n" +
 	"\x05pools\x18\x02 \x03(\v2\x1d.zerone.liquiditypool.v1.PoolR\x05pools\x12U\n" +
-	"\x11twap_accumulators\x18\x03 \x03(\v2(.zerone.liquiditypool.v1.TWAPAccumulatorR\x10twapAccumulatorsB6Z4github.com/zerone-chain/zerone/x/liquiditypool/typesb\x06proto3"
+	"\x11twap_accumulators\x18\x03 \x03(\v2(.zerone.liquiditypool.v1.TWAPAccumulatorR\x10twapAccumulators\x12U\n" +
+	"\x0emining_periods\x18\x04 \x03(\v2..zerone.liquiditypool.v1.LiquidityMiningPeriodR\rminingPeriods\x12Q\n" +
+	"\x0fminer_positions\x18\x05 \x03(\v2(.zerone.liquiditypool.v1.LpMinerPositionR\x0eminerPositionsB6Z4github.com/zerone-chain/zerone/x/liquiditypool/typesb\x06proto3"
 
 var (
 	file_zerone_liquiditypool_v1_genesis_proto_rawDescOnce sync.Once
@@ -208,20 +226,24 @@ func file_zerone_liquiditypool_v1_genesis_proto_rawDescGZIP() []byte {
 
 var file_zerone_liquiditypool_v1_genesis_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_zerone_liquiditypool_v1_genesis_proto_goTypes = []any{
-	(*Params)(nil),          // 0: zerone.liquiditypool.v1.Params
-	(*GenesisState)(nil),    // 1: zerone.liquiditypool.v1.GenesisState
-	(*Pool)(nil),            // 2: zerone.liquiditypool.v1.Pool
-	(*TWAPAccumulator)(nil), // 3: zerone.liquiditypool.v1.TWAPAccumulator
+	(*Params)(nil),                // 0: zerone.liquiditypool.v1.Params
+	(*GenesisState)(nil),          // 1: zerone.liquiditypool.v1.GenesisState
+	(*Pool)(nil),                  // 2: zerone.liquiditypool.v1.Pool
+	(*TWAPAccumulator)(nil),       // 3: zerone.liquiditypool.v1.TWAPAccumulator
+	(*LiquidityMiningPeriod)(nil), // 4: zerone.liquiditypool.v1.LiquidityMiningPeriod
+	(*LpMinerPosition)(nil),       // 5: zerone.liquiditypool.v1.LpMinerPosition
 }
 var file_zerone_liquiditypool_v1_genesis_proto_depIdxs = []int32{
 	0, // 0: zerone.liquiditypool.v1.GenesisState.params:type_name -> zerone.liquiditypool.v1.Params
 	2, // 1: zerone.liquiditypool.v1.GenesisState.pools:type_name -> zerone.liquiditypool.v1.Pool
 	3, // 2: zerone.liquiditypool.v1.GenesisState.twap_accumulators:type_name -> zerone.liquiditypool.v1.TWAPAccumulator
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	4, // 3: zerone.liquiditypool.v1.GenesisState.mining_periods:type_name -> zerone.liquiditypool.v1.LiquidityMiningPeriod
+	5, // 4: zerone.liquiditypool.v1.GenesisState.miner_positions:type_name -> zerone.liquiditypool.v1.LpMinerPosition
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_zerone_liquiditypool_v1_genesis_proto_init() }

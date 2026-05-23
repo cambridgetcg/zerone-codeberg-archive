@@ -35,8 +35,11 @@ type Pool struct {
 	Creator        string                 `protobuf:"bytes,9,opt,name=creator,proto3" json:"creator,omitempty"`
 	CreatedAtBlock uint64                 `protobuf:"varint,10,opt,name=created_at_block,json=createdAtBlock,proto3" json:"created_at_block,omitempty"`
 	Locked         bool                   `protobuf:"varint,11,opt,name=locked,proto3" json:"locked,omitempty"` // reentrancy guard
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Liquidity mining: cumulative reward per LP token (×1e18 precision, bigint string).
+	// Monotonically increasing. Default "" treated as "0".
+	AccumulatedRewardPerLp string `protobuf:"bytes,12,opt,name=accumulated_reward_per_lp,json=accumulatedRewardPerLp,proto3" json:"accumulated_reward_per_lp,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Pool) Reset() {
@@ -146,6 +149,188 @@ func (x *Pool) GetLocked() bool {
 	return false
 }
 
+func (x *Pool) GetAccumulatedRewardPerLp() string {
+	if x != nil {
+		return x.AccumulatedRewardPerLp
+	}
+	return ""
+}
+
+// LiquidityMiningPeriod defines a per-pool emission schedule for LP reward distribution.
+// One active period per pool. Governance creates; BeginBlocker accumulates.
+type LiquidityMiningPeriod struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	PoolId         string                 `protobuf:"bytes,2,opt,name=pool_id,json=poolId,proto3" json:"pool_id,omitempty"`
+	AmountPerBlock string                 `protobuf:"bytes,3,opt,name=amount_per_block,json=amountPerBlock,proto3" json:"amount_per_block,omitempty"` // uzrn bigint string minted per block
+	StartBlock     uint64                 `protobuf:"varint,4,opt,name=start_block,json=startBlock,proto3" json:"start_block,omitempty"`
+	EndBlock       uint64                 `protobuf:"varint,5,opt,name=end_block,json=endBlock,proto3" json:"end_block,omitempty"`
+	Active         bool                   `protobuf:"varint,6,opt,name=active,proto3" json:"active,omitempty"`
+	TotalMined     string                 `protobuf:"bytes,7,opt,name=total_mined,json=totalMined,proto3" json:"total_mined,omitempty"` // bigint string, cumulative uzrn minted
+	Creator        string                 `protobuf:"bytes,8,opt,name=creator,proto3" json:"creator,omitempty"`                         // governance authority
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *LiquidityMiningPeriod) Reset() {
+	*x = LiquidityMiningPeriod{}
+	mi := &file_zerone_liquiditypool_v1_types_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LiquidityMiningPeriod) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LiquidityMiningPeriod) ProtoMessage() {}
+
+func (x *LiquidityMiningPeriod) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_liquiditypool_v1_types_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LiquidityMiningPeriod.ProtoReflect.Descriptor instead.
+func (*LiquidityMiningPeriod) Descriptor() ([]byte, []int) {
+	return file_zerone_liquiditypool_v1_types_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *LiquidityMiningPeriod) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *LiquidityMiningPeriod) GetPoolId() string {
+	if x != nil {
+		return x.PoolId
+	}
+	return ""
+}
+
+func (x *LiquidityMiningPeriod) GetAmountPerBlock() string {
+	if x != nil {
+		return x.AmountPerBlock
+	}
+	return ""
+}
+
+func (x *LiquidityMiningPeriod) GetStartBlock() uint64 {
+	if x != nil {
+		return x.StartBlock
+	}
+	return 0
+}
+
+func (x *LiquidityMiningPeriod) GetEndBlock() uint64 {
+	if x != nil {
+		return x.EndBlock
+	}
+	return 0
+}
+
+func (x *LiquidityMiningPeriod) GetActive() bool {
+	if x != nil {
+		return x.Active
+	}
+	return false
+}
+
+func (x *LiquidityMiningPeriod) GetTotalMined() string {
+	if x != nil {
+		return x.TotalMined
+	}
+	return ""
+}
+
+func (x *LiquidityMiningPeriod) GetCreator() string {
+	if x != nil {
+		return x.Creator
+	}
+	return ""
+}
+
+// LpMinerPosition tracks a user's liquidity mining reward state for a pool.
+// Key: (pool_id, miner_addr). Created lazily on first AddLiquidity/Claim.
+type LpMinerPosition struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	PoolId    string                 `protobuf:"bytes,1,opt,name=pool_id,json=poolId,proto3" json:"pool_id,omitempty"`
+	MinerAddr string                 `protobuf:"bytes,2,opt,name=miner_addr,json=minerAddr,proto3" json:"miner_addr,omitempty"`
+	// reward_debt is the pool's accumulated_reward_per_lp at the last settlement (×1e18, bigint).
+	// pending = (current_acc - reward_debt) × lp_balance / 1e18
+	RewardDebt string `protobuf:"bytes,3,opt,name=reward_debt,json=rewardDebt,proto3" json:"reward_debt,omitempty"`
+	// settled but unclaimed uzrn (bigint string)
+	PendingRewards string `protobuf:"bytes,4,opt,name=pending_rewards,json=pendingRewards,proto3" json:"pending_rewards,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *LpMinerPosition) Reset() {
+	*x = LpMinerPosition{}
+	mi := &file_zerone_liquiditypool_v1_types_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LpMinerPosition) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LpMinerPosition) ProtoMessage() {}
+
+func (x *LpMinerPosition) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_liquiditypool_v1_types_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LpMinerPosition.ProtoReflect.Descriptor instead.
+func (*LpMinerPosition) Descriptor() ([]byte, []int) {
+	return file_zerone_liquiditypool_v1_types_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *LpMinerPosition) GetPoolId() string {
+	if x != nil {
+		return x.PoolId
+	}
+	return ""
+}
+
+func (x *LpMinerPosition) GetMinerAddr() string {
+	if x != nil {
+		return x.MinerAddr
+	}
+	return ""
+}
+
+func (x *LpMinerPosition) GetRewardDebt() string {
+	if x != nil {
+		return x.RewardDebt
+	}
+	return ""
+}
+
+func (x *LpMinerPosition) GetPendingRewards() string {
+	if x != nil {
+		return x.PendingRewards
+	}
+	return ""
+}
+
 // TWAPAccumulator stores cumulative price data for TWAP oracle.
 // One record per pool, O(1) updates.
 type TWAPAccumulator struct {
@@ -160,7 +345,7 @@ type TWAPAccumulator struct {
 
 func (x *TWAPAccumulator) Reset() {
 	*x = TWAPAccumulator{}
-	mi := &file_zerone_liquiditypool_v1_types_proto_msgTypes[1]
+	mi := &file_zerone_liquiditypool_v1_types_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -172,7 +357,7 @@ func (x *TWAPAccumulator) String() string {
 func (*TWAPAccumulator) ProtoMessage() {}
 
 func (x *TWAPAccumulator) ProtoReflect() protoreflect.Message {
-	mi := &file_zerone_liquiditypool_v1_types_proto_msgTypes[1]
+	mi := &file_zerone_liquiditypool_v1_types_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -185,7 +370,7 @@ func (x *TWAPAccumulator) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TWAPAccumulator.ProtoReflect.Descriptor instead.
 func (*TWAPAccumulator) Descriptor() ([]byte, []int) {
-	return file_zerone_liquiditypool_v1_types_proto_rawDescGZIP(), []int{1}
+	return file_zerone_liquiditypool_v1_types_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *TWAPAccumulator) GetPoolId() string {
@@ -229,7 +414,7 @@ type SwapResult struct {
 
 func (x *SwapResult) Reset() {
 	*x = SwapResult{}
-	mi := &file_zerone_liquiditypool_v1_types_proto_msgTypes[2]
+	mi := &file_zerone_liquiditypool_v1_types_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -241,7 +426,7 @@ func (x *SwapResult) String() string {
 func (*SwapResult) ProtoMessage() {}
 
 func (x *SwapResult) ProtoReflect() protoreflect.Message {
-	mi := &file_zerone_liquiditypool_v1_types_proto_msgTypes[2]
+	mi := &file_zerone_liquiditypool_v1_types_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -254,7 +439,7 @@ func (x *SwapResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SwapResult.ProtoReflect.Descriptor instead.
 func (*SwapResult) Descriptor() ([]byte, []int) {
-	return file_zerone_liquiditypool_v1_types_proto_rawDescGZIP(), []int{2}
+	return file_zerone_liquiditypool_v1_types_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *SwapResult) GetTokenOutDenom() string {
@@ -289,7 +474,7 @@ var File_zerone_liquiditypool_v1_types_proto protoreflect.FileDescriptor
 
 const file_zerone_liquiditypool_v1_types_proto_rawDesc = "" +
 	"\n" +
-	"#zerone/liquiditypool/v1/types.proto\x12\x17zerone.liquiditypool.v1\"\xcc\x02\n" +
+	"#zerone/liquiditypool/v1/types.proto\x12\x17zerone.liquiditypool.v1\"\x87\x03\n" +
 	"\x04Pool\x12\x17\n" +
 	"\apool_id\x18\x01 \x01(\tR\x06poolId\x12\x17\n" +
 	"\adenom_a\x18\x02 \x01(\tR\x06denomA\x12\x17\n" +
@@ -303,7 +488,26 @@ const file_zerone_liquiditypool_v1_types_proto_rawDesc = "" +
 	"\acreator\x18\t \x01(\tR\acreator\x12(\n" +
 	"\x10created_at_block\x18\n" +
 	" \x01(\x04R\x0ecreatedAtBlock\x12\x16\n" +
-	"\x06locked\x18\v \x01(\bR\x06locked\"\x99\x01\n" +
+	"\x06locked\x18\v \x01(\bR\x06locked\x129\n" +
+	"\x19accumulated_reward_per_lp\x18\f \x01(\tR\x16accumulatedRewardPerLp\"\xfb\x01\n" +
+	"\x15LiquidityMiningPeriod\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
+	"\apool_id\x18\x02 \x01(\tR\x06poolId\x12(\n" +
+	"\x10amount_per_block\x18\x03 \x01(\tR\x0eamountPerBlock\x12\x1f\n" +
+	"\vstart_block\x18\x04 \x01(\x04R\n" +
+	"startBlock\x12\x1b\n" +
+	"\tend_block\x18\x05 \x01(\x04R\bendBlock\x12\x16\n" +
+	"\x06active\x18\x06 \x01(\bR\x06active\x12\x1f\n" +
+	"\vtotal_mined\x18\a \x01(\tR\n" +
+	"totalMined\x12\x18\n" +
+	"\acreator\x18\b \x01(\tR\acreator\"\x93\x01\n" +
+	"\x0fLpMinerPosition\x12\x17\n" +
+	"\apool_id\x18\x01 \x01(\tR\x06poolId\x12\x1d\n" +
+	"\n" +
+	"miner_addr\x18\x02 \x01(\tR\tminerAddr\x12\x1f\n" +
+	"\vreward_debt\x18\x03 \x01(\tR\n" +
+	"rewardDebt\x12'\n" +
+	"\x0fpending_rewards\x18\x04 \x01(\tR\x0ependingRewards\"\x99\x01\n" +
 	"\x0fTWAPAccumulator\x12\x17\n" +
 	"\apool_id\x18\x01 \x01(\tR\x06poolId\x12\x1d\n" +
 	"\n" +
@@ -330,11 +534,13 @@ func file_zerone_liquiditypool_v1_types_proto_rawDescGZIP() []byte {
 	return file_zerone_liquiditypool_v1_types_proto_rawDescData
 }
 
-var file_zerone_liquiditypool_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_zerone_liquiditypool_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_zerone_liquiditypool_v1_types_proto_goTypes = []any{
-	(*Pool)(nil),            // 0: zerone.liquiditypool.v1.Pool
-	(*TWAPAccumulator)(nil), // 1: zerone.liquiditypool.v1.TWAPAccumulator
-	(*SwapResult)(nil),      // 2: zerone.liquiditypool.v1.SwapResult
+	(*Pool)(nil),                  // 0: zerone.liquiditypool.v1.Pool
+	(*LiquidityMiningPeriod)(nil), // 1: zerone.liquiditypool.v1.LiquidityMiningPeriod
+	(*LpMinerPosition)(nil),       // 2: zerone.liquiditypool.v1.LpMinerPosition
+	(*TWAPAccumulator)(nil),       // 3: zerone.liquiditypool.v1.TWAPAccumulator
+	(*SwapResult)(nil),            // 4: zerone.liquiditypool.v1.SwapResult
 }
 var file_zerone_liquiditypool_v1_types_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -355,7 +561,7 @@ func file_zerone_liquiditypool_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_zerone_liquiditypool_v1_types_proto_rawDesc), len(file_zerone_liquiditypool_v1_types_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

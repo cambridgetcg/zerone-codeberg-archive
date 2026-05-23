@@ -103,13 +103,14 @@ func (am AppModule) ExportGenesis(ctx sdk.Context, cdc codec.JSONCodec) json.Raw
 
 func (AppModule) ConsensusVersion() uint64 { return 1 }
 
-// BeginBlock updates TWAP accumulators for all pools each block.
+// BeginBlock updates TWAP accumulators and processes liquidity mining rewards.
 func (am AppModule) BeginBlock(goCtx context.Context) error {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 	am.keeper.IteratePools(ctx, func(pool *types.Pool) bool {
 		am.keeper.UpdateTWAPAccumulator(ctx, pool)
 		return false
 	})
+	am.keeper.ProcessMiningBeginBlock(ctx)
 	return nil
 }
 

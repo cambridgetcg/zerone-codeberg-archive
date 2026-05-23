@@ -18,6 +18,10 @@ service Msg {
   rpc AddLiquidity(MsgAddLiquidity) returns (MsgAddLiquidityResponse);
   rpc RemoveLiquidity(MsgRemoveLiquidity) returns (MsgRemoveLiquidityResponse);
 
+  // Liquidity mining
+  rpc CreateLiquidityMiningPeriod(MsgCreateLiquidityMiningPeriod) returns (MsgCreateLiquidityMiningPeriodResponse);
+  rpc ClaimLiquidityRewards(MsgClaimLiquidityRewards) returns (MsgClaimLiquidityRewardsResponse);
+
   // Governance
   rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
 }
@@ -77,6 +81,29 @@ message MsgRemoveLiquidity {
 message MsgRemoveLiquidityResponse {
   string amount_a = 1; // bigint string
   string amount_b = 2; // bigint string
+}
+
+// --- CreateLiquidityMiningPeriod ---
+
+message MsgCreateLiquidityMiningPeriod {
+  string authority       = 1; // governance authority address
+  string pool_id         = 2;
+  string amount_per_block = 3; // uzrn bigint string per block
+  uint64 start_block     = 4;
+  uint64 end_block       = 5;
+}
+message MsgCreateLiquidityMiningPeriodResponse {
+  string period_id = 1;
+}
+
+// --- ClaimLiquidityRewards ---
+
+message MsgClaimLiquidityRewards {
+  string sender  = 1;
+  string pool_id = 2;
+}
+message MsgClaimLiquidityRewardsResponse {
+  string claimed_amount = 1; // uzrn bigint string
 }
 
 // --- UpdateParams ---

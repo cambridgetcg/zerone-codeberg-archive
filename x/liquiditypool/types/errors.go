@@ -20,4 +20,8 @@ var (
 	ErrReserveBelowMinimum   = errors.Register(ModuleName, 16, "reserve would fall below minimum")
 	ErrTWAPStale             = errors.Register(ModuleName, 17, "TWAP accumulator is stale")
 	ErrSwapFractionExceeded  = errors.Register(ModuleName, 18, "swap input exceeds max_swap_fraction_bps limit")
+	ErrMiningPeriodNotFound  = errors.Register(ModuleName, 19, "liquidity mining period not found")
+	ErrMiningPeriodExists    = errors.Register(ModuleName, 20, "pool already has an active liquidity mining period")
+	ErrMiningPeriodInvalid   = errors.Register(ModuleName, 21, "invalid liquidity mining period: end_block must exceed start_block and amount_per_block must be positive")
+	ErrNoRewardsToClaim      = errors.Register(ModuleName, 22, "no liquidity rewards to claim")
 )

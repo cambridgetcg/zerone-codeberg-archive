@@ -736,6 +736,12 @@ Governance parameter update.
 - `provider` -- address that received the funds
 - `amount` -- released amount (in uzrn)
 
+### zerone.disputes.appeal_filed
+Challenger or defender filed an appeal against a settled verdict; appeal bond held in escrow.
+- `dispute_id` -- dispute identifier
+- `appealer` -- address filing the appeal
+- `appeal_bond` -- bond amount posted (uzrn)
+- `original_outcome` -- outcome being appealed
 
 ## emergency
 
@@ -1936,6 +1942,27 @@ Liquidity removed from pool.
 ### zerone.liquiditypool.update_params
 Governance parameter update.
 - `authority` -- governance address
+
+### zerone.liquiditypool.mining_period_created
+New liquidity mining period created for a pool.
+- `period_id` -- deterministic SHA-256 ID of the period
+- `pool_id` -- pool identifier
+- `amount_per_block` -- uzrn emitted per block
+- `start_block` -- first block rewards accrue
+- `end_block` -- last block rewards accrue (exclusive)
+
+### zerone.liquiditypool.mining_reward_accumulated
+Emitted each block by `ProcessMiningBeginBlock` when rewards are minted and added to the pool accumulator.
+- `pool_id` -- pool identifier
+- `period_id` -- active mining period ID
+- `amount` -- uzrn minted this block
+- `accumulated_reward_per_lp` -- running accumulator value (×1e18 scale)
+
+### zerone.liquiditypool.mining_rewards_claimed
+LP miner claimed their accumulated rewards.
+- `pool_id` -- pool identifier
+- `miner` -- claimer address
+- `amount` -- uzrn transferred to the miner
 
 ---
 

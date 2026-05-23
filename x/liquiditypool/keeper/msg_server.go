@@ -301,8 +301,15 @@ func (m msgServer) AddLiquidity(goCtx context.Context, msg *types.MsgAddLiquidit
 		}
 	}
 
-	// Transfer tokens
+	// Settle liquidity mining rewards BEFORE LP balance changes.
 	senderAddr, _ := sdk.AccAddressFromBech32(msg.Sender)
+	if m.Keeper.bankKeeper != nil {
+		lpDenomForMining := types.LPDenom(pool.PoolId)
+		currentLpBal := m.Keeper.bankKeeper.GetBalance(ctx, senderAddr, lpDenomForMining)
+		m.Keeper.SettleMinerRewards(ctx, pool.PoolId, msg.Sender, currentLpBal.Amount.BigInt(), pool)
+	}
+
+	// Transfer tokens
 	if m.Keeper.bankKeeper != nil {
 		if actualA.Sign() > 0 {
 			coinsA := sdk.NewCoins(sdk.NewCoin(pool.DenomA, sdkmath.NewIntFromBigInt(actualA)))
@@ -402,6 +409,15 @@ func (m msgServer) RemoveLiquidity(goCtx context.Context, msg *types.MsgRemoveLi
 
 	senderAddr, _ := sdk.AccAddressFromBech32(msg.Sender)
 
+	// Settle liquidity mining rewards BEFORE LP balance changes.
+	// lpTokens = amount being removed; full balance = lpTokens at minimum (may be more).
+	// Use actual bank balance to capture any transfers since last settlement.
+	if m.Keeper.bankKeeper != nil {
+		lpDenomForMining := types.LPDenom(pool.PoolId)
+		currentLpBal := m.Keeper.bankKeeper.GetBalance(ctx, senderAddr, lpDenomForMining)
+		m.Keeper.SettleMinerRewards(ctx, pool.PoolId, msg.Sender, currentLpBal.Amount.BigInt(), pool)
+	}
+
 	// Burn LP tokens: user -> module -> burn
 	if m.Keeper.bankKeeper != nil {
 		lpDenom := types.LPDenom(pool.PoolId)
@@ -468,4 +484,43 @@ func (m msgServer) UpdateParams(goCtx context.Context, msg *types.MsgUpdateParam
 	)
 
 	return &types.MsgUpdateParamsResponse{}, nil
+}
+
+// CreateLiquidityMiningPeriod creates a new emission schedule for LP token holders.
+// Only governance (authority) may call this. At most one active period per pool.
+func (m msgServer) CreateLiquidityMiningPeriod(goCtx context.Context, msg *types.MsgCreateLiquidityMiningPeriod) (*types.MsgCreateLiquidityMiningPeriodResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+
+	if msg.Authority != m.Keeper.GetAuthority() {
+		return nil, types.ErrUnauthorized
+	}
+
+	// Pool must exist
+	if _, found := m.Keeper.GetPool(ctx, msg.PoolId); !found {
+		return nil, types.ErrPoolNotFound
+	}
+
+	period, err := m.Keeper.CreateMiningPeriod(ctx, msg.PoolId, msg.Authority, msg.AmountPerBlock, msg.StartBlock, msg.EndBlock)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.MsgCreateLiquidityMiningPeriodResponse{PeriodId: period.Id}, nil
+}
+
+// ClaimLiquidityRewards settles and pays out accrued mining rewards for the caller.
+func (m msgServer) ClaimLiquidityRewards(goCtx context.Context, msg *types.MsgClaimLiquidityRewards) (*types.MsgClaimLiquidityRewardsResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+
+	pool, found := m.Keeper.GetPool(ctx, msg.PoolId)
+	if !found {
+		return nil, types.ErrPoolNotFound
+	}
+
+	claimed, err := m.Keeper.ClaimPendingRewards(ctx, msg.PoolId, msg.Sender, pool)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.MsgClaimLiquidityRewardsResponse{ClaimedAmount: claimed.String()}, nil
 }

@@ -18,7 +18,9 @@ message Params {
 
 // GenesisState defines the liquiditypool module genesis state.
 message GenesisState {
-  Params params                            = 1;
-  repeated Pool pools                      = 2;
-  repeated TWAPAccumulator twap_accumulators = 3;
+  Params params                                      = 1;
+  repeated Pool pools                                = 2;
+  repeated TWAPAccumulator twap_accumulators         = 3;
+  repeated LiquidityMiningPeriod mining_periods      = 4;
+  repeated LpMinerPosition miner_positions           = 5;
 }

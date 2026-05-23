@@ -9,11 +9,14 @@ const (
 )
 
 var (
-	PoolKeyPrefix    = []byte{0x01}
-	TWAPKeyPrefix    = []byte{0x02}
-	ParamsKey        = []byte{0x03}
-	PoolCounterKey   = []byte{0x04}
-	DenomIndexPrefix = []byte{0x10} // index: denom pair -> pool ID
+	PoolKeyPrefix         = []byte{0x01}
+	TWAPKeyPrefix         = []byte{0x02}
+	ParamsKey             = []byte{0x03}
+	PoolCounterKey        = []byte{0x04}
+	DenomIndexPrefix      = []byte{0x10} // index: denom pair -> pool ID
+	MiningPeriodKeyPrefix = []byte{0x05} // LiquidityMiningPeriod by period id
+	PoolMiningIndexPrefix = []byte{0x06} // index: pool_id -> active mining period id
+	LpMinerPositionPrefix = []byte{0x07} // LpMinerPosition by pool_id+"/"+addr
 )
 
 func PoolKey(poolId string) []byte {
@@ -35,4 +38,24 @@ func DenomPairKey(denomA, denomB string) []byte {
 // LPDenom returns the LP token denom for a pool.
 func LPDenom(poolId string) string {
 	return "lp/" + poolId
+}
+
+// MiningPeriodKey returns the storage key for a LiquidityMiningPeriod.
+func MiningPeriodKey(periodId string) []byte {
+	return append(MiningPeriodKeyPrefix, []byte(periodId)...)
+}
+
+// PoolMiningIndexKey returns the index key mapping pool_id → active mining period id.
+func PoolMiningIndexKey(poolId string) []byte {
+	return append(PoolMiningIndexPrefix, []byte(poolId)...)
+}
+
+// LpMinerPositionKey returns the storage key for a LpMinerPosition (pool_id + "/" + addr).
+func LpMinerPositionKey(poolId, addr string) []byte {
+	return append(LpMinerPositionPrefix, []byte(poolId+"/"+addr)...)
+}
+
+// LpMinerPositionPoolPrefix returns the prefix for iterating all positions in a pool.
+func LpMinerPositionPoolPrefix(poolId string) []byte {
+	return append(LpMinerPositionPrefix, []byte(poolId+"/")...)
 }

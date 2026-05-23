@@ -16,6 +16,34 @@ message Pool {
   string creator         = 9;
   uint64 created_at_block = 10;
   bool   locked          = 11; // reentrancy guard
+  // Liquidity mining: cumulative reward per LP token (×1e18 precision, bigint string).
+  // Monotonically increasing. Default "" treated as "0".
+  string accumulated_reward_per_lp = 12;
+}
+
+// LiquidityMiningPeriod defines a per-pool emission schedule for LP reward distribution.
+// One active period per pool. Governance creates; BeginBlocker accumulates.
+message LiquidityMiningPeriod {
+  string id               = 1;
+  string pool_id          = 2;
+  string amount_per_block = 3; // uzrn bigint string minted per block
+  uint64 start_block      = 4;
+  uint64 end_block        = 5;
+  bool   active           = 6;
+  string total_mined      = 7; // bigint string, cumulative uzrn minted
+  string creator          = 8; // governance authority
+}
+
+// LpMinerPosition tracks a user's liquidity mining reward state for a pool.
+// Key: (pool_id, miner_addr). Created lazily on first AddLiquidity/Claim.
+message LpMinerPosition {
+  string pool_id        = 1;
+  string miner_addr     = 2;
+  // reward_debt is the pool's accumulated_reward_per_lp at the last settlement (×1e18, bigint).
+  // pending = (current_acc - reward_debt) × lp_balance / 1e18
+  string reward_debt    = 3;
+  // settled but unclaimed uzrn (bigint string)
+  string pending_rewards = 4;
 }
 
 // TWAPAccumulator stores cumulative price data for TWAP oracle.

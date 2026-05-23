@@ -98,6 +98,19 @@ func (k Keeper) InitGenesis(ctx sdk.Context, gs *types.GenesisState) {
 			k.SetTWAPAccumulator(ctx, acc)
 		}
 	}
+	for _, period := range gs.MiningPeriods {
+		if period != nil {
+			k.SetLiquidityMiningPeriod(ctx, period)
+			if period.Active {
+				k.setPoolMiningIndex(ctx, period.PoolId, period.Id)
+			}
+		}
+	}
+	for _, pos := range gs.MinerPositions {
+		if pos != nil {
+			k.SetLpMinerPosition(ctx, pos)
+		}
+	}
 }
 
 func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
@@ -111,10 +124,22 @@ func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 		accs = append(accs, a)
 		return false
 	})
+	var periods []*types.LiquidityMiningPeriod
+	k.IterateMiningPeriods(ctx, func(p *types.LiquidityMiningPeriod) bool {
+		periods = append(periods, p)
+		return false
+	})
+	var positions []*types.LpMinerPosition
+	k.IterateLpMinerPositions(ctx, func(pos *types.LpMinerPosition) bool {
+		positions = append(positions, pos)
+		return false
+	})
 	return &types.GenesisState{
 		Params:           k.GetParams(ctx),
 		Pools:            pools,
 		TwapAccumulators: accs,
+		MiningPeriods:    periods,
+		MinerPositions:   positions,
 	}
 }
 
