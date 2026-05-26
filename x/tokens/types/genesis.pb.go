@@ -70,8 +70,9 @@ func (x *GenesisState) GetParams() *Params {
 // All fields default to zero (module is a stub at genesis).
 type Params struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
-	EmissionEpochBlocks uint64                 `protobuf:"varint,1,opt,name=emission_epoch_blocks,json=emissionEpochBlocks,proto3" json:"emission_epoch_blocks,omitempty"` // blocks per emission epoch (0 = disabled)
-	DefaultFeeBps       string                 `protobuf:"bytes,2,opt,name=default_fee_bps,json=defaultFeeBps,proto3" json:"default_fee_bps,omitempty"`                    // default swap fee in BPS (unused, reserved)
+	EmissionEpochBlocks uint64                 `protobuf:"varint,1,opt,name=emission_epoch_blocks,json=emissionEpochBlocks,proto3" json:"emission_epoch_blocks,omitempty"`  // blocks per emission epoch (0 = disabled)
+	DefaultFeeBps       string                 `protobuf:"bytes,2,opt,name=default_fee_bps,json=defaultFeeBps,proto3" json:"default_fee_bps,omitempty"`                     // default swap fee in BPS (unused, reserved)
+	MaxNativeSupplyUzrn string                 `protobuf:"bytes,3,opt,name=max_native_supply_uzrn,json=maxNativeSupplyUzrn,proto3" json:"max_native_supply_uzrn,omitempty"` // hard supply cap for uzrn bigint-as-string; "" or "0" = unlimited
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -120,16 +121,24 @@ func (x *Params) GetDefaultFeeBps() string {
 	return ""
 }
 
+func (x *Params) GetMaxNativeSupplyUzrn() string {
+	if x != nil {
+		return x.MaxNativeSupplyUzrn
+	}
+	return ""
+}
+
 var File_zerone_tokens_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_tokens_v1_genesis_proto_rawDesc = "" +
 	"\n" +
 	"\x1ezerone/tokens/v1/genesis.proto\x12\x10zerone.tokens.v1\"@\n" +
 	"\fGenesisState\x120\n" +
-	"\x06params\x18\x01 \x01(\v2\x18.zerone.tokens.v1.ParamsR\x06params\"d\n" +
+	"\x06params\x18\x01 \x01(\v2\x18.zerone.tokens.v1.ParamsR\x06params\"\x99\x01\n" +
 	"\x06Params\x122\n" +
 	"\x15emission_epoch_blocks\x18\x01 \x01(\x04R\x13emissionEpochBlocks\x12&\n" +
-	"\x0fdefault_fee_bps\x18\x02 \x01(\tR\rdefaultFeeBpsB/Z-github.com/zerone-chain/zerone/x/tokens/typesb\x06proto3"
+	"\x0fdefault_fee_bps\x18\x02 \x01(\tR\rdefaultFeeBps\x123\n" +
+	"\x16max_native_supply_uzrn\x18\x03 \x01(\tR\x13maxNativeSupplyUzrnB/Z-github.com/zerone-chain/zerone/x/tokens/typesb\x06proto3"
 
 var (
 	file_zerone_tokens_v1_genesis_proto_rawDescOnce sync.Once

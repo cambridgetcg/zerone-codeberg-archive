@@ -308,8 +308,19 @@ func (k Keeper) ExportGenesisJSON(ctx sdk.Context) json.RawMessage {
 // ---------- BeginBlocker ----------
 
 // BeginBlocker processes active emission periods, minting tokens for the current block.
+// Implements Gap 3 (halving schedule) and Gap 4 (hard supply cap) from the monetary policy brief.
 func (k Keeper) BeginBlocker(ctx sdk.Context) {
 	currentBlock := uint64(ctx.BlockHeight())
+	params := k.GetParams(ctx)
+
+	// Parse hard supply cap (Gap 4). "" or "0" = unlimited.
+	var maxSupply *big.Int
+	if params.MaxNativeSupplyUzrn != "" && params.MaxNativeSupplyUzrn != "0" {
+		maxSupply = new(big.Int)
+		if _, ok := maxSupply.SetString(params.MaxNativeSupplyUzrn, 10); !ok || maxSupply.Sign() <= 0 {
+			maxSupply = nil // treat as unlimited on parse failure
+		}
+	}
 
 	k.IterateEmissionPeriods(ctx, func(emission *types.EmissionPeriod) bool {
 		if !emission.Active {
@@ -325,10 +336,80 @@ func (k Keeper) BeginBlocker(ctx sdk.Context) {
 			return false
 		}
 
-		// Mint amount_per_block to recipient
+		// Parse current amount_per_block (may have been reduced by prior halvings)
 		amountPerBlock := new(big.Int)
 		if _, ok := amountPerBlock.SetString(emission.AmountPerBlock, 10); !ok || amountPerBlock.Sign() <= 0 {
 			return false
+		}
+
+		// Gap 3: Apply any pending halvings before minting this block.
+		// expectedHalvings = (currentBlock - startBlock) / halvingIntervalBlocks
+		// Apply each pending halving step: amount = amount * halvingFactorBps / 10000
+		periodChanged := false
+		if emission.HalvingIntervalBlocks > 0 && emission.HalvingFactorBps > 0 {
+			blocksSinceStart := currentBlock - emission.StartBlock
+			expectedHalvings := blocksSinceStart / emission.HalvingIntervalBlocks
+			for emission.HalvingCount < expectedHalvings {
+				newAmount := new(big.Int).Mul(amountPerBlock, big.NewInt(int64(emission.HalvingFactorBps)))
+				newAmount.Div(newAmount, big.NewInt(10000))
+				if newAmount.Sign() == 0 {
+					// Amount halved to zero — deactivate the period
+					emission.Active = false
+					emission.AmountPerBlock = "0"
+					emission.HalvingCount++
+					k.SetEmissionPeriod(ctx, emission)
+					ctx.EventManager().EmitEvent(sdk.NewEvent(
+						"zerone.tokens.emission_halving_applied",
+						sdk.NewAttribute("emission_id", emission.Id),
+						sdk.NewAttribute("halving_count", fmt.Sprintf("%d", emission.HalvingCount)),
+						sdk.NewAttribute("new_amount_per_block", "0"),
+					))
+					return false
+				}
+				amountPerBlock = newAmount
+				emission.HalvingCount++
+				periodChanged = true
+			}
+			if periodChanged {
+				emission.AmountPerBlock = amountPerBlock.String()
+				ctx.EventManager().EmitEvent(sdk.NewEvent(
+					"zerone.tokens.emission_halving_applied",
+					sdk.NewAttribute("emission_id", emission.Id),
+					sdk.NewAttribute("halving_count", fmt.Sprintf("%d", emission.HalvingCount)),
+					sdk.NewAttribute("new_amount_per_block", emission.AmountPerBlock),
+				))
+			}
+		}
+
+		// Gap 4: Enforce hard supply cap. Clamp mint to remaining headroom.
+		if maxSupply != nil {
+			currentSupply := k.bankKeeper.GetSupply(ctx, "uzrn").Amount.BigInt()
+			headroom := new(big.Int).Sub(maxSupply, currentSupply)
+			if headroom.Sign() <= 0 {
+				// Already at or above cap — deactivate this period
+				emission.Active = false
+				if periodChanged {
+					emission.AmountPerBlock = amountPerBlock.String()
+				}
+				k.SetEmissionPeriod(ctx, emission)
+				ctx.EventManager().EmitEvent(sdk.NewEvent(
+					"zerone.tokens.emission_supply_cap_reached",
+					sdk.NewAttribute("emission_id", emission.Id),
+					sdk.NewAttribute("cap", params.MaxNativeSupplyUzrn),
+				))
+				return false
+			}
+			if amountPerBlock.Cmp(headroom) > 0 {
+				// Partial mint up to cap, then deactivate
+				amountPerBlock = headroom
+				emission.Active = false
+				emission.AmountPerBlock = "0"
+				ctx.EventManager().EmitEvent(sdk.NewEvent(
+					"zerone.tokens.emission_supply_cap_reached",
+					sdk.NewAttribute("emission_id", emission.Id),
+					sdk.NewAttribute("cap", params.MaxNativeSupplyUzrn),
+				))
+			}
 		}
 
 		recipientAddr, err := sdk.AccAddressFromBech32(emission.Recipient)

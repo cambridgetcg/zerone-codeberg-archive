@@ -2627,6 +2627,19 @@ Emission period cancelled.
 Governance parameter update.
 - `authority` -- governance address
 
+### zerone.tokens.emission_supply_cap_reached
+*(Gap 4 — monetary policy)* Emission period deactivated because native supply cap was reached.
+Fired when `max_native_supply_uzrn` is set and an emission would exceed it (including the partial-mint case where the period is deactivated after filling the remaining headroom).
+- `emission_id` -- emission ID that was deactivated
+- `cap` -- the `max_native_supply_uzrn` value that was hit
+
+### zerone.tokens.emission_halving_applied
+*(Gap 3 — monetary policy)* Halving applied to an emission period.
+Fired when BeginBlocker reduces `amount_per_block` for a halving-enabled period.
+- `emission_id` -- emission ID
+- `halving_count` -- new `HalvingCount` after this halving
+- `new_amount_per_block` -- reduced emission rate
+
 ---
 
 ## toolbox

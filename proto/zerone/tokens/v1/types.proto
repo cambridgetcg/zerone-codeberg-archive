@@ -30,9 +30,14 @@ message EmissionPeriod {
   string id               = 1;
   uint64 start_block      = 2;
   uint64 end_block        = 3;
-  string amount_per_block = 4;  // uzrn per block
+  string amount_per_block = 4;  // uzrn per block (updated in-place by halving)
   string recipient        = 5;  // module account or address
   bool   active           = 6;
   string total_emitted    = 7;  // running total emitted
   string creator          = 8;  // governance authority that created it
+  // Halving schedule (Gap 3): reduce amount_per_block by halving_factor_bps/10000 every halving_interval_blocks.
+  // 0 = disabled for either field.
+  uint64 halving_interval_blocks = 9;  // blocks between halvings (0 = no halving)
+  uint32 halving_factor_bps      = 10; // new rate = old rate * factor / 10000 (e.g. 5000 = 50% halving)
+  uint64 halving_count           = 11; // number of halvings applied so far (maintained by BeginBlocker)
 }

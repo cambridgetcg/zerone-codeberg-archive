@@ -213,13 +213,18 @@ type EmissionPeriod struct {
 	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	StartBlock     uint64                 `protobuf:"varint,2,opt,name=start_block,json=startBlock,proto3" json:"start_block,omitempty"`
 	EndBlock       uint64                 `protobuf:"varint,3,opt,name=end_block,json=endBlock,proto3" json:"end_block,omitempty"`
-	AmountPerBlock string                 `protobuf:"bytes,4,opt,name=amount_per_block,json=amountPerBlock,proto3" json:"amount_per_block,omitempty"` // uzrn per block
+	AmountPerBlock string                 `protobuf:"bytes,4,opt,name=amount_per_block,json=amountPerBlock,proto3" json:"amount_per_block,omitempty"` // uzrn per block (updated in-place by halving)
 	Recipient      string                 `protobuf:"bytes,5,opt,name=recipient,proto3" json:"recipient,omitempty"`                                   // module account or address
 	Active         bool                   `protobuf:"varint,6,opt,name=active,proto3" json:"active,omitempty"`
 	TotalEmitted   string                 `protobuf:"bytes,7,opt,name=total_emitted,json=totalEmitted,proto3" json:"total_emitted,omitempty"` // running total emitted
 	Creator        string                 `protobuf:"bytes,8,opt,name=creator,proto3" json:"creator,omitempty"`                               // governance authority that created it
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Halving schedule (Gap 3): reduce amount_per_block by halving_factor_bps/10000 every halving_interval_blocks.
+	// 0 = disabled for either field.
+	HalvingIntervalBlocks uint64 `protobuf:"varint,9,opt,name=halving_interval_blocks,json=halvingIntervalBlocks,proto3" json:"halving_interval_blocks,omitempty"` // blocks between halvings (0 = no halving)
+	HalvingFactorBps      uint32 `protobuf:"varint,10,opt,name=halving_factor_bps,json=halvingFactorBps,proto3" json:"halving_factor_bps,omitempty"`               // new rate = old rate * factor / 10000 (e.g. 5000 = 50% halving)
+	HalvingCount          uint64 `protobuf:"varint,11,opt,name=halving_count,json=halvingCount,proto3" json:"halving_count,omitempty"`                             // number of halvings applied so far (maintained by BeginBlocker)
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *EmissionPeriod) Reset() {
@@ -308,6 +313,27 @@ func (x *EmissionPeriod) GetCreator() string {
 	return ""
 }
 
+func (x *EmissionPeriod) GetHalvingIntervalBlocks() uint64 {
+	if x != nil {
+		return x.HalvingIntervalBlocks
+	}
+	return 0
+}
+
+func (x *EmissionPeriod) GetHalvingFactorBps() uint32 {
+	if x != nil {
+		return x.HalvingFactorBps
+	}
+	return 0
+}
+
+func (x *EmissionPeriod) GetHalvingCount() uint64 {
+	if x != nil {
+		return x.HalvingCount
+	}
+	return 0
+}
+
 var File_zerone_tokens_v1_types_proto protoreflect.FileDescriptor
 
 const file_zerone_tokens_v1_types_proto_rawDesc = "" +
@@ -331,7 +357,7 @@ const file_zerone_tokens_v1_types_proto_rawDesc = "" +
 	"\x06paused\x18\t \x01(\bR\x06paused\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\n" +
-	" \x01(\x04R\tcreatedAt\"\xfd\x01\n" +
+	" \x01(\x04R\tcreatedAt\"\x88\x03\n" +
 	"\x0eEmissionPeriod\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vstart_block\x18\x02 \x01(\x04R\n" +
@@ -341,7 +367,11 @@ const file_zerone_tokens_v1_types_proto_rawDesc = "" +
 	"\trecipient\x18\x05 \x01(\tR\trecipient\x12\x16\n" +
 	"\x06active\x18\x06 \x01(\bR\x06active\x12#\n" +
 	"\rtotal_emitted\x18\a \x01(\tR\ftotalEmitted\x12\x18\n" +
-	"\acreator\x18\b \x01(\tR\acreatorB/Z-github.com/zerone-chain/zerone/x/tokens/typesb\x06proto3"
+	"\acreator\x18\b \x01(\tR\acreator\x126\n" +
+	"\x17halving_interval_blocks\x18\t \x01(\x04R\x15halvingIntervalBlocks\x12,\n" +
+	"\x12halving_factor_bps\x18\n" +
+	" \x01(\rR\x10halvingFactorBps\x12#\n" +
+	"\rhalving_count\x18\v \x01(\x04R\fhalvingCountB/Z-github.com/zerone-chain/zerone/x/tokens/typesb\x06proto3"
 
 var (
 	file_zerone_tokens_v1_types_proto_rawDescOnce sync.Once
