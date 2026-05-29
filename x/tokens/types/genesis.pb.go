@@ -73,8 +73,13 @@ type Params struct {
 	EmissionEpochBlocks uint64                 `protobuf:"varint,1,opt,name=emission_epoch_blocks,json=emissionEpochBlocks,proto3" json:"emission_epoch_blocks,omitempty"`  // blocks per emission epoch (0 = disabled)
 	DefaultFeeBps       string                 `protobuf:"bytes,2,opt,name=default_fee_bps,json=defaultFeeBps,proto3" json:"default_fee_bps,omitempty"`                     // default swap fee in BPS (unused, reserved)
 	MaxNativeSupplyUzrn string                 `protobuf:"bytes,3,opt,name=max_native_supply_uzrn,json=maxNativeSupplyUzrn,proto3" json:"max_native_supply_uzrn,omitempty"` // hard supply cap for uzrn bigint-as-string; "" or "0" = unlimited
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Gap 2: Adaptive emission rate — adjusts EmissionScaleBps each epoch to target bonded ratio.
+	TargetBondedRatioBps  uint64 `protobuf:"varint,4,opt,name=target_bonded_ratio_bps,json=targetBondedRatioBps,proto3" json:"target_bonded_ratio_bps,omitempty"`  // target bonded/total-supply ratio (e.g. 670000 = 67%); 0 = disabled
+	EmissionAdjustmentBps uint64 `protobuf:"varint,5,opt,name=emission_adjustment_bps,json=emissionAdjustmentBps,proto3" json:"emission_adjustment_bps,omitempty"` // per-epoch scale step (e.g. 1000 = 0.1%); 0 = disabled
+	MinEmissionScaleBps   uint64 `protobuf:"varint,6,opt,name=min_emission_scale_bps,json=minEmissionScaleBps,proto3" json:"min_emission_scale_bps,omitempty"`     // floor scale (e.g. 500000 = 0.5×); 0 = no floor
+	MaxEmissionScaleBps   uint64 `protobuf:"varint,7,opt,name=max_emission_scale_bps,json=maxEmissionScaleBps,proto3" json:"max_emission_scale_bps,omitempty"`     // ceiling scale (e.g. 2000000 = 2.0×); 0 = no ceiling
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -128,17 +133,49 @@ func (x *Params) GetMaxNativeSupplyUzrn() string {
 	return ""
 }
 
+func (x *Params) GetTargetBondedRatioBps() uint64 {
+	if x != nil {
+		return x.TargetBondedRatioBps
+	}
+	return 0
+}
+
+func (x *Params) GetEmissionAdjustmentBps() uint64 {
+	if x != nil {
+		return x.EmissionAdjustmentBps
+	}
+	return 0
+}
+
+func (x *Params) GetMinEmissionScaleBps() uint64 {
+	if x != nil {
+		return x.MinEmissionScaleBps
+	}
+	return 0
+}
+
+func (x *Params) GetMaxEmissionScaleBps() uint64 {
+	if x != nil {
+		return x.MaxEmissionScaleBps
+	}
+	return 0
+}
+
 var File_zerone_tokens_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_tokens_v1_genesis_proto_rawDesc = "" +
 	"\n" +
 	"\x1ezerone/tokens/v1/genesis.proto\x12\x10zerone.tokens.v1\"@\n" +
 	"\fGenesisState\x120\n" +
-	"\x06params\x18\x01 \x01(\v2\x18.zerone.tokens.v1.ParamsR\x06params\"\x99\x01\n" +
+	"\x06params\x18\x01 \x01(\v2\x18.zerone.tokens.v1.ParamsR\x06params\"\xf2\x02\n" +
 	"\x06Params\x122\n" +
 	"\x15emission_epoch_blocks\x18\x01 \x01(\x04R\x13emissionEpochBlocks\x12&\n" +
 	"\x0fdefault_fee_bps\x18\x02 \x01(\tR\rdefaultFeeBps\x123\n" +
-	"\x16max_native_supply_uzrn\x18\x03 \x01(\tR\x13maxNativeSupplyUzrnB/Z-github.com/zerone-chain/zerone/x/tokens/typesb\x06proto3"
+	"\x16max_native_supply_uzrn\x18\x03 \x01(\tR\x13maxNativeSupplyUzrn\x125\n" +
+	"\x17target_bonded_ratio_bps\x18\x04 \x01(\x04R\x14targetBondedRatioBps\x126\n" +
+	"\x17emission_adjustment_bps\x18\x05 \x01(\x04R\x15emissionAdjustmentBps\x123\n" +
+	"\x16min_emission_scale_bps\x18\x06 \x01(\x04R\x13minEmissionScaleBps\x123\n" +
+	"\x16max_emission_scale_bps\x18\a \x01(\x04R\x13maxEmissionScaleBpsB/Z-github.com/zerone-chain/zerone/x/tokens/typesb\x06proto3"
 
 var (
 	file_zerone_tokens_v1_genesis_proto_rawDescOnce sync.Once

@@ -36,6 +36,9 @@ var (
 
 	// Emission prefixes
 	EmissionPeriodKeyPrefix = []byte{0x0A} // {emissionId} -> EmissionPeriod (proto)
+
+	// Adaptive emission scale singleton (Gap 2)
+	EmissionScaleKey = []byte{0x0B} // uint64 BPS; default 1_000_000 (1.0×) when not set
 )
 
 // TokenDefKey returns the store key for a token definition.

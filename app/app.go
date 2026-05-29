@@ -887,6 +887,9 @@ func NewZeroneApp(
 		app.BankKeeper,
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
 	)
+	// Wire adaptive emission staking adapter (Gap 2: x/tokens monetary policy).
+	tokensStakingAdapter := zeronestakingkeeper.NewTokensStakingAdapter(app.ZeroneStakingKeeper)
+	app.TokensKeeper.SetStakingKeeper(tokensStakingAdapter)
 
 	billingKnowledgeAdapter := zeroneknowledgekeeper.NewBillingKnowledgeAdapter(app.KnowledgeKeeper)
 	vestingRFDAdapter := vestingrewardskeeper.NewResearchFundDepositorAdapter(app.VestingRewardsKeeper)

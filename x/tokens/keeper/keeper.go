@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -22,7 +23,8 @@ type Keeper struct {
 	cdc          codec.Codec
 	storeService store.KVStoreService
 
-	bankKeeper types.BankKeeper
+	bankKeeper    types.BankKeeper
+	stakingKeeper types.StakingKeeper // nil = adaptive emission disabled
 
 	// Module authority (typically governance module address)
 	authority string
@@ -41,6 +43,92 @@ func NewKeeper(
 		bankKeeper:   bk,
 		authority:    authority,
 	}
+}
+
+// SetStakingKeeper wires in the staking keeper post-initialization (breaks circular deps).
+func (k *Keeper) SetStakingKeeper(sk types.StakingKeeper) {
+	k.stakingKeeper = sk
+}
+
+// ---------- Emission Scale (Gap 2) ----------
+
+// GetEmissionScale returns the current adaptive emission scale in BPS.
+// Default is types.DefaultEmissionScale (1_000_000 = 1.0×) when not yet set.
+func (k Keeper) GetEmissionScale(ctx sdk.Context) uint64 {
+	kvStore := k.storeService.OpenKVStore(ctx)
+	bz, err := kvStore.Get(types.EmissionScaleKey)
+	if err != nil || len(bz) != 8 {
+		return types.DefaultEmissionScale
+	}
+	return binary.BigEndian.Uint64(bz)
+}
+
+// SetEmissionScale stores the adaptive emission scale in BPS.
+func (k Keeper) SetEmissionScale(ctx sdk.Context, scale uint64) {
+	kvStore := k.storeService.OpenKVStore(ctx)
+	bz := make([]byte, 8)
+	binary.BigEndian.PutUint64(bz, scale)
+	_ = kvStore.Set(types.EmissionScaleKey, bz)
+}
+
+// adjustEmissionScale adjusts the stored EmissionScaleBps based on current bonded ratio.
+// Called once per epoch from BeginBlocker when adaptive emission is configured.
+// No-op when stakingKeeper is nil or bankKeeper is nil.
+func (k Keeper) adjustEmissionScale(ctx sdk.Context, params *types.Params) {
+	if k.stakingKeeper == nil || k.bankKeeper == nil {
+		return
+	}
+	if params.TargetBondedRatioBps == 0 || params.EmissionAdjustmentBps == 0 {
+		return
+	}
+
+	totalBonded := k.stakingKeeper.GetTotalBondedStake(ctx)
+	totalSupply := k.bankKeeper.GetSupply(ctx, "uzrn").Amount.BigInt()
+
+	if totalSupply == nil || totalSupply.Sign() == 0 {
+		return // cannot compute ratio; skip
+	}
+
+	// currentRatioBps = totalBonded * EmissionBPSScale / totalSupply
+	bpsScale := new(big.Int).SetUint64(types.EmissionBPSScale)
+	numerator := new(big.Int).Mul(totalBonded, bpsScale)
+	currentRatioBps := new(big.Int).Div(numerator, totalSupply).Uint64()
+
+	currentScale := k.GetEmissionScale(ctx)
+	adj := params.EmissionAdjustmentBps
+	var newScale uint64
+
+	switch {
+	case currentRatioBps < params.TargetBondedRatioBps:
+		// Below target: increase emission to incentivize bonding.
+		newScale = currentScale + adj
+	case currentRatioBps > params.TargetBondedRatioBps:
+		// Above target: reduce emission.
+		if currentScale > adj {
+			newScale = currentScale - adj
+		} else {
+			newScale = 0
+		}
+	default:
+		newScale = currentScale // at target, hold
+	}
+
+	// Clamp to [min, max] if configured.
+	if params.MinEmissionScaleBps > 0 && newScale < params.MinEmissionScaleBps {
+		newScale = params.MinEmissionScaleBps
+	}
+	if params.MaxEmissionScaleBps > 0 && newScale > params.MaxEmissionScaleBps {
+		newScale = params.MaxEmissionScaleBps
+	}
+
+	k.SetEmissionScale(ctx, newScale)
+
+	ctx.EventManager().EmitEvent(sdk.NewEvent(
+		"zerone.tokens.emission_scale_adjusted",
+		sdk.NewAttribute("current_ratio_bps", fmt.Sprintf("%d", currentRatioBps)),
+		sdk.NewAttribute("target_ratio_bps", fmt.Sprintf("%d", params.TargetBondedRatioBps)),
+		sdk.NewAttribute("new_scale_bps", fmt.Sprintf("%d", newScale)),
+	))
 }
 
 // Logger returns a module-specific logger.
@@ -308,10 +396,18 @@ func (k Keeper) ExportGenesisJSON(ctx sdk.Context) json.RawMessage {
 // ---------- BeginBlocker ----------
 
 // BeginBlocker processes active emission periods, minting tokens for the current block.
-// Implements Gap 3 (halving schedule) and Gap 4 (hard supply cap) from the monetary policy brief.
+// Implements Gap 2 (adaptive emission rate), Gap 3 (halving schedule), Gap 4 (hard supply cap).
 func (k Keeper) BeginBlocker(ctx sdk.Context) {
 	currentBlock := uint64(ctx.BlockHeight())
 	params := k.GetParams(ctx)
+
+	// Gap 2: Adaptive emission — adjust scale at epoch boundaries.
+	if params.EmissionEpochBlocks > 0 && currentBlock%params.EmissionEpochBlocks == 0 {
+		k.adjustEmissionScale(ctx, params)
+	}
+
+	// Gap 2: Load current emission scale. Default 1_000_000 (= 1.0×, identity).
+	emissionScale := k.GetEmissionScale(ctx)
 
 	// Parse hard supply cap (Gap 4). "" or "0" = unlimited.
 	var maxSupply *big.Int
@@ -340,6 +436,18 @@ func (k Keeper) BeginBlocker(ctx sdk.Context) {
 		amountPerBlock := new(big.Int)
 		if _, ok := amountPerBlock.SetString(emission.AmountPerBlock, 10); !ok || amountPerBlock.Sign() <= 0 {
 			return false
+		}
+
+		// Gap 2: Apply adaptive emission scale.
+		// effectiveAmount = amountPerBlock * emissionScale / 1_000_000
+		// When emissionScale = 1_000_000 (default), effectiveAmount = amountPerBlock (identity).
+		if emissionScale != types.DefaultEmissionScale {
+			scaled := new(big.Int).Mul(amountPerBlock, new(big.Int).SetUint64(emissionScale))
+			scaled.Div(scaled, new(big.Int).SetUint64(types.EmissionBPSScale))
+			amountPerBlock = scaled
+			if amountPerBlock.Sign() == 0 {
+				return false // scale rounded amount to zero, skip mint
+			}
 		}
 
 		// Gap 3: Apply any pending halvings before minting this block.

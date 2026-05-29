@@ -479,3 +479,383 @@ func TestHalving_CatchupOnMissedBlocks(t *testing.T) {
 		t.Fatalf("expected halving_count=3, got %d", em.HalvingCount)
 	}
 }
+
+// -----------------------------------------------------------------------
+// Gap 2: Adaptive Emission Rate Tests
+// -----------------------------------------------------------------------
+
+// mockStakingKeeper implements types.StakingKeeper with a configurable bonded total.
+type mockStakingKeeper struct {
+	totalBonded *big.Int
+}
+
+func (m *mockStakingKeeper) GetTotalBondedStake(_ sdk.Context) *big.Int {
+	if m.totalBonded == nil {
+		return new(big.Int)
+	}
+	return new(big.Int).Set(m.totalBonded)
+}
+
+// setupKeeperWithBankAndStaking wraps setupKeeperWithBank and attaches a mock staking keeper.
+func setupKeeperWithBankAndStaking(t *testing.T, totalBonded int64) (interface{ GetEmissionScale(sdk.Context) uint64; SetEmissionScale(sdk.Context, uint64); BeginBlocker(sdk.Context); SetParams(sdk.Context, *types.Params); GetParams(sdk.Context) *types.Params; SetEmissionPeriod(sdk.Context, *types.EmissionPeriod); GetEmissionPeriod(sdk.Context, string) *types.EmissionPeriod }, sdk.Context, *mockBankKeeper) {
+	t.Helper()
+	k, ctx, bk := setupKeeperWithBank(t)
+	sk := &mockStakingKeeper{totalBonded: big.NewInt(totalBonded)}
+	k.SetStakingKeeper(sk)
+	return &k, ctx, bk
+}
+
+// TestEmissionScale_DefaultIsIdentity: unset scale returns 1_000_000.
+func TestEmissionScale_DefaultIsIdentity(t *testing.T) {
+	k, ctx, _ := setupKeeperWithBank(t)
+
+	scale := k.GetEmissionScale(ctx)
+	if scale != types.DefaultEmissionScale {
+		t.Fatalf("expected default scale %d, got %d", types.DefaultEmissionScale, scale)
+	}
+}
+
+// TestEmissionScale_SetGet: round-trip.
+func TestEmissionScale_SetGet(t *testing.T) {
+	k, ctx, _ := setupKeeperWithBank(t)
+
+	k.SetEmissionScale(ctx, 750_000) // 0.75×
+	got := k.GetEmissionScale(ctx)
+	if got != 750_000 {
+		t.Fatalf("expected 750000, got %d", got)
+	}
+
+	k.SetEmissionScale(ctx, 1_500_000) // 1.5×
+	got = k.GetEmissionScale(ctx)
+	if got != 1_500_000 {
+		t.Fatalf("expected 1500000, got %d", got)
+	}
+}
+
+// TestAdaptiveEmission_DisabledWhenTargetZero: target=0 → scale never adjusts.
+func TestAdaptiveEmission_DisabledWhenTargetZero(t *testing.T) {
+	k, ctx, _ := setupKeeperWithBank(t)
+	sk := &mockStakingKeeper{totalBonded: big.NewInt(100_000)} // 10% bonded
+	k.SetStakingKeeper(sk)
+
+	// Set large supply via bank pre-fund so ratio = 100k/1M = 10%
+	// Target=0 means disabled — scale must not change.
+	params := k.GetParams(ctx)
+	params.EmissionEpochBlocks = 10
+	params.TargetBondedRatioBps = 0            // disabled
+	params.EmissionAdjustmentBps = 1_000
+	params.MinEmissionScaleBps = 500_000
+	params.MaxEmissionScaleBps = 2_000_000
+	k.SetParams(ctx, params)
+
+	ctx = sdk.NewContext(ctx.MultiStore(), cmtproto.Header{Height: 10}, false, ctx.Logger())
+	k.BeginBlocker(ctx)
+
+	scale := k.GetEmissionScale(ctx)
+	if scale != types.DefaultEmissionScale {
+		t.Fatalf("expected scale unchanged at %d, got %d", types.DefaultEmissionScale, scale)
+	}
+}
+
+// TestAdaptiveEmission_DisabledWhenAdjustmentZero: adjustment=0 → scale never adjusts.
+func TestAdaptiveEmission_DisabledWhenAdjustmentZero(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+	// Pre-fund to set supply
+	addr, _ := sdk.AccAddressFromBech32(testCreator)
+	bk.balances[addr.String()] = map[string]sdkmath.Int{"uzrn": sdkmath.NewInt(1_000_000)}
+	sk := &mockStakingKeeper{totalBonded: big.NewInt(100_000)}
+	k.SetStakingKeeper(sk)
+
+	params := k.GetParams(ctx)
+	params.EmissionEpochBlocks = 10
+	params.TargetBondedRatioBps = 670_000     // 67% target
+	params.EmissionAdjustmentBps = 0           // disabled
+	k.SetParams(ctx, params)
+
+	ctx = sdk.NewContext(ctx.MultiStore(), cmtproto.Header{Height: 10}, false, ctx.Logger())
+	k.BeginBlocker(ctx)
+
+	scale := k.GetEmissionScale(ctx)
+	if scale != types.DefaultEmissionScale {
+		t.Fatalf("expected scale unchanged at %d, got %d", types.DefaultEmissionScale, scale)
+	}
+}
+
+// TestAdaptiveEmission_DisabledWhenNoEpoch: epoch_blocks=0 → no adjustment even at block 0.
+func TestAdaptiveEmission_DisabledWhenNoEpoch(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+	addr, _ := sdk.AccAddressFromBech32(testCreator)
+	bk.balances[addr.String()] = map[string]sdkmath.Int{"uzrn": sdkmath.NewInt(1_000_000)}
+	sk := &mockStakingKeeper{totalBonded: big.NewInt(100_000)}
+	k.SetStakingKeeper(sk)
+
+	params := k.GetParams(ctx)
+	params.EmissionEpochBlocks = 0 // no epochs
+	params.TargetBondedRatioBps = 670_000
+	params.EmissionAdjustmentBps = 1_000
+	k.SetParams(ctx, params)
+
+	// Block 100 is divisible by 0... which Go would panic. But we guard with > 0.
+	// Scale must not change.
+	k.BeginBlocker(ctx) // ctx block = 100
+
+	scale := k.GetEmissionScale(ctx)
+	if scale != types.DefaultEmissionScale {
+		t.Fatalf("expected scale unchanged at %d, got %d", types.DefaultEmissionScale, scale)
+	}
+}
+
+// TestAdaptiveEmission_ScaleIncreasesWhenBelowTarget: low bonded ratio → scale up.
+func TestAdaptiveEmission_ScaleIncreasesWhenBelowTarget(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+
+	// Supply = 1_000_000 uzrn, bonded = 100_000 → ratio = 10% < 67% target
+	addr, _ := sdk.AccAddressFromBech32(testCreator)
+	bk.balances[addr.String()] = map[string]sdkmath.Int{"uzrn": sdkmath.NewInt(1_000_000)}
+	sk := &mockStakingKeeper{totalBonded: big.NewInt(100_000)}
+	k.SetStakingKeeper(sk)
+
+	params := k.GetParams(ctx)
+	params.EmissionEpochBlocks = 10
+	params.TargetBondedRatioBps = 670_000 // 67%
+	params.EmissionAdjustmentBps = 5_000  // 0.5% step
+	k.SetParams(ctx, params)
+
+	ctx = sdk.NewContext(ctx.MultiStore(), cmtproto.Header{Height: 10}, false, ctx.Logger())
+	k.BeginBlocker(ctx)
+
+	scale := k.GetEmissionScale(ctx)
+	expected := types.DefaultEmissionScale + 5_000 // 1_005_000
+	if scale != expected {
+		t.Fatalf("expected scale %d (increased), got %d", expected, scale)
+	}
+}
+
+// TestAdaptiveEmission_ScaleDecreasesWhenAboveTarget: high bonded ratio → scale down.
+func TestAdaptiveEmission_ScaleDecreasesWhenAboveTarget(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+
+	// Supply = 1_000_000 uzrn, bonded = 900_000 → ratio = 90% > 67% target
+	addr, _ := sdk.AccAddressFromBech32(testCreator)
+	bk.balances[addr.String()] = map[string]sdkmath.Int{"uzrn": sdkmath.NewInt(1_000_000)}
+	sk := &mockStakingKeeper{totalBonded: big.NewInt(900_000)}
+	k.SetStakingKeeper(sk)
+
+	params := k.GetParams(ctx)
+	params.EmissionEpochBlocks = 10
+	params.TargetBondedRatioBps = 670_000
+	params.EmissionAdjustmentBps = 5_000
+	k.SetParams(ctx, params)
+
+	ctx = sdk.NewContext(ctx.MultiStore(), cmtproto.Header{Height: 10}, false, ctx.Logger())
+	k.BeginBlocker(ctx)
+
+	scale := k.GetEmissionScale(ctx)
+	expected := types.DefaultEmissionScale - 5_000 // 995_000
+	if scale != expected {
+		t.Fatalf("expected scale %d (decreased), got %d", expected, scale)
+	}
+}
+
+// TestAdaptiveEmission_ScaleHoldsAtTarget: bonded ratio exactly at target → no change.
+func TestAdaptiveEmission_ScaleHoldsAtTarget(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+
+	// Supply = 1_000_000 uzrn, bonded = 670_000 → ratio = exactly 67%
+	addr, _ := sdk.AccAddressFromBech32(testCreator)
+	bk.balances[addr.String()] = map[string]sdkmath.Int{"uzrn": sdkmath.NewInt(1_000_000)}
+	sk := &mockStakingKeeper{totalBonded: big.NewInt(670_000)}
+	k.SetStakingKeeper(sk)
+
+	params := k.GetParams(ctx)
+	params.EmissionEpochBlocks = 10
+	params.TargetBondedRatioBps = 670_000
+	params.EmissionAdjustmentBps = 5_000
+	k.SetParams(ctx, params)
+
+	ctx = sdk.NewContext(ctx.MultiStore(), cmtproto.Header{Height: 10}, false, ctx.Logger())
+	k.BeginBlocker(ctx)
+
+	scale := k.GetEmissionScale(ctx)
+	if scale != types.DefaultEmissionScale {
+		t.Fatalf("expected scale unchanged at %d, got %d", types.DefaultEmissionScale, scale)
+	}
+}
+
+// TestAdaptiveEmission_FloorClamp: scale cannot drop below MinEmissionScaleBps.
+func TestAdaptiveEmission_FloorClamp(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+
+	addr, _ := sdk.AccAddressFromBech32(testCreator)
+	bk.balances[addr.String()] = map[string]sdkmath.Int{"uzrn": sdkmath.NewInt(1_000_000)}
+	sk := &mockStakingKeeper{totalBonded: big.NewInt(900_000)} // above target → decrease
+
+	k.SetStakingKeeper(sk)
+
+	// Set current scale very close to min
+	k.SetEmissionScale(ctx, 800_010)
+
+	params := k.GetParams(ctx)
+	params.EmissionEpochBlocks = 10
+	params.TargetBondedRatioBps = 670_000
+	params.EmissionAdjustmentBps = 50_000   // large step
+	params.MinEmissionScaleBps = 800_000    // floor at 0.8×
+	k.SetParams(ctx, params)
+
+	ctx = sdk.NewContext(ctx.MultiStore(), cmtproto.Header{Height: 10}, false, ctx.Logger())
+	k.BeginBlocker(ctx)
+
+	scale := k.GetEmissionScale(ctx)
+	if scale != 800_000 {
+		t.Fatalf("expected scale clamped to floor 800000, got %d", scale)
+	}
+}
+
+// TestAdaptiveEmission_CeilingClamp: scale cannot exceed MaxEmissionScaleBps.
+func TestAdaptiveEmission_CeilingClamp(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+
+	addr, _ := sdk.AccAddressFromBech32(testCreator)
+	bk.balances[addr.String()] = map[string]sdkmath.Int{"uzrn": sdkmath.NewInt(1_000_000)}
+	sk := &mockStakingKeeper{totalBonded: big.NewInt(100_000)} // below target → increase
+
+	k.SetStakingKeeper(sk)
+
+	// Set current scale close to max
+	k.SetEmissionScale(ctx, 1_490_000)
+
+	params := k.GetParams(ctx)
+	params.EmissionEpochBlocks = 10
+	params.TargetBondedRatioBps = 670_000
+	params.EmissionAdjustmentBps = 50_000     // large step
+	params.MaxEmissionScaleBps = 1_500_000    // ceiling at 1.5×
+	k.SetParams(ctx, params)
+
+	ctx = sdk.NewContext(ctx.MultiStore(), cmtproto.Header{Height: 10}, false, ctx.Logger())
+	k.BeginBlocker(ctx)
+
+	scale := k.GetEmissionScale(ctx)
+	if scale != 1_500_000 {
+		t.Fatalf("expected scale clamped to ceiling 1500000, got %d", scale)
+	}
+}
+
+// TestAdaptiveEmission_MintScaledDown: scale < 1.0× reduces effective mint.
+func TestAdaptiveEmission_MintScaledDown(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+
+	// Pre-set scale to 0.5× (500_000 BPS)
+	k.SetEmissionScale(ctx, 500_000)
+
+	k.SetEmissionPeriod(ctx, &types.EmissionPeriod{
+		Id:             "scale_down",
+		StartBlock:     100,
+		EndBlock:       200,
+		AmountPerBlock: "1000",
+		Recipient:      testCreator,
+		Active:         true,
+	})
+
+	k.BeginBlocker(ctx) // block 100
+
+	recipientAddr, _ := sdk.AccAddressFromBech32(testCreator)
+	coin := bk.GetBalance(ctx, recipientAddr, "uzrn")
+	// effective = 1000 * 500_000 / 1_000_000 = 500
+	if !coin.Amount.Equal(sdkmath.NewInt(500)) {
+		t.Fatalf("expected 500 uzrn (0.5× scale), got %s", coin.Amount)
+	}
+}
+
+// TestAdaptiveEmission_MintScaledUp: scale > 1.0× increases effective mint.
+func TestAdaptiveEmission_MintScaledUp(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+
+	// Pre-set scale to 1.5× (1_500_000 BPS)
+	k.SetEmissionScale(ctx, 1_500_000)
+
+	k.SetEmissionPeriod(ctx, &types.EmissionPeriod{
+		Id:             "scale_up",
+		StartBlock:     100,
+		EndBlock:       200,
+		AmountPerBlock: "1000",
+		Recipient:      testCreator,
+		Active:         true,
+	})
+
+	k.BeginBlocker(ctx) // block 100
+
+	recipientAddr, _ := sdk.AccAddressFromBech32(testCreator)
+	coin := bk.GetBalance(ctx, recipientAddr, "uzrn")
+	// effective = 1000 * 1_500_000 / 1_000_000 = 1500
+	if !coin.Amount.Equal(sdkmath.NewInt(1500)) {
+		t.Fatalf("expected 1500 uzrn (1.5× scale), got %s", coin.Amount)
+	}
+}
+
+// TestAdaptiveEmission_EpochBoundaryTriggersAdjust: scale adjusts at epoch block, not between.
+func TestAdaptiveEmission_EpochBoundaryTriggersAdjust(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+
+	addr, _ := sdk.AccAddressFromBech32(testCreator)
+	bk.balances[addr.String()] = map[string]sdkmath.Int{"uzrn": sdkmath.NewInt(1_000_000)}
+	sk := &mockStakingKeeper{totalBonded: big.NewInt(100_000)} // below target → would increase
+	k.SetStakingKeeper(sk)
+
+	params := k.GetParams(ctx)
+	params.EmissionEpochBlocks = 50
+	params.TargetBondedRatioBps = 670_000
+	params.EmissionAdjustmentBps = 10_000
+	k.SetParams(ctx, params)
+
+	// Non-epoch block (101 % 50 != 0)
+	ctx101 := sdk.NewContext(ctx.MultiStore(), cmtproto.Header{Height: 101}, false, ctx.Logger())
+	k.BeginBlocker(ctx101)
+	scale := k.GetEmissionScale(ctx101)
+	if scale != types.DefaultEmissionScale {
+		t.Fatalf("expected no adjustment at block 101, got scale %d", scale)
+	}
+
+	// Epoch block (150 % 50 == 0)
+	ctx150 := sdk.NewContext(ctx.MultiStore(), cmtproto.Header{Height: 150}, false, ctx.Logger())
+	k.BeginBlocker(ctx150)
+	scale = k.GetEmissionScale(ctx150)
+	expected := types.DefaultEmissionScale + 10_000
+	if scale != expected {
+		t.Fatalf("expected scale %d at epoch block 150, got %d", expected, scale)
+	}
+}
+
+// TestAdaptiveEmission_Validate_MinExceedsMax: Validate rejects min > max.
+func TestAdaptiveEmission_Validate_MinExceedsMax(t *testing.T) {
+	p := types.DefaultParams()
+	p.TargetBondedRatioBps = 670_000
+	p.EmissionAdjustmentBps = 1_000
+	p.MinEmissionScaleBps = 1_500_000
+	p.MaxEmissionScaleBps = 800_000 // less than min → invalid
+	if err := p.Validate(); err == nil {
+		t.Fatal("expected Validate to fail when min > max")
+	}
+}
+
+// TestAdaptiveEmission_Validate_AdjustmentWithoutTarget: adjustment > 0 but target = 0 → invalid.
+func TestAdaptiveEmission_Validate_AdjustmentWithoutTarget(t *testing.T) {
+	p := types.DefaultParams()
+	p.TargetBondedRatioBps = 0
+	p.EmissionAdjustmentBps = 1_000 // target missing
+	if err := p.Validate(); err == nil {
+		t.Fatal("expected Validate to fail when adjustment set but target is zero")
+	}
+}
+
+// TestAdaptiveEmission_Validate_ValidConfig: well-formed params pass.
+func TestAdaptiveEmission_Validate_ValidConfig(t *testing.T) {
+	p := types.DefaultParams()
+	p.EmissionEpochBlocks = 100
+	p.TargetBondedRatioBps = 670_000
+	p.EmissionAdjustmentBps = 1_000
+	p.MinEmissionScaleBps = 500_000
+	p.MaxEmissionScaleBps = 2_000_000
+	if err := p.Validate(); err != nil {
+		t.Fatalf("expected valid params to pass, got: %v", err)
+	}
+}

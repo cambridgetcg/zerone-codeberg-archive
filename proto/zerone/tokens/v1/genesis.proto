@@ -14,4 +14,9 @@ message Params {
   uint64 emission_epoch_blocks    = 1; // blocks per emission epoch (0 = disabled)
   string default_fee_bps          = 2; // default swap fee in BPS (unused, reserved)
   string max_native_supply_uzrn   = 3; // hard supply cap for uzrn bigint-as-string; "" or "0" = unlimited
+  // Gap 2: Adaptive emission rate — adjusts EmissionScaleBps each epoch to target bonded ratio.
+  uint64 target_bonded_ratio_bps  = 4; // target bonded/total-supply ratio (e.g. 670000 = 67%); 0 = disabled
+  uint64 emission_adjustment_bps  = 5; // per-epoch scale step (e.g. 1000 = 0.1%); 0 = disabled
+  uint64 min_emission_scale_bps   = 6; // floor scale (e.g. 500000 = 0.5×); 0 = no floor
+  uint64 max_emission_scale_bps   = 7; // ceiling scale (e.g. 2000000 = 2.0×); 0 = no ceiling
 }
