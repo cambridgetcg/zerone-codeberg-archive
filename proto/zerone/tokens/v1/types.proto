@@ -25,13 +25,21 @@ message TokenDefinition {
   uint64        created_at   = 10;  // block height
 }
 
+// EmissionSplit defines a proportional share of an emission going to a single address.
+// bps is parts per 1_000_000 (i.e. 1_000_000 = 100%). All splits in an EmissionPeriod must
+// sum exactly to 1_000_000.
+message EmissionSplit {
+  string address = 1; // bech32 recipient address
+  uint64 bps     = 2; // share out of 1_000_000 (e.g. 600_000 = 60%)
+}
+
 // EmissionPeriod defines a scheduled token emission (replaces LP pools).
 message EmissionPeriod {
   string id               = 1;
   uint64 start_block      = 2;
   uint64 end_block        = 3;
   string amount_per_block = 4;  // uzrn per block (updated in-place by halving)
-  string recipient        = 5;  // module account or address
+  string recipient        = 5;  // single recipient (legacy; ignored when recipients is non-empty)
   bool   active           = 6;
   string total_emitted    = 7;  // running total emitted
   string creator          = 8;  // governance authority that created it
@@ -40,4 +48,7 @@ message EmissionPeriod {
   uint64 halving_interval_blocks = 9;  // blocks between halvings (0 = no halving)
   uint32 halving_factor_bps      = 10; // new rate = old rate * factor / 10000 (e.g. 5000 = 50% halving)
   uint64 halving_count           = 11; // number of halvings applied so far (maintained by BeginBlocker)
+  // Gap 5: Multi-recipient emission split. When non-empty, sum(bps) must equal 1_000_000.
+  // If empty, the legacy recipient field is used.
+  repeated EmissionSplit recipients = 12;
 }

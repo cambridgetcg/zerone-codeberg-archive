@@ -1276,9 +1276,11 @@ type MsgCreateEmissionPeriod struct {
 	StartBlock     uint64                 `protobuf:"varint,2,opt,name=start_block,json=startBlock,proto3" json:"start_block,omitempty"`
 	EndBlock       uint64                 `protobuf:"varint,3,opt,name=end_block,json=endBlock,proto3" json:"end_block,omitempty"`
 	AmountPerBlock string                 `protobuf:"bytes,4,opt,name=amount_per_block,json=amountPerBlock,proto3" json:"amount_per_block,omitempty"` // uzrn per block
-	Recipient      string                 `protobuf:"bytes,5,opt,name=recipient,proto3" json:"recipient,omitempty"`                                   // module account or address
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	Recipient      string                 `protobuf:"bytes,5,opt,name=recipient,proto3" json:"recipient,omitempty"`                                   // single recipient (legacy; ignored when recipients is non-empty)
+	// Gap 5: optional multi-recipient split. When provided, sum(bps) must equal 1_000_000.
+	Recipients    []*EmissionSplit `protobuf:"bytes,6,rep,name=recipients,proto3" json:"recipients,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MsgCreateEmissionPeriod) Reset() {
@@ -1344,6 +1346,13 @@ func (x *MsgCreateEmissionPeriod) GetRecipient() string {
 		return x.Recipient
 	}
 	return ""
+}
+
+func (x *MsgCreateEmissionPeriod) GetRecipients() []*EmissionSplit {
+	if x != nil {
+		return x.Recipients
+	}
+	return nil
 }
 
 type MsgCreateEmissionPeriodResponse struct {
@@ -1644,14 +1653,17 @@ const file_zerone_tokens_v1_tx_proto_rawDesc = "" +
 	"\rwrapped_denom\x18\x02 \x01(\tR\fwrappedDenom\x12\x16\n" +
 	"\x06amount\x18\x03 \x01(\tR\x06amount:\v\x82\xe7\xb0*\x06sender\"3\n" +
 	"\x16MsgUnwrapTokenResponse\x12\x19\n" +
-	"\btoken_id\x18\x01 \x01(\tR\atokenId\"\xcd\x01\n" +
+	"\btoken_id\x18\x01 \x01(\tR\atokenId\"\x8e\x02\n" +
 	"\x17MsgCreateEmissionPeriod\x12\x1c\n" +
 	"\tauthority\x18\x01 \x01(\tR\tauthority\x12\x1f\n" +
 	"\vstart_block\x18\x02 \x01(\x04R\n" +
 	"startBlock\x12\x1b\n" +
 	"\tend_block\x18\x03 \x01(\x04R\bendBlock\x12(\n" +
 	"\x10amount_per_block\x18\x04 \x01(\tR\x0eamountPerBlock\x12\x1c\n" +
-	"\trecipient\x18\x05 \x01(\tR\trecipient:\x0e\x82\xe7\xb0*\tauthority\"B\n" +
+	"\trecipient\x18\x05 \x01(\tR\trecipient\x12?\n" +
+	"\n" +
+	"recipients\x18\x06 \x03(\v2\x1f.zerone.tokens.v1.EmissionSplitR\n" +
+	"recipients:\x0e\x82\xe7\xb0*\tauthority\"B\n" +
 	"\x1fMsgCreateEmissionPeriodResponse\x12\x1f\n" +
 	"\vemission_id\x18\x01 \x01(\tR\n" +
 	"emissionId\"h\n" +
@@ -1727,46 +1739,48 @@ var file_zerone_tokens_v1_tx_proto_goTypes = []any{
 	(*MsgUpdateParams)(nil),                 // 28: zerone.tokens.v1.MsgUpdateParams
 	(*MsgUpdateParamsResponse)(nil),         // 29: zerone.tokens.v1.MsgUpdateParamsResponse
 	(*TokenFeatures)(nil),                   // 30: zerone.tokens.v1.TokenFeatures
-	(*Params)(nil),                          // 31: zerone.tokens.v1.Params
+	(*EmissionSplit)(nil),                   // 31: zerone.tokens.v1.EmissionSplit
+	(*Params)(nil),                          // 32: zerone.tokens.v1.Params
 }
 var file_zerone_tokens_v1_tx_proto_depIdxs = []int32{
 	30, // 0: zerone.tokens.v1.MsgCreateToken.features:type_name -> zerone.tokens.v1.TokenFeatures
-	31, // 1: zerone.tokens.v1.MsgUpdateParams.params:type_name -> zerone.tokens.v1.Params
-	0,  // 2: zerone.tokens.v1.Msg.CreateToken:input_type -> zerone.tokens.v1.MsgCreateToken
-	2,  // 3: zerone.tokens.v1.Msg.MintToken:input_type -> zerone.tokens.v1.MsgMintToken
-	4,  // 4: zerone.tokens.v1.Msg.BurnToken:input_type -> zerone.tokens.v1.MsgBurnToken
-	6,  // 5: zerone.tokens.v1.Msg.TransferToken:input_type -> zerone.tokens.v1.MsgTransferToken
-	8,  // 6: zerone.tokens.v1.Msg.ApproveToken:input_type -> zerone.tokens.v1.MsgApproveToken
-	10, // 7: zerone.tokens.v1.Msg.TransferFrom:input_type -> zerone.tokens.v1.MsgTransferFrom
-	12, // 8: zerone.tokens.v1.Msg.PauseToken:input_type -> zerone.tokens.v1.MsgPauseToken
-	14, // 9: zerone.tokens.v1.Msg.UnpauseToken:input_type -> zerone.tokens.v1.MsgUnpauseToken
-	16, // 10: zerone.tokens.v1.Msg.DelegatePower:input_type -> zerone.tokens.v1.MsgDelegatePower
-	18, // 11: zerone.tokens.v1.Msg.UndelegatePower:input_type -> zerone.tokens.v1.MsgUndelegatePower
-	20, // 12: zerone.tokens.v1.Msg.WrapToken:input_type -> zerone.tokens.v1.MsgWrapToken
-	22, // 13: zerone.tokens.v1.Msg.UnwrapToken:input_type -> zerone.tokens.v1.MsgUnwrapToken
-	24, // 14: zerone.tokens.v1.Msg.CreateEmissionPeriod:input_type -> zerone.tokens.v1.MsgCreateEmissionPeriod
-	26, // 15: zerone.tokens.v1.Msg.CancelEmissionPeriod:input_type -> zerone.tokens.v1.MsgCancelEmissionPeriod
-	28, // 16: zerone.tokens.v1.Msg.UpdateParams:input_type -> zerone.tokens.v1.MsgUpdateParams
-	1,  // 17: zerone.tokens.v1.Msg.CreateToken:output_type -> zerone.tokens.v1.MsgCreateTokenResponse
-	3,  // 18: zerone.tokens.v1.Msg.MintToken:output_type -> zerone.tokens.v1.MsgMintTokenResponse
-	5,  // 19: zerone.tokens.v1.Msg.BurnToken:output_type -> zerone.tokens.v1.MsgBurnTokenResponse
-	7,  // 20: zerone.tokens.v1.Msg.TransferToken:output_type -> zerone.tokens.v1.MsgTransferTokenResponse
-	9,  // 21: zerone.tokens.v1.Msg.ApproveToken:output_type -> zerone.tokens.v1.MsgApproveTokenResponse
-	11, // 22: zerone.tokens.v1.Msg.TransferFrom:output_type -> zerone.tokens.v1.MsgTransferFromResponse
-	13, // 23: zerone.tokens.v1.Msg.PauseToken:output_type -> zerone.tokens.v1.MsgPauseTokenResponse
-	15, // 24: zerone.tokens.v1.Msg.UnpauseToken:output_type -> zerone.tokens.v1.MsgUnpauseTokenResponse
-	17, // 25: zerone.tokens.v1.Msg.DelegatePower:output_type -> zerone.tokens.v1.MsgDelegatePowerResponse
-	19, // 26: zerone.tokens.v1.Msg.UndelegatePower:output_type -> zerone.tokens.v1.MsgUndelegatePowerResponse
-	21, // 27: zerone.tokens.v1.Msg.WrapToken:output_type -> zerone.tokens.v1.MsgWrapTokenResponse
-	23, // 28: zerone.tokens.v1.Msg.UnwrapToken:output_type -> zerone.tokens.v1.MsgUnwrapTokenResponse
-	25, // 29: zerone.tokens.v1.Msg.CreateEmissionPeriod:output_type -> zerone.tokens.v1.MsgCreateEmissionPeriodResponse
-	27, // 30: zerone.tokens.v1.Msg.CancelEmissionPeriod:output_type -> zerone.tokens.v1.MsgCancelEmissionPeriodResponse
-	29, // 31: zerone.tokens.v1.Msg.UpdateParams:output_type -> zerone.tokens.v1.MsgUpdateParamsResponse
-	17, // [17:32] is the sub-list for method output_type
-	2,  // [2:17] is the sub-list for method input_type
-	2,  // [2:2] is the sub-list for extension type_name
-	2,  // [2:2] is the sub-list for extension extendee
-	0,  // [0:2] is the sub-list for field type_name
+	31, // 1: zerone.tokens.v1.MsgCreateEmissionPeriod.recipients:type_name -> zerone.tokens.v1.EmissionSplit
+	32, // 2: zerone.tokens.v1.MsgUpdateParams.params:type_name -> zerone.tokens.v1.Params
+	0,  // 3: zerone.tokens.v1.Msg.CreateToken:input_type -> zerone.tokens.v1.MsgCreateToken
+	2,  // 4: zerone.tokens.v1.Msg.MintToken:input_type -> zerone.tokens.v1.MsgMintToken
+	4,  // 5: zerone.tokens.v1.Msg.BurnToken:input_type -> zerone.tokens.v1.MsgBurnToken
+	6,  // 6: zerone.tokens.v1.Msg.TransferToken:input_type -> zerone.tokens.v1.MsgTransferToken
+	8,  // 7: zerone.tokens.v1.Msg.ApproveToken:input_type -> zerone.tokens.v1.MsgApproveToken
+	10, // 8: zerone.tokens.v1.Msg.TransferFrom:input_type -> zerone.tokens.v1.MsgTransferFrom
+	12, // 9: zerone.tokens.v1.Msg.PauseToken:input_type -> zerone.tokens.v1.MsgPauseToken
+	14, // 10: zerone.tokens.v1.Msg.UnpauseToken:input_type -> zerone.tokens.v1.MsgUnpauseToken
+	16, // 11: zerone.tokens.v1.Msg.DelegatePower:input_type -> zerone.tokens.v1.MsgDelegatePower
+	18, // 12: zerone.tokens.v1.Msg.UndelegatePower:input_type -> zerone.tokens.v1.MsgUndelegatePower
+	20, // 13: zerone.tokens.v1.Msg.WrapToken:input_type -> zerone.tokens.v1.MsgWrapToken
+	22, // 14: zerone.tokens.v1.Msg.UnwrapToken:input_type -> zerone.tokens.v1.MsgUnwrapToken
+	24, // 15: zerone.tokens.v1.Msg.CreateEmissionPeriod:input_type -> zerone.tokens.v1.MsgCreateEmissionPeriod
+	26, // 16: zerone.tokens.v1.Msg.CancelEmissionPeriod:input_type -> zerone.tokens.v1.MsgCancelEmissionPeriod
+	28, // 17: zerone.tokens.v1.Msg.UpdateParams:input_type -> zerone.tokens.v1.MsgUpdateParams
+	1,  // 18: zerone.tokens.v1.Msg.CreateToken:output_type -> zerone.tokens.v1.MsgCreateTokenResponse
+	3,  // 19: zerone.tokens.v1.Msg.MintToken:output_type -> zerone.tokens.v1.MsgMintTokenResponse
+	5,  // 20: zerone.tokens.v1.Msg.BurnToken:output_type -> zerone.tokens.v1.MsgBurnTokenResponse
+	7,  // 21: zerone.tokens.v1.Msg.TransferToken:output_type -> zerone.tokens.v1.MsgTransferTokenResponse
+	9,  // 22: zerone.tokens.v1.Msg.ApproveToken:output_type -> zerone.tokens.v1.MsgApproveTokenResponse
+	11, // 23: zerone.tokens.v1.Msg.TransferFrom:output_type -> zerone.tokens.v1.MsgTransferFromResponse
+	13, // 24: zerone.tokens.v1.Msg.PauseToken:output_type -> zerone.tokens.v1.MsgPauseTokenResponse
+	15, // 25: zerone.tokens.v1.Msg.UnpauseToken:output_type -> zerone.tokens.v1.MsgUnpauseTokenResponse
+	17, // 26: zerone.tokens.v1.Msg.DelegatePower:output_type -> zerone.tokens.v1.MsgDelegatePowerResponse
+	19, // 27: zerone.tokens.v1.Msg.UndelegatePower:output_type -> zerone.tokens.v1.MsgUndelegatePowerResponse
+	21, // 28: zerone.tokens.v1.Msg.WrapToken:output_type -> zerone.tokens.v1.MsgWrapTokenResponse
+	23, // 29: zerone.tokens.v1.Msg.UnwrapToken:output_type -> zerone.tokens.v1.MsgUnwrapTokenResponse
+	25, // 30: zerone.tokens.v1.Msg.CreateEmissionPeriod:output_type -> zerone.tokens.v1.MsgCreateEmissionPeriodResponse
+	27, // 31: zerone.tokens.v1.Msg.CancelEmissionPeriod:output_type -> zerone.tokens.v1.MsgCancelEmissionPeriodResponse
+	29, // 32: zerone.tokens.v1.Msg.UpdateParams:output_type -> zerone.tokens.v1.MsgUpdateParamsResponse
+	18, // [18:33] is the sub-list for method output_type
+	3,  // [3:18] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_zerone_tokens_v1_tx_proto_init() }

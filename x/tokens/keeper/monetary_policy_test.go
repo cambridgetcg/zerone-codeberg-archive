@@ -859,3 +859,467 @@ func TestAdaptiveEmission_Validate_ValidConfig(t *testing.T) {
 		t.Fatalf("expected valid params to pass, got: %v", err)
 	}
 }
+
+// TestAdaptiveEmission_ScaleZero_SkipsMint: scale=0 → nothing minted, period NOT deactivated.
+// Scale 0 is a transient no-mint state (floor clamp prevents reaching 0 in practice with MinEmissionScaleBps).
+// Without floor, if scale underflows to 0, we skip the block but don't kill the period.
+func TestAdaptiveEmission_ScaleZero_SkipsMint(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+
+	k.SetEmissionScale(ctx, 0) // forced zero
+
+	k.SetEmissionPeriod(ctx, &types.EmissionPeriod{
+		Id:             "ep_zero_scale",
+		StartBlock:     100,
+		EndBlock:       200,
+		AmountPerBlock: "1000",
+		Recipient:      testCreator,
+		Active:         true,
+	})
+
+	k.BeginBlocker(ctx) // block 100
+
+	// Nothing minted.
+	recipientAddr, _ := sdk.AccAddressFromBech32(testCreator)
+	coin := bk.GetBalance(ctx, recipientAddr, "uzrn")
+	if !coin.Amount.Equal(sdkmath.NewInt(0)) {
+		t.Fatalf("expected 0 uzrn with scale=0, got %s", coin.Amount)
+	}
+
+	// Period must remain active — scale=0 is not a reason to deactivate.
+	em := k.GetEmissionPeriod(ctx, "ep_zero_scale")
+	if !em.Active {
+		t.Fatal("expected emission period to stay active when scale=0 skips mint")
+	}
+}
+
+// TestAdaptiveEmission_MultiplePeriodsScaledUniformly: scale applies identically to all active periods.
+func TestAdaptiveEmission_MultiplePeriodsScaledUniformly(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+
+	k.SetEmissionScale(ctx, 500_000) // 0.5×
+
+	k.SetEmissionPeriod(ctx, &types.EmissionPeriod{
+		Id:             "ep_multi_a",
+		StartBlock:     100,
+		EndBlock:       200,
+		AmountPerBlock: "2000",
+		Recipient:      testCreator,
+		Active:         true,
+	})
+	k.SetEmissionPeriod(ctx, &types.EmissionPeriod{
+		Id:             "ep_multi_b",
+		StartBlock:     100,
+		EndBlock:       200,
+		AmountPerBlock: "4000",
+		Recipient:      testUser1,
+		Active:         true,
+	})
+
+	k.BeginBlocker(ctx) // block 100
+
+	addrA, _ := sdk.AccAddressFromBech32(testCreator)
+	addrB, _ := sdk.AccAddressFromBech32(testUser1)
+
+	coinA := bk.GetBalance(ctx, addrA, "uzrn")
+	coinB := bk.GetBalance(ctx, addrB, "uzrn")
+
+	// 0.5× of 2000 = 1000; 0.5× of 4000 = 2000.
+	if !coinA.Amount.Equal(sdkmath.NewInt(1000)) {
+		t.Fatalf("period A: expected 1000, got %s", coinA.Amount)
+	}
+	if !coinB.Amount.Equal(sdkmath.NewInt(2000)) {
+		t.Fatalf("period B: expected 2000, got %s", coinB.Amount)
+	}
+}
+
+// TestAdaptiveEmission_WithHalving_ScaleAppliesAfter: halving reduces stored base, scale multiplies on top.
+// Halving fires at block 110 (1000 → 500 stored). Scale=2× → effective = 500 × 2 = 1000.
+func TestAdaptiveEmission_WithHalving_ScaleAppliesAfter(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+
+	k.SetEmissionScale(ctx, 2_000_000) // 2×
+
+	k.SetEmissionPeriod(ctx, &types.EmissionPeriod{
+		Id:                    "ep_halv_scale",
+		StartBlock:            100,
+		EndBlock:              300,
+		AmountPerBlock:        "1000",
+		Recipient:             testCreator,
+		Active:                true,
+		HalvingIntervalBlocks: 10,
+		HalvingFactorBps:      5000, // 50%
+	})
+
+	// Block 100: no halving yet, scale=2×. effective = 1000 × 2 = 2000.
+	k.BeginBlocker(ctx.WithBlockHeader(cmtproto.Header{Height: 100}))
+	recipientAddr, _ := sdk.AccAddressFromBech32(testCreator)
+	coin := bk.GetBalance(ctx, recipientAddr, "uzrn")
+	if !coin.Amount.Equal(sdkmath.NewInt(2000)) {
+		t.Fatalf("block 100: expected 2000 uzrn, got %s", coin.Amount)
+	}
+
+	// Block 110: halving fires (base 1000 → 500 stored), scale=2×. effective = 500 × 2 = 1000.
+	k.BeginBlocker(ctx.WithBlockHeader(cmtproto.Header{Height: 110}))
+	coin = bk.GetBalance(ctx, recipientAddr, "uzrn")
+	// cumulative: 2000 + 1000 = 3000
+	if !coin.Amount.Equal(sdkmath.NewInt(3000)) {
+		t.Fatalf("block 110: expected cumulative 3000 uzrn, got %s", coin.Amount)
+	}
+
+	// Stored amountPerBlock should be halved to 500 — scale is not stored on the period.
+	em := k.GetEmissionPeriod(ctx, "ep_halv_scale")
+	if em.AmountPerBlock != "500" {
+		t.Fatalf("expected stored amountPerBlock=500 after halving, got %s", em.AmountPerBlock)
+	}
+	if em.HalvingCount != 1 {
+		t.Fatalf("expected halving_count=1, got %d", em.HalvingCount)
+	}
+}
+
+// -----------------------------------------------------------------------
+// Gap 5: Multi-Recipient Emission Split Tests
+// -----------------------------------------------------------------------
+
+// TestMultiRecipient_TwoWaySplit: 60/40 split across two recipients.
+func TestMultiRecipient_TwoWaySplit(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+
+	k.SetEmissionPeriod(ctx, &types.EmissionPeriod{
+		Id:             "multi_split",
+		StartBlock:     100,
+		EndBlock:       200,
+		AmountPerBlock: "1000",
+		Recipients: []*types.EmissionSplit{
+			{Address: testCreator, Bps: 600_000}, // 60%
+			{Address: testUser1, Bps: 400_000},   // 40%
+		},
+		Active: true,
+	})
+
+	k.BeginBlocker(ctx) // block 100
+
+	addr0, _ := sdk.AccAddressFromBech32(testCreator)
+	addr1, _ := sdk.AccAddressFromBech32(testUser1)
+
+	c0 := bk.GetBalance(ctx, addr0, "uzrn")
+	c1 := bk.GetBalance(ctx, addr1, "uzrn")
+
+	// 60% of 1000 = 600, 40% of 1000 = 400
+	if !c0.Amount.Equal(sdkmath.NewInt(600)) {
+		t.Fatalf("expected 600 for 60%% split, got %s", c0.Amount)
+	}
+	if !c1.Amount.Equal(sdkmath.NewInt(400)) {
+		t.Fatalf("expected 400 for 40%% split, got %s", c1.Amount)
+	}
+}
+
+// TestMultiRecipient_RoundingDust: last recipient absorbs integer remainder.
+func TestMultiRecipient_RoundingDust(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+
+	// Amount=10, three-way 333_333 / 333_333 / 333_334 — last gets dust.
+	k.SetEmissionPeriod(ctx, &types.EmissionPeriod{
+		Id:             "dust_split",
+		StartBlock:     100,
+		EndBlock:       200,
+		AmountPerBlock: "10",
+		Recipients: []*types.EmissionSplit{
+			{Address: testCreator, Bps: 333_333},
+			{Address: testUser1, Bps: 333_333},
+			{Address: testUser2, Bps: 333_334},
+		},
+		Active: true,
+	})
+
+	k.BeginBlocker(ctx) // block 100
+
+	addr0, _ := sdk.AccAddressFromBech32(testCreator)
+	addr1, _ := sdk.AccAddressFromBech32(testUser1)
+	addr2, _ := sdk.AccAddressFromBech32(testUser2)
+
+	c0 := bk.GetBalance(ctx, addr0, "uzrn")
+	c1 := bk.GetBalance(ctx, addr1, "uzrn")
+	c2 := bk.GetBalance(ctx, addr2, "uzrn")
+
+	// 333_333 / 1_000_000 * 10 = 3 (floor), 3, last = 10 - 3 - 3 = 4
+	if !c0.Amount.Equal(sdkmath.NewInt(3)) {
+		t.Fatalf("expected 3 for first split, got %s", c0.Amount)
+	}
+	if !c1.Amount.Equal(sdkmath.NewInt(3)) {
+		t.Fatalf("expected 3 for second split, got %s", c1.Amount)
+	}
+	if !c2.Amount.Equal(sdkmath.NewInt(4)) {
+		t.Fatalf("expected 4 for last split (dust absorption), got %s", c2.Amount)
+	}
+}
+
+// TestMultiRecipient_CreateValidation_BpsMustSum1M: bps != 1_000_000 → error.
+func TestMultiRecipient_CreateValidation_BpsMustSum1M(t *testing.T) {
+	_, ctx, srv, _ := setupMsgServerWithBank(t)
+
+	_, err := srv.CreateEmissionPeriod(ctx, &types.MsgCreateEmissionPeriod{
+		Authority:      testAuthority,
+		StartBlock:     100,
+		EndBlock:       200,
+		AmountPerBlock: "1000",
+		Recipients: []*types.EmissionSplit{
+			{Address: testCreator, Bps: 600_000},
+			{Address: testUser1, Bps: 300_000}, // total = 900_000 ≠ 1_000_000
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error when recipient bps sum != 1_000_000")
+	}
+}
+
+// TestMultiRecipient_LegacyFallback: empty Recipients → single Recipient field used.
+func TestMultiRecipient_LegacyFallback(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+
+	k.SetEmissionPeriod(ctx, &types.EmissionPeriod{
+		Id:             "legacy_recip",
+		StartBlock:     100,
+		EndBlock:       200,
+		AmountPerBlock: "1000",
+		Recipient:      testCreator, // legacy single recipient
+		Recipients:     nil,         // no multi-split
+		Active:         true,
+	})
+
+	k.BeginBlocker(ctx) // block 100
+
+	addr, _ := sdk.AccAddressFromBech32(testCreator)
+	coin := bk.GetBalance(ctx, addr, "uzrn")
+	if !coin.Amount.Equal(sdkmath.NewInt(1000)) {
+		t.Fatalf("expected 1000 via legacy recipient, got %s", coin.Amount)
+	}
+}
+
+// TestAdaptiveEmission_WithCap_ScaleBeforeCap: scale amplifies amount, cap applies last.
+// Scale=2×, base=1000 → effective=2000. Cap=1500 → clamp to 1500, deactivate.
+func TestAdaptiveEmission_WithCap_ScaleBeforeCap(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+
+	params := k.GetParams(ctx)
+	params.MaxNativeSupplyUzrn = "1500"
+	k.SetParams(ctx, params)
+
+	k.SetEmissionScale(ctx, 2_000_000) // 2×
+
+	k.SetEmissionPeriod(ctx, &types.EmissionPeriod{
+		Id:             "ep_scale_cap",
+		StartBlock:     100,
+		EndBlock:       300,
+		AmountPerBlock: "1000",
+		Recipient:      testCreator,
+		Active:         true,
+	})
+
+	k.BeginBlocker(ctx) // block 100
+
+	recipientAddr, _ := sdk.AccAddressFromBech32(testCreator)
+	coin := bk.GetBalance(ctx, recipientAddr, "uzrn")
+	// effective = 2000, but cap headroom = 1500 → clamp to 1500, deactivate.
+	if !coin.Amount.Equal(sdkmath.NewInt(1500)) {
+		t.Fatalf("expected 1500 uzrn (2× capped), got %s", coin.Amount)
+	}
+
+	em := k.GetEmissionPeriod(ctx, "ep_scale_cap")
+	if em.Active {
+		t.Fatal("expected emission period deactivated after cap fill")
+	}
+}
+
+// -----------------------------------------------------------------------
+// Gap 5: Multi-Recipient Emission Split Tests
+// -----------------------------------------------------------------------
+
+// Note: testUser1, testUser2, testUser3 are defined in keeper_test.go and initialized
+// in init() after the zrn bech32 prefix is set. Use those instead of local vars.
+
+// TestMultiRecipient_LegacyBackwardCompat: no Recipients → single Recipient used.
+func TestMultiRecipient_LegacyBackwardCompat(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+
+	k.SetEmissionPeriod(ctx, &types.EmissionPeriod{
+		Id:             "legacy",
+		StartBlock:     100,
+		EndBlock:       200,
+		AmountPerBlock: "1000",
+		Recipient:      testCreator,
+		Active:         true,
+	})
+
+	k.BeginBlocker(ctx) // block 100
+
+	recipientAddr, _ := sdk.AccAddressFromBech32(testCreator)
+	coin := bk.GetBalance(ctx, recipientAddr, "uzrn")
+	if !coin.Amount.Equal(sdkmath.NewInt(1000)) {
+		t.Fatalf("expected 1000 uzrn to single recipient, got %s", coin.Amount)
+	}
+}
+
+// TestMultiRecipient_TwoSplit: 60/40 split with no rounding dust.
+func TestMultiRecipient_TwoSplit(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+
+	k.SetEmissionPeriod(ctx, &types.EmissionPeriod{
+		Id:             "split2",
+		StartBlock:     100,
+		EndBlock:       200,
+		AmountPerBlock: "1000",
+		Active:         true,
+		Recipients: []*types.EmissionSplit{
+			{Address: testCreator, Bps: 600_000}, // 60%
+			{Address: testUser1, Bps: 400_000},   // 40%
+		},
+	})
+
+	k.BeginBlocker(ctx)
+
+	addr1, _ := sdk.AccAddressFromBech32(testCreator)
+	addr2, _ := sdk.AccAddressFromBech32(testUser1)
+	coin1 := bk.GetBalance(ctx, addr1, "uzrn")
+	coin2 := bk.GetBalance(ctx, addr2, "uzrn")
+
+	if !coin1.Amount.Equal(sdkmath.NewInt(600)) {
+		t.Fatalf("expected 600 uzrn at addr1, got %s", coin1.Amount)
+	}
+	if !coin2.Amount.Equal(sdkmath.NewInt(400)) {
+		t.Fatalf("expected 400 uzrn at addr2, got %s", coin2.Amount)
+	}
+}
+
+// TestMultiRecipient_ThreeSplit_RoundingDust: 33/33/34 with integer rounding.
+func TestMultiRecipient_ThreeSplit_RoundingDust(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+
+	// 10 uzrn ÷ 3: 3.33... each; last gets remainder.
+	// Split: 333_333 + 333_333 + 333_334 = 1_000_000
+	k.SetEmissionPeriod(ctx, &types.EmissionPeriod{
+		Id:             "split3",
+		StartBlock:     100,
+		EndBlock:       200,
+		AmountPerBlock: "10",
+		Active:         true,
+		Recipients: []*types.EmissionSplit{
+			{Address: testCreator, Bps: 333_333},
+			{Address: testUser1, Bps: 333_333},
+			{Address: testUser2, Bps: 333_334},
+		},
+	})
+
+	k.BeginBlocker(ctx)
+
+	addr1, _ := sdk.AccAddressFromBech32(testCreator)
+	addr2, _ := sdk.AccAddressFromBech32(testUser1)
+	addr3, _ := sdk.AccAddressFromBech32(testUser2)
+
+	c1 := bk.GetBalance(ctx, addr1, "uzrn")
+	c2 := bk.GetBalance(ctx, addr2, "uzrn")
+	c3 := bk.GetBalance(ctx, addr3, "uzrn")
+
+	total := c1.Amount.Add(c2.Amount).Add(c3.Amount)
+	if !total.Equal(sdkmath.NewInt(10)) {
+		t.Fatalf("total minted must equal 10, got %s (splits: %s, %s, %s)", total, c1.Amount, c2.Amount, c3.Amount)
+	}
+	// Last recipient absorbs integer dust — must be >= floor of share.
+	if c3.Amount.LT(sdkmath.NewInt(3)) {
+		t.Fatalf("last recipient expected ≥3, got %s", c3.Amount)
+	}
+}
+
+// TestMultiRecipient_TotalEmittedTracksFullAmount: TotalEmitted = sum across all splits.
+func TestMultiRecipient_TotalEmittedTracksFullAmount(t *testing.T) {
+	k, ctx, _ := setupKeeperWithBank(t)
+
+	k.SetEmissionPeriod(ctx, &types.EmissionPeriod{
+		Id:             "split_total",
+		StartBlock:     100,
+		EndBlock:       200,
+		AmountPerBlock: "1000",
+		Active:         true,
+		Recipients: []*types.EmissionSplit{
+			{Address: testCreator, Bps: 700_000},
+			{Address: testUser1, Bps: 300_000},
+		},
+	})
+
+	k.BeginBlocker(ctx)
+
+	em := k.GetEmissionPeriod(ctx, "split_total")
+	if em.TotalEmitted != "1000" {
+		t.Fatalf("expected TotalEmitted=1000, got %s", em.TotalEmitted)
+	}
+}
+
+// TestMultiRecipient_CreateMsg_InvalidSum: bps sum != 1_000_000 rejected.
+func TestMultiRecipient_CreateMsg_InvalidSum(t *testing.T) {
+	_, ctx, srv := setupMsgServer(t)
+
+	_, err := srv.CreateEmissionPeriod(ctx, &types.MsgCreateEmissionPeriod{
+		Authority:      testAuthority,
+		StartBlock:     100,
+		EndBlock:       200,
+		AmountPerBlock: "1000",
+		Recipients: []*types.EmissionSplit{
+			{Address: testCreator, Bps: 600_000},
+			{Address: testUser1, Bps: 300_000}, // sum = 900_000 ≠ 1_000_000
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error for bps sum != 1_000_000")
+	}
+}
+
+// TestMultiRecipient_CreateMsg_ValidSplit: valid two-way split creates period with recipients.
+func TestMultiRecipient_CreateMsg_ValidSplit(t *testing.T) {
+	k, ctx, srv := setupMsgServer(t)
+
+	resp, err := srv.CreateEmissionPeriod(ctx, &types.MsgCreateEmissionPeriod{
+		Authority:      testAuthority,
+		StartBlock:     100,
+		EndBlock:       200,
+		AmountPerBlock: "1000",
+		Recipients: []*types.EmissionSplit{
+			{Address: testCreator, Bps: 500_000},
+			{Address: testUser1, Bps: 500_000},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateEmissionPeriod with split failed: %v", err)
+	}
+
+	em := k.GetEmissionPeriod(ctx, resp.EmissionId)
+	if len(em.Recipients) != 2 {
+		t.Fatalf("expected 2 recipients stored, got %d", len(em.Recipients))
+	}
+	if em.Recipients[0].Bps != 500_000 {
+		t.Fatalf("expected first recipient bps=500000, got %d", em.Recipients[0].Bps)
+	}
+}
+
+// TestMultiRecipient_SingleRecipient100Pct: one recipient at 100% = same as legacy.
+func TestMultiRecipient_SingleRecipient100Pct(t *testing.T) {
+	k, ctx, bk := setupKeeperWithBank(t)
+
+	k.SetEmissionPeriod(ctx, &types.EmissionPeriod{
+		Id:             "split_100",
+		StartBlock:     100,
+		EndBlock:       200,
+		AmountPerBlock: "2000",
+		Active:         true,
+		Recipients: []*types.EmissionSplit{
+			{Address: testCreator, Bps: 1_000_000},
+		},
+	})
+
+	k.BeginBlocker(ctx)
+
+	addr, _ := sdk.AccAddressFromBech32(testCreator)
+	coin := bk.GetBalance(ctx, addr, "uzrn")
+	if !coin.Amount.Equal(sdkmath.NewInt(2000)) {
+		t.Fatalf("expected 2000 uzrn with 100%% split, got %s", coin.Amount)
+	}
+}

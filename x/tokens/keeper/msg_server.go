@@ -626,6 +626,23 @@ func (s *msgServer) CreateEmissionPeriod(goCtx context.Context, msg *types.MsgCr
 		return nil, types.ErrInvalidAmount
 	}
 
+	// Gap 5: Validate multi-recipient splits when provided.
+	if len(msg.Recipients) > 0 {
+		var total uint64
+		for _, split := range msg.Recipients {
+			if split == nil {
+				return nil, fmt.Errorf("recipient split must not be nil")
+			}
+			if _, err := sdk.AccAddressFromBech32(split.Address); err != nil {
+				return nil, fmt.Errorf("invalid recipient address %q: %w", split.Address, err)
+			}
+			total += split.Bps
+		}
+		if total != types.EmissionBPSScale {
+			return nil, fmt.Errorf("recipients bps must sum to %d, got %d", types.EmissionBPSScale, total)
+		}
+	}
+
 	emissionId := GenerateEmissionID(msg.Authority, msg.StartBlock, msg.EndBlock)
 
 	emission := &types.EmissionPeriod{
@@ -634,6 +651,7 @@ func (s *msgServer) CreateEmissionPeriod(goCtx context.Context, msg *types.MsgCr
 		EndBlock:       msg.EndBlock,
 		AmountPerBlock: msg.AmountPerBlock,
 		Recipient:      msg.Recipient,
+		Recipients:     msg.Recipients,
 		Active:         true,
 		TotalEmitted:   "0",
 		Creator:        msg.Authority,
@@ -648,6 +666,7 @@ func (s *msgServer) CreateEmissionPeriod(goCtx context.Context, msg *types.MsgCr
 		sdk.NewAttribute("end_block", fmt.Sprintf("%d", msg.EndBlock)),
 		sdk.NewAttribute("amount_per_block", msg.AmountPerBlock),
 		sdk.NewAttribute("recipient", msg.Recipient),
+		sdk.NewAttribute("recipient_count", fmt.Sprintf("%d", len(msg.Recipients))),
 	))
 
 	return &types.MsgCreateEmissionPeriodResponse{EmissionId: emissionId}, nil

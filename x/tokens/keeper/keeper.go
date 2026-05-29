@@ -432,36 +432,25 @@ func (k Keeper) BeginBlocker(ctx sdk.Context) {
 			return false
 		}
 
-		// Parse current amount_per_block (may have been reduced by prior halvings)
-		amountPerBlock := new(big.Int)
-		if _, ok := amountPerBlock.SetString(emission.AmountPerBlock, 10); !ok || amountPerBlock.Sign() <= 0 {
+		// Parse current base amount_per_block (may have been reduced by prior halvings).
+		baseAmount := new(big.Int)
+		if _, ok := baseAmount.SetString(emission.AmountPerBlock, 10); !ok || baseAmount.Sign() <= 0 {
 			return false
 		}
 
-		// Gap 2: Apply adaptive emission scale.
-		// effectiveAmount = amountPerBlock * emissionScale / 1_000_000
-		// When emissionScale = 1_000_000 (default), effectiveAmount = amountPerBlock (identity).
-		if emissionScale != types.DefaultEmissionScale {
-			scaled := new(big.Int).Mul(amountPerBlock, new(big.Int).SetUint64(emissionScale))
-			scaled.Div(scaled, new(big.Int).SetUint64(types.EmissionBPSScale))
-			amountPerBlock = scaled
-			if amountPerBlock.Sign() == 0 {
-				return false // scale rounded amount to zero, skip mint
-			}
-		}
-
-		// Gap 3: Apply any pending halvings before minting this block.
+		// Gap 3: Apply any pending halvings to the stored BASE amount.
+		// Halvings are cumulative reductions to the base rate; they must NOT interact with the
+		// transient adaptive scale so that stored AmountPerBlock always reflects the un-scaled base.
 		// expectedHalvings = (currentBlock - startBlock) / halvingIntervalBlocks
-		// Apply each pending halving step: amount = amount * halvingFactorBps / 10000
 		periodChanged := false
 		if emission.HalvingIntervalBlocks > 0 && emission.HalvingFactorBps > 0 {
 			blocksSinceStart := currentBlock - emission.StartBlock
 			expectedHalvings := blocksSinceStart / emission.HalvingIntervalBlocks
 			for emission.HalvingCount < expectedHalvings {
-				newAmount := new(big.Int).Mul(amountPerBlock, big.NewInt(int64(emission.HalvingFactorBps)))
-				newAmount.Div(newAmount, big.NewInt(10000))
-				if newAmount.Sign() == 0 {
-					// Amount halved to zero — deactivate the period
+				newBase := new(big.Int).Mul(baseAmount, big.NewInt(int64(emission.HalvingFactorBps)))
+				newBase.Div(newBase, big.NewInt(10000))
+				if newBase.Sign() == 0 {
+					// Base halved to zero — deactivate the period.
 					emission.Active = false
 					emission.AmountPerBlock = "0"
 					emission.HalvingCount++
@@ -474,18 +463,37 @@ func (k Keeper) BeginBlocker(ctx sdk.Context) {
 					))
 					return false
 				}
-				amountPerBlock = newAmount
+				baseAmount = newBase
 				emission.HalvingCount++
 				periodChanged = true
 			}
 			if periodChanged {
-				emission.AmountPerBlock = amountPerBlock.String()
+				// Persist halved base (scale is NOT stored here).
+				emission.AmountPerBlock = baseAmount.String()
 				ctx.EventManager().EmitEvent(sdk.NewEvent(
 					"zerone.tokens.emission_halving_applied",
 					sdk.NewAttribute("emission_id", emission.Id),
 					sdk.NewAttribute("halving_count", fmt.Sprintf("%d", emission.HalvingCount)),
 					sdk.NewAttribute("new_amount_per_block", emission.AmountPerBlock),
 				))
+			}
+		}
+
+		// Gap 2: Apply adaptive emission scale to compute the effective per-block mint amount.
+		// Scale is transient — it does NOT modify the stored base (AmountPerBlock).
+		// effectiveAmount = baseAmount * emissionScale / 1_000_000
+		amountPerBlock := baseAmount
+		if emissionScale != types.DefaultEmissionScale {
+			scaled := new(big.Int).Mul(baseAmount, new(big.Int).SetUint64(emissionScale))
+			scaled.Div(scaled, new(big.Int).SetUint64(types.EmissionBPSScale))
+			amountPerBlock = scaled
+			if amountPerBlock.Sign() == 0 {
+				// Scale rounded this block's mint to zero — skip without deactivating.
+				// The base is preserved; minting resumes if scale is raised next epoch.
+				if periodChanged {
+					k.SetEmissionPeriod(ctx, emission)
+				}
+				return false
 			}
 		}
 
@@ -520,20 +528,56 @@ func (k Keeper) BeginBlocker(ctx sdk.Context) {
 			}
 		}
 
-		recipientAddr, err := sdk.AccAddressFromBech32(emission.Recipient)
-		if err != nil {
-			return false
+		// Gap 5: Multi-recipient distribution. If recipients is non-empty, split amountPerBlock
+		// proportionally by bps. Last recipient receives the remainder (integer rounding dust).
+		// Falls back to single Recipient field when recipients is empty.
+		if len(emission.Recipients) > 0 {
+			bpsScale := new(big.Int).SetUint64(types.EmissionBPSScale)
+			distributed := new(big.Int)
+
+			for i, split := range emission.Recipients {
+				var share *big.Int
+				if i == len(emission.Recipients)-1 {
+					// Last recipient absorbs integer dust.
+					share = new(big.Int).Sub(amountPerBlock, distributed)
+				} else {
+					share = new(big.Int).Mul(amountPerBlock, new(big.Int).SetUint64(split.Bps))
+					share.Div(share, bpsScale)
+					distributed.Add(distributed, share)
+				}
+
+				if share.Sign() <= 0 {
+					continue
+				}
+
+				addr, err := sdk.AccAddressFromBech32(split.Address)
+				if err != nil {
+					return false
+				}
+				c := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(share)))
+				if err := k.bankKeeper.MintCoins(ctx, types.ModuleName, c); err != nil {
+					return false
+				}
+				if err := k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, addr, c); err != nil {
+					return false
+				}
+			}
+		} else {
+			// Legacy single-recipient path.
+			recipientAddr, err := sdk.AccAddressFromBech32(emission.Recipient)
+			if err != nil {
+				return false
+			}
+			coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(amountPerBlock)))
+			if err := k.bankKeeper.MintCoins(ctx, types.ModuleName, coins); err != nil {
+				return false
+			}
+			if err := k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, recipientAddr, coins); err != nil {
+				return false
+			}
 		}
 
-		coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(amountPerBlock)))
-		if err := k.bankKeeper.MintCoins(ctx, types.ModuleName, coins); err != nil {
-			return false
-		}
-		if err := k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, recipientAddr, coins); err != nil {
-			return false
-		}
-
-		// Track total emitted
+		// Track total emitted (total actual mint, regardless of split).
 		totalEmitted := new(big.Int)
 		if emission.TotalEmitted != "" {
 			totalEmitted.SetString(emission.TotalEmitted, 10)

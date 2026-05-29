@@ -207,6 +207,61 @@ func (x *TokenDefinition) GetCreatedAt() uint64 {
 	return 0
 }
 
+// EmissionSplit defines a proportional share of an emission going to a single address.
+// bps is parts per 1_000_000 (i.e. 1_000_000 = 100%). All splits in an EmissionPeriod must
+// sum exactly to 1_000_000.
+type EmissionSplit struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Address       string                 `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"` // bech32 recipient address
+	Bps           uint64                 `protobuf:"varint,2,opt,name=bps,proto3" json:"bps,omitempty"`        // share out of 1_000_000 (e.g. 600_000 = 60%)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EmissionSplit) Reset() {
+	*x = EmissionSplit{}
+	mi := &file_zerone_tokens_v1_types_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EmissionSplit) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EmissionSplit) ProtoMessage() {}
+
+func (x *EmissionSplit) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_tokens_v1_types_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EmissionSplit.ProtoReflect.Descriptor instead.
+func (*EmissionSplit) Descriptor() ([]byte, []int) {
+	return file_zerone_tokens_v1_types_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *EmissionSplit) GetAddress() string {
+	if x != nil {
+		return x.Address
+	}
+	return ""
+}
+
+func (x *EmissionSplit) GetBps() uint64 {
+	if x != nil {
+		return x.Bps
+	}
+	return 0
+}
+
 // EmissionPeriod defines a scheduled token emission (replaces LP pools).
 type EmissionPeriod struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -214,7 +269,7 @@ type EmissionPeriod struct {
 	StartBlock     uint64                 `protobuf:"varint,2,opt,name=start_block,json=startBlock,proto3" json:"start_block,omitempty"`
 	EndBlock       uint64                 `protobuf:"varint,3,opt,name=end_block,json=endBlock,proto3" json:"end_block,omitempty"`
 	AmountPerBlock string                 `protobuf:"bytes,4,opt,name=amount_per_block,json=amountPerBlock,proto3" json:"amount_per_block,omitempty"` // uzrn per block (updated in-place by halving)
-	Recipient      string                 `protobuf:"bytes,5,opt,name=recipient,proto3" json:"recipient,omitempty"`                                   // module account or address
+	Recipient      string                 `protobuf:"bytes,5,opt,name=recipient,proto3" json:"recipient,omitempty"`                                   // single recipient (legacy; ignored when recipients is non-empty)
 	Active         bool                   `protobuf:"varint,6,opt,name=active,proto3" json:"active,omitempty"`
 	TotalEmitted   string                 `protobuf:"bytes,7,opt,name=total_emitted,json=totalEmitted,proto3" json:"total_emitted,omitempty"` // running total emitted
 	Creator        string                 `protobuf:"bytes,8,opt,name=creator,proto3" json:"creator,omitempty"`                               // governance authority that created it
@@ -223,13 +278,16 @@ type EmissionPeriod struct {
 	HalvingIntervalBlocks uint64 `protobuf:"varint,9,opt,name=halving_interval_blocks,json=halvingIntervalBlocks,proto3" json:"halving_interval_blocks,omitempty"` // blocks between halvings (0 = no halving)
 	HalvingFactorBps      uint32 `protobuf:"varint,10,opt,name=halving_factor_bps,json=halvingFactorBps,proto3" json:"halving_factor_bps,omitempty"`               // new rate = old rate * factor / 10000 (e.g. 5000 = 50% halving)
 	HalvingCount          uint64 `protobuf:"varint,11,opt,name=halving_count,json=halvingCount,proto3" json:"halving_count,omitempty"`                             // number of halvings applied so far (maintained by BeginBlocker)
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// Gap 5: Multi-recipient emission split. When non-empty, sum(bps) must equal 1_000_000.
+	// If empty, the legacy recipient field is used.
+	Recipients    []*EmissionSplit `protobuf:"bytes,12,rep,name=recipients,proto3" json:"recipients,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EmissionPeriod) Reset() {
 	*x = EmissionPeriod{}
-	mi := &file_zerone_tokens_v1_types_proto_msgTypes[2]
+	mi := &file_zerone_tokens_v1_types_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -241,7 +299,7 @@ func (x *EmissionPeriod) String() string {
 func (*EmissionPeriod) ProtoMessage() {}
 
 func (x *EmissionPeriod) ProtoReflect() protoreflect.Message {
-	mi := &file_zerone_tokens_v1_types_proto_msgTypes[2]
+	mi := &file_zerone_tokens_v1_types_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -254,7 +312,7 @@ func (x *EmissionPeriod) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EmissionPeriod.ProtoReflect.Descriptor instead.
 func (*EmissionPeriod) Descriptor() ([]byte, []int) {
-	return file_zerone_tokens_v1_types_proto_rawDescGZIP(), []int{2}
+	return file_zerone_tokens_v1_types_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *EmissionPeriod) GetId() string {
@@ -334,6 +392,13 @@ func (x *EmissionPeriod) GetHalvingCount() uint64 {
 	return 0
 }
 
+func (x *EmissionPeriod) GetRecipients() []*EmissionSplit {
+	if x != nil {
+		return x.Recipients
+	}
+	return nil
+}
+
 var File_zerone_tokens_v1_types_proto protoreflect.FileDescriptor
 
 const file_zerone_tokens_v1_types_proto_rawDesc = "" +
@@ -357,7 +422,10 @@ const file_zerone_tokens_v1_types_proto_rawDesc = "" +
 	"\x06paused\x18\t \x01(\bR\x06paused\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\n" +
-	" \x01(\x04R\tcreatedAt\"\x88\x03\n" +
+	" \x01(\x04R\tcreatedAt\";\n" +
+	"\rEmissionSplit\x12\x18\n" +
+	"\aaddress\x18\x01 \x01(\tR\aaddress\x12\x10\n" +
+	"\x03bps\x18\x02 \x01(\x04R\x03bps\"\xc9\x03\n" +
 	"\x0eEmissionPeriod\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vstart_block\x18\x02 \x01(\x04R\n" +
@@ -371,7 +439,10 @@ const file_zerone_tokens_v1_types_proto_rawDesc = "" +
 	"\x17halving_interval_blocks\x18\t \x01(\x04R\x15halvingIntervalBlocks\x12,\n" +
 	"\x12halving_factor_bps\x18\n" +
 	" \x01(\rR\x10halvingFactorBps\x12#\n" +
-	"\rhalving_count\x18\v \x01(\x04R\fhalvingCountB/Z-github.com/zerone-chain/zerone/x/tokens/typesb\x06proto3"
+	"\rhalving_count\x18\v \x01(\x04R\fhalvingCount\x12?\n" +
+	"\n" +
+	"recipients\x18\f \x03(\v2\x1f.zerone.tokens.v1.EmissionSplitR\n" +
+	"recipientsB/Z-github.com/zerone-chain/zerone/x/tokens/typesb\x06proto3"
 
 var (
 	file_zerone_tokens_v1_types_proto_rawDescOnce sync.Once
@@ -385,19 +456,21 @@ func file_zerone_tokens_v1_types_proto_rawDescGZIP() []byte {
 	return file_zerone_tokens_v1_types_proto_rawDescData
 }
 
-var file_zerone_tokens_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_zerone_tokens_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_zerone_tokens_v1_types_proto_goTypes = []any{
 	(*TokenFeatures)(nil),   // 0: zerone.tokens.v1.TokenFeatures
 	(*TokenDefinition)(nil), // 1: zerone.tokens.v1.TokenDefinition
-	(*EmissionPeriod)(nil),  // 2: zerone.tokens.v1.EmissionPeriod
+	(*EmissionSplit)(nil),   // 2: zerone.tokens.v1.EmissionSplit
+	(*EmissionPeriod)(nil),  // 3: zerone.tokens.v1.EmissionPeriod
 }
 var file_zerone_tokens_v1_types_proto_depIdxs = []int32{
 	0, // 0: zerone.tokens.v1.TokenDefinition.features:type_name -> zerone.tokens.v1.TokenFeatures
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	2, // 1: zerone.tokens.v1.EmissionPeriod.recipients:type_name -> zerone.tokens.v1.EmissionSplit
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_zerone_tokens_v1_types_proto_init() }
@@ -411,7 +484,7 @@ func file_zerone_tokens_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_zerone_tokens_v1_types_proto_rawDesc), len(file_zerone_tokens_v1_types_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
