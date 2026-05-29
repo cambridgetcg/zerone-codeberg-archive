@@ -4577,8 +4577,14 @@ type VerificationRound struct {
 	// pool earmarked as a priority tip for early committers. Copied from the
 	// MsgSubmitClaim at round creation. 0 = no tip (default, backward-compatible).
 	PriorityTipBps uint64 `protobuf:"varint,13,opt,name=priority_tip_bps,json=priorityTipBps,proto3" json:"priority_tip_bps,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// verdict_block_hash is the block header hash at the verdict block, set by
+	// CompleteRound via sdk.Context.HeaderHash(). Anchors the verdict to a specific
+	// chain history — prevents long-range attack replay and provides the commitment
+	// primitive needed for IBC cross-chain truth attestation (Settlement Finality Gap 1).
+	// Empty until the round reaches COMPLETE phase.
+	VerdictBlockHash []byte `protobuf:"bytes,14,opt,name=verdict_block_hash,json=verdictBlockHash,proto3" json:"verdict_block_hash,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *VerificationRound) Reset() {
@@ -4700,6 +4706,13 @@ func (x *VerificationRound) GetPriorityTipBps() uint64 {
 		return x.PriorityTipBps
 	}
 	return 0
+}
+
+func (x *VerificationRound) GetVerdictBlockHash() []byte {
+	if x != nil {
+		return x.VerdictBlockHash
+	}
+	return nil
 }
 
 // CommitEntry records a validator's blinded commitment (SHA-256(vote || salt)).
@@ -8654,7 +8667,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x0freasoning_trace\x18\x15 \x01(\tR\x0ereasoningTrace\x12#\n" +
 	"\rargument_text\x18\x16 \x01(\tR\fargumentText\x12#\n" +
 	"\rrebuttal_text\x18\x17 \x01(\tR\frebuttalText\x128\n" +
-	"\x18requires_human_verifiers\x18\x18 \x01(\bR\x16requiresHumanVerifiers\"\xd9\x04\n" +
+	"\x18requires_human_verifiers\x18\x18 \x01(\bR\x16requiresHumanVerifiers\"\x87\x05\n" +
 	"\x11VerificationRound\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\bclaim_id\x18\x02 \x01(\tR\aclaimId\x12(\n" +
@@ -8669,7 +8682,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	" \x01(\x04R\x0ecommitDeadline\x12'\n" +
 	"\x0freveal_deadline\x18\v \x01(\x04R\x0erevealDeadline\x121\n" +
 	"\x14aggregation_deadline\x18\f \x01(\x04R\x13aggregationDeadline\x12(\n" +
-	"\x10priority_tip_bps\x18\r \x01(\x04R\x0epriorityTipBps\"x\n" +
+	"\x10priority_tip_bps\x18\r \x01(\x04R\x0epriorityTipBps\x12,\n" +
+	"\x12verdict_block_hash\x18\x0e \x01(\fR\x10verdictBlockHash\"x\n" +
 	"\vCommitEntry\x12\x1a\n" +
 	"\bverifier\x18\x01 \x01(\tR\bverifier\x12\x1f\n" +
 	"\vcommit_hash\x18\x02 \x01(\fR\n" +

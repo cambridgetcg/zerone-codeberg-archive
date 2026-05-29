@@ -746,6 +746,12 @@ message VerificationRound {
   // pool earmarked as a priority tip for early committers. Copied from the
   // MsgSubmitClaim at round creation. 0 = no tip (default, backward-compatible).
   uint64 priority_tip_bps         = 13;
+  // verdict_block_hash is the block header hash at the verdict block, set by
+  // CompleteRound via sdk.Context.HeaderHash(). Anchors the verdict to a specific
+  // chain history — prevents long-range attack replay and provides the commitment
+  // primitive needed for IBC cross-chain truth attestation (Settlement Finality Gap 1).
+  // Empty until the round reaches COMPLETE phase.
+  bytes verdict_block_hash        = 14;
 }
 
 // CommitEntry records a validator's blinded commitment (SHA-256(vote || salt)).

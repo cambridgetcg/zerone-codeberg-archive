@@ -383,6 +383,15 @@ message Params {
   // being excluded before they have vote history. Default 10.
   uint64 min_verifier_independence_bps    = 168; // default: 0 (disabled)
   uint64 min_verifier_independence_rounds = 169; // default: 10
+
+  // min_round_duration_blocks enforces a minimum total round length for every
+  // new VerificationRound. Checked at CreateVerificationRound time against
+  // commit_phase_blocks + reveal_phase_blocks + aggregation_phase_blocks.
+  // 0 = disabled (default). Enable via governance to enforce economic security
+  // minimums: a very short round reduces the economic security of each verdict
+  // because stake cycles too rapidly relative to potential manipulation profit.
+  // (Settlement Finality Gap 2)
+  uint64 min_round_duration_blocks = 170; // default: 0 (disabled)
 }
 
 // GenesisState is the genesis state of the knowledge module.

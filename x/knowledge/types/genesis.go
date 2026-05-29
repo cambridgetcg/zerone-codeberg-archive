@@ -365,6 +365,14 @@ func DefaultParams() Params {
 		// before they have history to judge.
 		MinVerifierIndependenceBps:    0,  // disabled by default
 		MinVerifierIndependenceRounds: 10, // minimum rounds before gate applies
+
+		// Settlement Finality Gap 2: minimum total round duration. Default 0 =
+		// disabled (no constraint). Governance sets this to enforce an economic
+		// security floor: the minimum total phase length (commit+reveal+aggregation)
+		// below which new rounds are rejected. Prevents governance from accidentally
+		// creating rounds so short that stake can cycle faster than manipulation
+		// becomes uneconomical.
+		MinRoundDurationBlocks: 0, // disabled — governance enables via MsgUpdateParams
 	}
 }
 
@@ -852,6 +860,21 @@ func (p *Params) Validate() error {
 	}
 	if p.MinVerifierIndependenceBps > 0 && p.MinVerifierIndependenceRounds == 0 {
 		return fmt.Errorf("min_verifier_independence_rounds must be ≥ 1 when min_verifier_independence_bps is set")
+	}
+
+	// Settlement Finality Gap 2: when min_round_duration_blocks is set, the
+	// configured phase lengths must collectively satisfy the minimum. This is
+	// checked at param-update time (MsgUpdateParams) so that any round created
+	// from valid params automatically satisfies the minimum — no per-round check
+	// needed beyond CreateVerificationRound's belt-and-suspenders guard.
+	if p.MinRoundDurationBlocks > 0 {
+		totalPhaseDuration := p.CommitPhaseBlocks + p.RevealPhaseBlocks + p.AggregationPhaseBlocks
+		if totalPhaseDuration < p.MinRoundDurationBlocks {
+			return fmt.Errorf(
+				"commit_phase_blocks + reveal_phase_blocks + aggregation_phase_blocks (%d) must be ≥ min_round_duration_blocks (%d)",
+				totalPhaseDuration, p.MinRoundDurationBlocks,
+			)
+		}
 	}
 
 	return nil

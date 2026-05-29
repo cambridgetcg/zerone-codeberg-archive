@@ -23,6 +23,20 @@ func (k Keeper) CreateVerificationRound(ctx context.Context, claim *types.Claim,
 		return nil, err
 	}
 
+	// Settlement Finality Gap 2: enforce minimum round duration.
+	// Params.Validate() already checks this at MsgUpdateParams time; this guard
+	// is belt-and-suspenders for cases where params were set before the field
+	// existed (e.g. pre-upgrade state).
+	if params.MinRoundDurationBlocks > 0 {
+		totalPhaseDuration := params.CommitPhaseBlocks + params.RevealPhaseBlocks + params.AggregationPhaseBlocks
+		if totalPhaseDuration < params.MinRoundDurationBlocks {
+			return nil, fmt.Errorf(
+				"round duration (%d blocks) is below min_round_duration_blocks (%d): increase commit/reveal/aggregation phase lengths",
+				totalPhaseDuration, params.MinRoundDurationBlocks,
+			)
+		}
+	}
+
 	roundID := GenerateRoundID(claim.Id, height)
 
 	round := &types.VerificationRound{
@@ -72,6 +86,7 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 
 	round.Verdict = result.Verdict
 	round.VerdictBlock = height
+	round.VerdictBlockHash = sdkCtx.HeaderHash() // Settlement Finality Gap 1: anchors verdict to specific chain history
 	round.Phase = types.VerificationPhase_VERIFICATION_PHASE_COMPLETE
 
 	// Wave 15b: pay the invitation bonus BEFORE any verdict-specific side
