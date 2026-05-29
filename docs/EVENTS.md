@@ -2616,7 +2616,8 @@ Emission period created.
 - `start_block` -- start block
 - `end_block` -- end block
 - `amount_per_block` -- emission rate
-- `recipient` -- recipient address
+- `recipient` -- recipient address (legacy single-recipient; empty when multi-recipient split is used)
+- `recipient_count` -- *(Gap 5)* number of recipients in the split; `"1"` for legacy single-recipient periods
 
 ### zerone.tokens.emission_period_cancelled
 Emission period cancelled.
@@ -2639,6 +2640,15 @@ Fired when BeginBlocker reduces `amount_per_block` for a halving-enabled period.
 - `emission_id` -- emission ID
 - `halving_count` -- new `HalvingCount` after this halving
 - `new_amount_per_block` -- reduced emission rate
+
+### zerone.tokens.emission_scale_adjusted
+*(Gap 2 — monetary policy)* Adaptive emission scale adjusted at epoch boundary.
+Fired every `EmissionEpochBlocks` when both `TargetBondedRatioBps` and `EmissionAdjustmentBps` are non-zero.
+The scale is applied transiently as a multiplier to each emission period's `amount_per_block` during BeginBlocker;
+it is NOT written back into `EmissionPeriod.AmountPerBlock` (halvings own that field).
+- `current_ratio_bps` -- actual bonded/total-supply ratio in bps at adjustment time (e.g. `"620000"` = 62%)
+- `target_ratio_bps` -- configured target ratio (`TargetBondedRatioBps` param)
+- `new_scale_bps` -- updated `EmissionScaleBps` after clamping to `[MinEmissionScaleBps, MaxEmissionScaleBps]`
 
 ---
 
