@@ -19,11 +19,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Msg_CreatePool_FullMethodName      = "/zerone.liquiditypool.v1.Msg/CreatePool"
-	Msg_Swap_FullMethodName            = "/zerone.liquiditypool.v1.Msg/Swap"
-	Msg_AddLiquidity_FullMethodName    = "/zerone.liquiditypool.v1.Msg/AddLiquidity"
-	Msg_RemoveLiquidity_FullMethodName = "/zerone.liquiditypool.v1.Msg/RemoveLiquidity"
-	Msg_UpdateParams_FullMethodName    = "/zerone.liquiditypool.v1.Msg/UpdateParams"
+	Msg_CreatePool_FullMethodName                  = "/zerone.liquiditypool.v1.Msg/CreatePool"
+	Msg_Swap_FullMethodName                        = "/zerone.liquiditypool.v1.Msg/Swap"
+	Msg_AddLiquidity_FullMethodName                = "/zerone.liquiditypool.v1.Msg/AddLiquidity"
+	Msg_RemoveLiquidity_FullMethodName             = "/zerone.liquiditypool.v1.Msg/RemoveLiquidity"
+	Msg_CreateLiquidityMiningPeriod_FullMethodName = "/zerone.liquiditypool.v1.Msg/CreateLiquidityMiningPeriod"
+	Msg_ClaimLiquidityRewards_FullMethodName       = "/zerone.liquiditypool.v1.Msg/ClaimLiquidityRewards"
+	Msg_UpdateParams_FullMethodName                = "/zerone.liquiditypool.v1.Msg/UpdateParams"
 )
 
 // MsgClient is the client API for Msg service.
@@ -39,6 +41,9 @@ type MsgClient interface {
 	// Liquidity management
 	AddLiquidity(ctx context.Context, in *MsgAddLiquidity, opts ...grpc.CallOption) (*MsgAddLiquidityResponse, error)
 	RemoveLiquidity(ctx context.Context, in *MsgRemoveLiquidity, opts ...grpc.CallOption) (*MsgRemoveLiquidityResponse, error)
+	// Liquidity mining
+	CreateLiquidityMiningPeriod(ctx context.Context, in *MsgCreateLiquidityMiningPeriod, opts ...grpc.CallOption) (*MsgCreateLiquidityMiningPeriodResponse, error)
+	ClaimLiquidityRewards(ctx context.Context, in *MsgClaimLiquidityRewards, opts ...grpc.CallOption) (*MsgClaimLiquidityRewardsResponse, error)
 	// Governance
 	UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error)
 }
@@ -91,6 +96,26 @@ func (c *msgClient) RemoveLiquidity(ctx context.Context, in *MsgRemoveLiquidity,
 	return out, nil
 }
 
+func (c *msgClient) CreateLiquidityMiningPeriod(ctx context.Context, in *MsgCreateLiquidityMiningPeriod, opts ...grpc.CallOption) (*MsgCreateLiquidityMiningPeriodResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgCreateLiquidityMiningPeriodResponse)
+	err := c.cc.Invoke(ctx, Msg_CreateLiquidityMiningPeriod_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) ClaimLiquidityRewards(ctx context.Context, in *MsgClaimLiquidityRewards, opts ...grpc.CallOption) (*MsgClaimLiquidityRewardsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgClaimLiquidityRewardsResponse)
+	err := c.cc.Invoke(ctx, Msg_ClaimLiquidityRewards_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *msgClient) UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MsgUpdateParamsResponse)
@@ -114,6 +139,9 @@ type MsgServer interface {
 	// Liquidity management
 	AddLiquidity(context.Context, *MsgAddLiquidity) (*MsgAddLiquidityResponse, error)
 	RemoveLiquidity(context.Context, *MsgRemoveLiquidity) (*MsgRemoveLiquidityResponse, error)
+	// Liquidity mining
+	CreateLiquidityMiningPeriod(context.Context, *MsgCreateLiquidityMiningPeriod) (*MsgCreateLiquidityMiningPeriodResponse, error)
+	ClaimLiquidityRewards(context.Context, *MsgClaimLiquidityRewards) (*MsgClaimLiquidityRewardsResponse, error)
 	// Governance
 	UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error)
 	mustEmbedUnimplementedMsgServer()
@@ -137,6 +165,12 @@ func (UnimplementedMsgServer) AddLiquidity(context.Context, *MsgAddLiquidity) (*
 }
 func (UnimplementedMsgServer) RemoveLiquidity(context.Context, *MsgRemoveLiquidity) (*MsgRemoveLiquidityResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RemoveLiquidity not implemented")
+}
+func (UnimplementedMsgServer) CreateLiquidityMiningPeriod(context.Context, *MsgCreateLiquidityMiningPeriod) (*MsgCreateLiquidityMiningPeriodResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateLiquidityMiningPeriod not implemented")
+}
+func (UnimplementedMsgServer) ClaimLiquidityRewards(context.Context, *MsgClaimLiquidityRewards) (*MsgClaimLiquidityRewardsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ClaimLiquidityRewards not implemented")
 }
 func (UnimplementedMsgServer) UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateParams not implemented")
@@ -234,6 +268,42 @@ func _Msg_RemoveLiquidity_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Msg_CreateLiquidityMiningPeriod_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgCreateLiquidityMiningPeriod)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).CreateLiquidityMiningPeriod(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_CreateLiquidityMiningPeriod_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).CreateLiquidityMiningPeriod(ctx, req.(*MsgCreateLiquidityMiningPeriod))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_ClaimLiquidityRewards_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgClaimLiquidityRewards)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).ClaimLiquidityRewards(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_ClaimLiquidityRewards_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).ClaimLiquidityRewards(ctx, req.(*MsgClaimLiquidityRewards))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Msg_UpdateParams_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MsgUpdateParams)
 	if err := dec(in); err != nil {
@@ -274,6 +344,14 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveLiquidity",
 			Handler:    _Msg_RemoveLiquidity_Handler,
+		},
+		{
+			MethodName: "CreateLiquidityMiningPeriod",
+			Handler:    _Msg_CreateLiquidityMiningPeriod_Handler,
+		},
+		{
+			MethodName: "ClaimLiquidityRewards",
+			Handler:    _Msg_ClaimLiquidityRewards_Handler,
 		},
 		{
 			MethodName: "UpdateParams",

@@ -183,7 +183,9 @@ message MsgCreateEmissionPeriod {
   uint64 start_block      = 2;
   uint64 end_block        = 3;
   string amount_per_block = 4; // uzrn per block
-  string recipient        = 5; // module account or address
+  string recipient        = 5; // single recipient (legacy; ignored when recipients is non-empty)
+  // Gap 5: optional multi-recipient split. When provided, sum(bps) must equal 1_000_000.
+  repeated EmissionSplit recipients = 6;
 }
 
 message MsgCreateEmissionPeriodResponse {
