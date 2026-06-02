@@ -44,4 +44,7 @@ var (
 	ErrAlreadyAppealed       = errors.Register(ModuleName, 34, "dispute has already been appealed")
 	ErrAppealBondInsufficient = errors.Register(ModuleName, 35, "appeal bond below required minimum")
 	ErrNotPartyToDispute     = errors.Register(ModuleName, 36, "appealer is not a party to the dispute")
+
+	// Collateral Registry errors
+	ErrLeverageExceeded = errors.Register(ModuleName, 37, "collateral leverage limit exceeded: total locked would exceed max_leverage_bps of spendable balance")
 )

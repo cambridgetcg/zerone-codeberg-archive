@@ -73,6 +73,15 @@ func (m msgServer) InitiateDispute(goCtx context.Context, msg *types.MsgInitiate
 		return nil, fmt.Errorf("%w: need %s, got %s", types.ErrInsufficientBond, tierCfg.MinBond, msg.Bond)
 	}
 
+	// Collateral leverage check (Gap 4 — counterparty-escrow-brief.md).
+	// Rejects bonds that would cause the challenger to lock more than
+	// MaxLeverageBps / 1_000_000 of their spendable balance across all active
+	// disputes. Checked BEFORE escrowing so balance reflects the full amount
+	// still in the challenger's account.
+	if err := m.CheckLeverageLimit(ctx, challengerAddr, bond, params); err != nil {
+		return nil, err
+	}
+
 	// Escrow bond from challenger
 	coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(bond)))
 	if err := m.bankKeeper.SendCoinsFromAccountToModule(ctx, challengerAddr, types.ModuleName, coins); err != nil {
@@ -110,6 +119,10 @@ func (m msgServer) InitiateDispute(goCtx context.Context, msg *types.MsgInitiate
 	}
 
 	m.SetDispute(ctx, dispute)
+
+	// Register collateral lock so the leverage check accounts for this dispute
+	// in future InitiateDispute calls from the same address.
+	m.RegisterCollateralLock(ctx, msg.Challenger, disputeID, msg.Bond)
 
 	ctx.EventManager().EmitEvent(
 		sdk.NewEvent(

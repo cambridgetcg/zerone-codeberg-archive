@@ -21,6 +21,11 @@ var (
 
 	// Service Escrow
 	ServiceEscrowKeyPrefix = []byte{0x08}
+
+	// Collateral Registry: tracks locked capital per (address, lock-ID) pair.
+	// lock-ID is the dispute ID or service escrow ID that locked the funds.
+	// Key format: CollateralLockKeyPrefix || address || '/' || lockID
+	CollateralLockKeyPrefix = []byte{0x09}
 )
 
 // DisputeKey returns the store key for a dispute by ID.
@@ -96,4 +101,19 @@ func ActiveIndexKey(disputeID string) []byte {
 // ServiceEscrowKey returns the store key for a service escrow by ID.
 func ServiceEscrowKey(id string) []byte {
 	return append(ServiceEscrowKeyPrefix, []byte(id)...)
+}
+
+// CollateralLockKey returns the store key for a collateral lock by address and lock-ID.
+func CollateralLockKey(addr, lockID string) []byte {
+	key := append(CollateralLockKeyPrefix, []byte(addr)...)
+	key = append(key, '/')
+	key = append(key, []byte(lockID)...)
+	return key
+}
+
+// CollateralLocksByAddressPrefix returns the prefix for all collateral locks of an address.
+func CollateralLocksByAddressPrefix(addr string) []byte {
+	key := append(CollateralLockKeyPrefix, []byte(addr)...)
+	key = append(key, '/')
+	return key
 }

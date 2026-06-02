@@ -114,6 +114,14 @@ func (m *mockBankKeeper) SendCoinsFromModuleToModule(_ context.Context, senderMo
 	return nil
 }
 
+func (m *mockBankKeeper) GetBalance(_ context.Context, addr sdk.AccAddress, denom string) sdk.Coin {
+	addrStr := addr.String()
+	if m.balances[addrStr] == nil {
+		return sdk.NewInt64Coin(denom, 0)
+	}
+	return sdk.NewInt64Coin(denom, m.balances[addrStr][denom])
+}
+
 // ---------- Mock StakingKeeper ----------
 
 type mockStakingKeeper struct {

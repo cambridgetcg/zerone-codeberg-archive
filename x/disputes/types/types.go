@@ -103,6 +103,11 @@ func (p *Params) Validate() error {
 			return fmt.Errorf("tier %d: appeal_bond_multiplier_bps must be > 0 when appeal_window_blocks > 0", tc.Tier)
 		}
 	}
+	// MaxLeverageBps must be <= 1_000_000 (100%).
+	// 0 = disabled; values > 1_000_000 would always block valid disputes.
+	if p.MaxLeverageBps > 1_000_000 {
+		return fmt.Errorf("max_leverage_bps must be <= 1_000_000, got %d", p.MaxLeverageBps)
+	}
 	return nil
 }
 

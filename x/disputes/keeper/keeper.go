@@ -529,6 +529,17 @@ func (k Keeper) TallyVotes(ctx context.Context, dispute *types.Dispute) types.Di
 // bond is slashed (symmetric). Single-bond mode (backward compat): only the
 // challenger's bond is at stake (defender risked nothing).
 func (k Keeper) DistributeSettlement(ctx context.Context, dispute *types.Dispute) error {
+	// Release collateral registry locks for both parties when settlement concludes.
+	// Runs via defer so locks are always released regardless of the distribution path taken.
+	// The dispute outcome is finalized before DistributeSettlement is called, so
+	// releasing here is correct even if the token transfer partially fails.
+	defer func() {
+		k.ReleaseCollateralLock(ctx, dispute.Challenger, dispute.Id)
+		if dispute.DefenderBond != "" && dispute.DefenderBond != "0" {
+			k.ReleaseCollateralLock(ctx, dispute.Defender, dispute.Id)
+		}
+	}()
+
 	params := k.GetParams(ctx)
 
 	challengerBond := new(big.Int)

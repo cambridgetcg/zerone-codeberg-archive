@@ -20,4 +20,9 @@ message Params {
   // the payer may call DisputeServiceEscrow. After this window the escrow is
   // considered finalised (funds already released to provider at completion).
   uint64 escrow_dispute_window_blocks = 7; // default: 250 (~10 minutes at 2.5s/block)
+  // max_leverage_bps: maximum ratio of total locked collateral to spendable balance,
+  // expressed in basis points (1_000_000 = 100%). An agent cannot lock more than
+  // max_leverage_bps / 1_000_000 of their balance across all active disputes.
+  // Default 0 = disabled (no leverage limit enforced).
+  uint64 max_leverage_bps = 8; // default: 0 (disabled)
 }
