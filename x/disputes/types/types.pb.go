@@ -960,6 +960,69 @@ func (x *ServiceEscrow) GetCreatedAt() uint64 {
 	return 0
 }
 
+// DisputerProfile tracks a challenger's dispute history for reputation scoring.
+// Win rate = win_count / total_disputes. Used by ComputeEffectiveMinBond to
+// adjust the minimum bond required to open a new dispute.
+type DisputerProfile struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Address       string                 `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`                                   // bech32 challenger address
+	WinCount      uint64                 `protobuf:"varint,2,opt,name=win_count,json=winCount,proto3" json:"win_count,omitempty"`                // disputes where challenger won (CHALLENGER_WINS)
+	TotalDisputes uint64                 `protobuf:"varint,3,opt,name=total_disputes,json=totalDisputes,proto3" json:"total_disputes,omitempty"` // all closed disputes (wins + losses + draws + timeouts)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DisputerProfile) Reset() {
+	*x = DisputerProfile{}
+	mi := &file_zerone_disputes_v1_types_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DisputerProfile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DisputerProfile) ProtoMessage() {}
+
+func (x *DisputerProfile) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_disputes_v1_types_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DisputerProfile.ProtoReflect.Descriptor instead.
+func (*DisputerProfile) Descriptor() ([]byte, []int) {
+	return file_zerone_disputes_v1_types_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *DisputerProfile) GetAddress() string {
+	if x != nil {
+		return x.Address
+	}
+	return ""
+}
+
+func (x *DisputerProfile) GetWinCount() uint64 {
+	if x != nil {
+		return x.WinCount
+	}
+	return 0
+}
+
+func (x *DisputerProfile) GetTotalDisputes() uint64 {
+	if x != nil {
+		return x.TotalDisputes
+	}
+	return 0
+}
+
 var File_zerone_disputes_v1_types_proto protoreflect.FileDescriptor
 
 const file_zerone_disputes_v1_types_proto_rawDesc = "" +
@@ -1039,7 +1102,11 @@ const file_zerone_disputes_v1_types_proto_rawDesc = "" +
 	"proof_hash\x18\a \x01(\tR\tproofHash\x12?\n" +
 	"\x06status\x18\b \x01(\x0e2'.zerone.disputes.v1.ServiceEscrowStatusR\x06status\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\t \x01(\x04R\tcreatedAt*\x9b\x01\n" +
+	"created_at\x18\t \x01(\x04R\tcreatedAt\"o\n" +
+	"\x0fDisputerProfile\x12\x18\n" +
+	"\aaddress\x18\x01 \x01(\tR\aaddress\x12\x1b\n" +
+	"\twin_count\x18\x02 \x01(\x04R\bwinCount\x12%\n" +
+	"\x0etotal_disputes\x18\x03 \x01(\x04R\rtotalDisputes*\x9b\x01\n" +
 	"\x11DisputeTargetType\x12#\n" +
 	"\x1fDISPUTE_TARGET_TYPE_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18DISPUTE_TARGET_TYPE_FACT\x10\x01\x12 \n" +
@@ -1086,7 +1153,7 @@ func file_zerone_disputes_v1_types_proto_rawDescGZIP() []byte {
 }
 
 var file_zerone_disputes_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_zerone_disputes_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_zerone_disputes_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_zerone_disputes_v1_types_proto_goTypes = []any{
 	(DisputeTargetType)(0),     // 0: zerone.disputes.v1.DisputeTargetType
 	(DisputePhase)(0),          // 1: zerone.disputes.v1.DisputePhase
@@ -1099,6 +1166,7 @@ var file_zerone_disputes_v1_types_proto_goTypes = []any{
 	(*DisputeVote)(nil),        // 8: zerone.disputes.v1.DisputeVote
 	(*TierConfig)(nil),         // 9: zerone.disputes.v1.TierConfig
 	(*ServiceEscrow)(nil),      // 10: zerone.disputes.v1.ServiceEscrow
+	(*DisputerProfile)(nil),    // 11: zerone.disputes.v1.DisputerProfile
 }
 var file_zerone_disputes_v1_types_proto_depIdxs = []int32{
 	0, // 0: zerone.disputes.v1.Dispute.target_type:type_name -> zerone.disputes.v1.DisputeTargetType
@@ -1124,7 +1192,7 @@ func file_zerone_disputes_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_zerone_disputes_v1_types_proto_rawDesc), len(file_zerone_disputes_v1_types_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

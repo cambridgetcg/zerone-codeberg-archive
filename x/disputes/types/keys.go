@@ -26,6 +26,10 @@ var (
 	// lock-ID is the dispute ID or service escrow ID that locked the funds.
 	// Key format: CollateralLockKeyPrefix || address || '/' || lockID
 	CollateralLockKeyPrefix = []byte{0x09}
+
+	// Disputer Profile: reputation history per challenger address.
+	// Key format: DisputerProfileKeyPrefix || address
+	DisputerProfileKeyPrefix = []byte{0x0A}
 )
 
 // DisputeKey returns the store key for a dispute by ID.
@@ -116,4 +120,9 @@ func CollateralLocksByAddressPrefix(addr string) []byte {
 	key := append(CollateralLockKeyPrefix, []byte(addr)...)
 	key = append(key, '/')
 	return key
+}
+
+// DisputerProfileKey returns the store key for a disputer profile by address.
+func DisputerProfileKey(addr string) []byte {
+	return append(DisputerProfileKeyPrefix, []byte(addr)...)
 }

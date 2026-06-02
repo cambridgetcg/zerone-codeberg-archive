@@ -22,11 +22,12 @@ const (
 )
 
 type GenesisState struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Params        *Params                `protobuf:"bytes,1,opt,name=params,proto3" json:"params,omitempty"`
-	Disputes      []*Dispute             `protobuf:"bytes,2,rep,name=disputes,proto3" json:"disputes,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Params           *Params                `protobuf:"bytes,1,opt,name=params,proto3" json:"params,omitempty"`
+	Disputes         []*Dispute             `protobuf:"bytes,2,rep,name=disputes,proto3" json:"disputes,omitempty"`
+	DisputerProfiles []*DisputerProfile     `protobuf:"bytes,3,rep,name=disputer_profiles,json=disputerProfiles,proto3" json:"disputer_profiles,omitempty"` // reputation history export/import
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GenesisState) Reset() {
@@ -73,6 +74,13 @@ func (x *GenesisState) GetDisputes() []*Dispute {
 	return nil
 }
 
+func (x *GenesisState) GetDisputerProfiles() []*DisputerProfile {
+	if x != nil {
+		return x.DisputerProfiles
+	}
+	return nil
+}
+
 type Params struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	TierConfigs         []*TierConfig          `protobuf:"bytes,1,rep,name=tier_configs,json=tierConfigs,proto3" json:"tier_configs,omitempty"`                              // 4 tiers
@@ -90,8 +98,26 @@ type Params struct {
 	// max_leverage_bps / 1_000_000 of their balance across all active disputes.
 	// Default 0 = disabled (no leverage limit enforced).
 	MaxLeverageBps uint64 `protobuf:"varint,8,opt,name=max_leverage_bps,json=maxLeverageBps,proto3" json:"max_leverage_bps,omitempty"` // default: 0 (disabled)
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// reputation_min_rounds: minimum number of closed disputes before the
+	// reputation adjustment applies. Protects new challengers from being gated.
+	// Default 0 = reputation system disabled.
+	ReputationMinRounds uint64 `protobuf:"varint,9,opt,name=reputation_min_rounds,json=reputationMinRounds,proto3" json:"reputation_min_rounds,omitempty"`
+	// reputation_high_threshold_bps: win rate (1M scale) above which the
+	// discount applies. Default 800_000 (80%).
+	ReputationHighThresholdBps uint64 `protobuf:"varint,10,opt,name=reputation_high_threshold_bps,json=reputationHighThresholdBps,proto3" json:"reputation_high_threshold_bps,omitempty"`
+	// reputation_low_threshold_bps: win rate (1M scale) below which the
+	// penalty applies. Default 200_000 (20%).
+	ReputationLowThresholdBps uint64 `protobuf:"varint,11,opt,name=reputation_low_threshold_bps,json=reputationLowThresholdBps,proto3" json:"reputation_low_threshold_bps,omitempty"`
+	// reputation_discount_bps: fraction of the tier minimum bond removed for
+	// high-reputation challengers. E.g. 200_000 = 20% discount.
+	// Effective min bond = tier_min × (1_000_000 - discount) / 1_000_000.
+	ReputationDiscountBps uint64 `protobuf:"varint,12,opt,name=reputation_discount_bps,json=reputationDiscountBps,proto3" json:"reputation_discount_bps,omitempty"`
+	// reputation_penalty_multiplier_bps: multiplier applied to the tier minimum
+	// bond for low-reputation challengers. E.g. 2_000_000 = 200% (double bond).
+	// Effective min bond = tier_min × multiplier / 1_000_000.
+	ReputationPenaltyMultiplierBps uint64 `protobuf:"varint,13,opt,name=reputation_penalty_multiplier_bps,json=reputationPenaltyMultiplierBps,proto3" json:"reputation_penalty_multiplier_bps,omitempty"`
+	unknownFields                  protoimpl.UnknownFields
+	sizeCache                      protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -180,14 +206,50 @@ func (x *Params) GetMaxLeverageBps() uint64 {
 	return 0
 }
 
+func (x *Params) GetReputationMinRounds() uint64 {
+	if x != nil {
+		return x.ReputationMinRounds
+	}
+	return 0
+}
+
+func (x *Params) GetReputationHighThresholdBps() uint64 {
+	if x != nil {
+		return x.ReputationHighThresholdBps
+	}
+	return 0
+}
+
+func (x *Params) GetReputationLowThresholdBps() uint64 {
+	if x != nil {
+		return x.ReputationLowThresholdBps
+	}
+	return 0
+}
+
+func (x *Params) GetReputationDiscountBps() uint64 {
+	if x != nil {
+		return x.ReputationDiscountBps
+	}
+	return 0
+}
+
+func (x *Params) GetReputationPenaltyMultiplierBps() uint64 {
+	if x != nil {
+		return x.ReputationPenaltyMultiplierBps
+	}
+	return 0
+}
+
 var File_zerone_disputes_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_disputes_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	" zerone/disputes/v1/genesis.proto\x12\x12zerone.disputes.v1\x1a\x1ezerone/disputes/v1/types.proto\"{\n" +
+	" zerone/disputes/v1/genesis.proto\x12\x12zerone.disputes.v1\x1a\x1ezerone/disputes/v1/types.proto\"\xcd\x01\n" +
 	"\fGenesisState\x122\n" +
 	"\x06params\x18\x01 \x01(\v2\x1a.zerone.disputes.v1.ParamsR\x06params\x127\n" +
-	"\bdisputes\x18\x02 \x03(\v2\x1b.zerone.disputes.v1.DisputeR\bdisputes\"\xa5\x03\n" +
+	"\bdisputes\x18\x02 \x03(\v2\x1b.zerone.disputes.v1.DisputeR\bdisputes\x12P\n" +
+	"\x11disputer_profiles\x18\x03 \x03(\v2#.zerone.disputes.v1.DisputerProfileR\x10disputerProfiles\"\xe0\x05\n" +
 	"\x06Params\x12A\n" +
 	"\ftier_configs\x18\x01 \x03(\v2\x1e.zerone.disputes.v1.TierConfigR\vtierConfigs\x12.\n" +
 	"\x13max_active_disputes\x18\x02 \x01(\rR\x11maxActiveDisputes\x12)\n" +
@@ -196,7 +258,13 @@ const file_zerone_disputes_v1_genesis_proto_rawDesc = "" +
 	"\x16reward_rate_winner_bps\x18\x05 \x01(\x04R\x13rewardRateWinnerBps\x12,\n" +
 	"\x12arbiter_reward_bps\x18\x06 \x01(\x04R\x10arbiterRewardBps\x12?\n" +
 	"\x1cescrow_dispute_window_blocks\x18\a \x01(\x04R\x19escrowDisputeWindowBlocks\x12(\n" +
-	"\x10max_leverage_bps\x18\b \x01(\x04R\x0emaxLeverageBpsB1Z/github.com/zerone-chain/zerone/x/disputes/typesb\x06proto3"
+	"\x10max_leverage_bps\x18\b \x01(\x04R\x0emaxLeverageBps\x122\n" +
+	"\x15reputation_min_rounds\x18\t \x01(\x04R\x13reputationMinRounds\x12A\n" +
+	"\x1dreputation_high_threshold_bps\x18\n" +
+	" \x01(\x04R\x1areputationHighThresholdBps\x12?\n" +
+	"\x1creputation_low_threshold_bps\x18\v \x01(\x04R\x19reputationLowThresholdBps\x126\n" +
+	"\x17reputation_discount_bps\x18\f \x01(\x04R\x15reputationDiscountBps\x12I\n" +
+	"!reputation_penalty_multiplier_bps\x18\r \x01(\x04R\x1ereputationPenaltyMultiplierBpsB1Z/github.com/zerone-chain/zerone/x/disputes/typesb\x06proto3"
 
 var (
 	file_zerone_disputes_v1_genesis_proto_rawDescOnce sync.Once
@@ -212,20 +280,22 @@ func file_zerone_disputes_v1_genesis_proto_rawDescGZIP() []byte {
 
 var file_zerone_disputes_v1_genesis_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_zerone_disputes_v1_genesis_proto_goTypes = []any{
-	(*GenesisState)(nil), // 0: zerone.disputes.v1.GenesisState
-	(*Params)(nil),       // 1: zerone.disputes.v1.Params
-	(*Dispute)(nil),      // 2: zerone.disputes.v1.Dispute
-	(*TierConfig)(nil),   // 3: zerone.disputes.v1.TierConfig
+	(*GenesisState)(nil),    // 0: zerone.disputes.v1.GenesisState
+	(*Params)(nil),          // 1: zerone.disputes.v1.Params
+	(*Dispute)(nil),         // 2: zerone.disputes.v1.Dispute
+	(*DisputerProfile)(nil), // 3: zerone.disputes.v1.DisputerProfile
+	(*TierConfig)(nil),      // 4: zerone.disputes.v1.TierConfig
 }
 var file_zerone_disputes_v1_genesis_proto_depIdxs = []int32{
 	1, // 0: zerone.disputes.v1.GenesisState.params:type_name -> zerone.disputes.v1.Params
 	2, // 1: zerone.disputes.v1.GenesisState.disputes:type_name -> zerone.disputes.v1.Dispute
-	3, // 2: zerone.disputes.v1.Params.tier_configs:type_name -> zerone.disputes.v1.TierConfig
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	3, // 2: zerone.disputes.v1.GenesisState.disputer_profiles:type_name -> zerone.disputes.v1.DisputerProfile
+	4, // 3: zerone.disputes.v1.Params.tier_configs:type_name -> zerone.disputes.v1.TierConfig
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_zerone_disputes_v1_genesis_proto_init() }

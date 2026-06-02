@@ -67,10 +67,17 @@ func (m msgServer) InitiateDispute(goCtx context.Context, msg *types.MsgInitiate
 		return nil, fmt.Errorf("tier 1 config not found")
 	}
 
-	minBond := new(big.Int)
-	minBond.SetString(tierCfg.MinBond, 10)
-	if bond.Cmp(minBond) < 0 {
-		return nil, fmt.Errorf("%w: need %s, got %s", types.ErrInsufficientBond, tierCfg.MinBond, msg.Bond)
+	tierMinBond := new(big.Int)
+	tierMinBond.SetString(tierCfg.MinBond, 10)
+
+	// Reputation-adjusted minimum bond (Gap 5 — counterparty-escrow-brief.md).
+	// For challengers with a proven track record the effective minimum is lower;
+	// for challengers with a poor track record it is higher. When the reputation
+	// system is disabled (ReputationMinRounds == 0) this returns tierMinBond unchanged.
+	effectiveMinBond := m.ComputeEffectiveMinBond(ctx, msg.Challenger, tierMinBond, params)
+	if bond.Cmp(effectiveMinBond) < 0 {
+		return nil, fmt.Errorf("%w: need %s (reputation-adjusted), got %s",
+			types.ErrInsufficientBond, effectiveMinBond.String(), msg.Bond)
 	}
 
 	// Collateral leverage check (Gap 4 — counterparty-escrow-brief.md).

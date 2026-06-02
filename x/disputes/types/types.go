@@ -51,6 +51,15 @@ func DefaultParams() *Params {
 		// EscrowDisputeWindowBlocks: blocks after CompleteServiceEscrow
 		// during which the payer may raise a dispute. ~10 minutes at 2.5s/block.
 		EscrowDisputeWindowBlocks: 250,
+
+		// Reputation system defaults (Gap 5).
+		// ReputationMinRounds=0 disables the system at genesis.
+		// The remaining defaults describe the intended calibration once governance enables it.
+		ReputationMinRounds:            0,        // disabled by default
+		ReputationHighThresholdBps:     800_000,  // 80% win rate → discount kicks in
+		ReputationLowThresholdBps:      200_000,  // 20% win rate → penalty kicks in
+		ReputationDiscountBps:          200_000,  // high-rep challenger: 20% off min bond
+		ReputationPenaltyMultiplierBps: 2_000_000, // low-rep challenger: 2× min bond
 	}
 }
 
@@ -107,6 +116,22 @@ func (p *Params) Validate() error {
 	// 0 = disabled; values > 1_000_000 would always block valid disputes.
 	if p.MaxLeverageBps > 1_000_000 {
 		return fmt.Errorf("max_leverage_bps must be <= 1_000_000, got %d", p.MaxLeverageBps)
+	}
+	// Reputation system params (Gap 5): only validated when the system is enabled.
+	if p.ReputationMinRounds > 0 {
+		if p.ReputationDiscountBps >= 1_000_000 {
+			return fmt.Errorf("reputation_discount_bps must be < 1_000_000 (100%%), got %d", p.ReputationDiscountBps)
+		}
+		if p.ReputationPenaltyMultiplierBps == 0 {
+			return fmt.Errorf("reputation_penalty_multiplier_bps must be > 0 when reputation is enabled")
+		}
+		if p.ReputationHighThresholdBps > 1_000_000 {
+			return fmt.Errorf("reputation_high_threshold_bps must be <= 1_000_000, got %d", p.ReputationHighThresholdBps)
+		}
+		if p.ReputationLowThresholdBps >= p.ReputationHighThresholdBps {
+			return fmt.Errorf("reputation_low_threshold_bps (%d) must be < reputation_high_threshold_bps (%d)",
+				p.ReputationLowThresholdBps, p.ReputationHighThresholdBps)
+		}
 	}
 	return nil
 }

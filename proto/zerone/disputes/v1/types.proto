@@ -120,3 +120,14 @@ enum ServiceEscrowStatus {
   SERVICE_ESCROW_STATUS_DISPUTED    = 3;  // payer contested the proof
   SERVICE_ESCROW_STATUS_REFUNDED    = 4;  // deadline passed with no proof, funds returned
 }
+
+// ---------- Disputer Profile (Gap 5: Reputation-Adjusted Bonds) ----------
+
+// DisputerProfile tracks a challenger's dispute history for reputation scoring.
+// Win rate = win_count / total_disputes. Used by ComputeEffectiveMinBond to
+// adjust the minimum bond required to open a new dispute.
+message DisputerProfile {
+  string address         = 1;  // bech32 challenger address
+  uint64 win_count       = 2;  // disputes where challenger won (CHALLENGER_WINS)
+  uint64 total_disputes  = 3;  // all closed disputes (wins + losses + draws + timeouts)
+}

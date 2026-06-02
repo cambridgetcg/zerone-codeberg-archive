@@ -7,6 +7,7 @@ import "zerone/disputes/v1/types.proto";
 message GenesisState {
   Params params = 1;
   repeated Dispute disputes = 2;
+  repeated DisputerProfile disputer_profiles = 3;  // reputation history export/import
 }
 
 message Params {
@@ -25,4 +26,33 @@ message Params {
   // max_leverage_bps / 1_000_000 of their balance across all active disputes.
   // Default 0 = disabled (no leverage limit enforced).
   uint64 max_leverage_bps = 8; // default: 0 (disabled)
+
+  // ── Gap 5: Reputation-Adjusted Bond Requirements ──────────────────────────
+  //
+  // Challengers with a proven track record pay a reduced minimum bond;
+  // challengers with a poor track record pay an increased minimum bond.
+  // All reputation params are inactive when reputation_min_rounds == 0 (default).
+
+  // reputation_min_rounds: minimum number of closed disputes before the
+  // reputation adjustment applies. Protects new challengers from being gated.
+  // Default 0 = reputation system disabled.
+  uint64 reputation_min_rounds = 9;
+
+  // reputation_high_threshold_bps: win rate (1M scale) above which the
+  // discount applies. Default 800_000 (80%).
+  uint64 reputation_high_threshold_bps = 10;
+
+  // reputation_low_threshold_bps: win rate (1M scale) below which the
+  // penalty applies. Default 200_000 (20%).
+  uint64 reputation_low_threshold_bps = 11;
+
+  // reputation_discount_bps: fraction of the tier minimum bond removed for
+  // high-reputation challengers. E.g. 200_000 = 20% discount.
+  // Effective min bond = tier_min × (1_000_000 - discount) / 1_000_000.
+  uint64 reputation_discount_bps = 12;
+
+  // reputation_penalty_multiplier_bps: multiplier applied to the tier minimum
+  // bond for low-reputation challengers. E.g. 2_000_000 = 200% (double bond).
+  // Effective min bond = tier_min × multiplier / 1_000_000.
+  uint64 reputation_penalty_multiplier_bps = 13;
 }

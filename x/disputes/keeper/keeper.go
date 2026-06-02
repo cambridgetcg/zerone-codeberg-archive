@@ -112,15 +112,22 @@ func (k Keeper) InitGenesis(ctx context.Context, genState *types.GenesisState) {
 	for _, dispute := range genState.Disputes {
 		k.SetDispute(ctx, dispute)
 	}
+	for _, profile := range genState.DisputerProfiles {
+		if profile != nil && profile.Address != "" {
+			k.SetDisputerProfile(ctx, profile)
+		}
+	}
 }
 
 // ExportGenesis exports the module's state.
 func (k Keeper) ExportGenesis(ctx context.Context) *types.GenesisState {
 	params := k.GetParams(ctx)
 	disputes := k.GetAllDisputes(ctx)
+	profiles := k.GetAllDisputerProfiles(ctx)
 	return &types.GenesisState{
-		Params:   params,
-		Disputes: disputes,
+		Params:           params,
+		Disputes:         disputes,
+		DisputerProfiles: profiles,
 	}
 }
 
@@ -538,6 +545,10 @@ func (k Keeper) DistributeSettlement(ctx context.Context, dispute *types.Dispute
 		if dispute.DefenderBond != "" && dispute.DefenderBond != "0" {
 			k.ReleaseCollateralLock(ctx, dispute.Defender, dispute.Id)
 		}
+		// Update challenger's reputation profile (Gap 5).
+		// Runs after collateral release so reputation is recorded even if
+		// the token distribution partially fails.
+		k.RecordDisputeOutcome(ctx, dispute.Challenger, dispute.Outcome)
 	}()
 
 	params := k.GetParams(ctx)
