@@ -24,4 +24,5 @@ var (
 	ErrMiningPeriodExists    = errors.Register(ModuleName, 20, "pool already has an active liquidity mining period")
 	ErrMiningPeriodInvalid   = errors.Register(ModuleName, 21, "invalid liquidity mining period: end_block must exceed start_block and amount_per_block must be positive")
 	ErrNoRewardsToClaim      = errors.Register(ModuleName, 22, "no liquidity rewards to claim")
+	ErrSwapExpired           = errors.Register(ModuleName, 23, "swap deadline has passed")
 )

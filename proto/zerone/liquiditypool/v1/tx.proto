@@ -43,11 +43,12 @@ message MsgCreatePoolResponse {
 // --- Swap ---
 
 message MsgSwap {
-  string sender         = 1;
-  string pool_id        = 2;
-  string token_in_denom = 3;
+  string sender          = 1;
+  string pool_id         = 2;
+  string token_in_denom  = 3;
   string token_in_amount = 4; // bigint string
-  string min_token_out  = 5;  // slippage protection (bigint string, optional)
+  string min_token_out   = 5; // slippage protection (bigint string, optional)
+  uint64 deadline_block  = 6; // swap must execute at or before this block height; 0 = no deadline
 }
 message MsgSwapResponse {
   string token_out_amount = 1; // bigint string

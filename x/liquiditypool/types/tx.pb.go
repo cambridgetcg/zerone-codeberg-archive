@@ -156,6 +156,7 @@ type MsgSwap struct {
 	TokenInDenom  string                 `protobuf:"bytes,3,opt,name=token_in_denom,json=tokenInDenom,proto3" json:"token_in_denom,omitempty"`
 	TokenInAmount string                 `protobuf:"bytes,4,opt,name=token_in_amount,json=tokenInAmount,proto3" json:"token_in_amount,omitempty"` // bigint string
 	MinTokenOut   string                 `protobuf:"bytes,5,opt,name=min_token_out,json=minTokenOut,proto3" json:"min_token_out,omitempty"`       // slippage protection (bigint string, optional)
+	DeadlineBlock uint64                 `protobuf:"varint,6,opt,name=deadline_block,json=deadlineBlock,proto3" json:"deadline_block,omitempty"`  // swap must execute at or before this block height; 0 = no deadline
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -223,6 +224,13 @@ func (x *MsgSwap) GetMinTokenOut() string {
 		return x.MinTokenOut
 	}
 	return ""
+}
+
+func (x *MsgSwap) GetDeadlineBlock() uint64 {
+	if x != nil {
+		return x.DeadlineBlock
+	}
+	return 0
 }
 
 type MsgSwapResponse struct {
@@ -859,13 +867,14 @@ const file_zerone_liquiditypool_v1_tx_proto_rawDesc = "" +
 	"\fswap_fee_bps\x18\x06 \x01(\x04R\n" +
 	"swapFeeBps\"0\n" +
 	"\x15MsgCreatePoolResponse\x12\x17\n" +
-	"\apool_id\x18\x01 \x01(\tR\x06poolId\"\xac\x01\n" +
+	"\apool_id\x18\x01 \x01(\tR\x06poolId\"\xd3\x01\n" +
 	"\aMsgSwap\x12\x16\n" +
 	"\x06sender\x18\x01 \x01(\tR\x06sender\x12\x17\n" +
 	"\apool_id\x18\x02 \x01(\tR\x06poolId\x12$\n" +
 	"\x0etoken_in_denom\x18\x03 \x01(\tR\ftokenInDenom\x12&\n" +
 	"\x0ftoken_in_amount\x18\x04 \x01(\tR\rtokenInAmount\x12\"\n" +
-	"\rmin_token_out\x18\x05 \x01(\tR\vminTokenOut\"Z\n" +
+	"\rmin_token_out\x18\x05 \x01(\tR\vminTokenOut\x12%\n" +
+	"\x0edeadline_block\x18\x06 \x01(\x04R\rdeadlineBlock\"Z\n" +
 	"\x0fMsgSwapResponse\x12(\n" +
 	"\x10token_out_amount\x18\x01 \x01(\tR\x0etokenOutAmount\x12\x1d\n" +
 	"\n" +

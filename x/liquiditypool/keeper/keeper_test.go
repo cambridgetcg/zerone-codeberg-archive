@@ -1627,3 +1627,135 @@ func TestParams_MaxFractionBps_MaxScale(t *testing.T) {
 		t.Fatalf("expected Validate to pass for max_swap_fraction_bps=1000000: %v", err)
 	}
 }
+
+// ===================================================================
+// Msg Server Tests: Swap — Deadline / Expiry (Market Microstructure Gap 2)
+// ===================================================================
+
+// TestSwap_Deadline_Expired verifies that a swap with DeadlineBlock in the
+// past is rejected with ErrSwapExpired.
+// ctx is at block 100; deadline 99 is already passed.
+func TestSwap_Deadline_Expired(t *testing.T) {
+	ms, _, ctx, bk := setupMsgServer(t)
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "200000000000")
+
+	senderAddr := "zrn1sender0000000000000000000000"
+	bk.setBalance(senderAddr, "uzrn", 100_000)
+
+	_, err := ms.Swap(ctx, &types.MsgSwap{
+		Sender:        senderAddr,
+		PoolId:        poolId,
+		TokenInDenom:  "uzrn",
+		TokenInAmount: "10000",
+		DeadlineBlock: 99, // block 100 > 99 → expired
+	})
+	if err == nil {
+		t.Fatal("expected ErrSwapExpired for deadline in the past")
+	}
+}
+
+// TestSwap_Deadline_ExactBlock verifies that a swap with DeadlineBlock equal
+// to the current block height succeeds (boundary: current <= deadline).
+func TestSwap_Deadline_ExactBlock(t *testing.T) {
+	ms, _, ctx, bk := setupMsgServer(t)
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "200000000000")
+
+	senderAddr := "zrn1sender0000000000000000000000"
+	bk.setBalance(senderAddr, "uzrn", 100_000)
+
+	// ctx is at block 100; deadline exactly 100 → should succeed
+	_, err := ms.Swap(ctx, &types.MsgSwap{
+		Sender:        senderAddr,
+		PoolId:        poolId,
+		TokenInDenom:  "uzrn",
+		TokenInAmount: "10000",
+		DeadlineBlock: 100,
+	})
+	if err != nil {
+		t.Fatalf("expected success at exact deadline block, got: %v", err)
+	}
+}
+
+// TestSwap_Deadline_FutureBlock verifies that a swap with a future deadline
+// executes normally.
+func TestSwap_Deadline_FutureBlock(t *testing.T) {
+	ms, _, ctx, bk := setupMsgServer(t)
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "200000000000")
+
+	senderAddr := "zrn1sender0000000000000000000000"
+	bk.setBalance(senderAddr, "uzrn", 100_000)
+
+	resp, err := ms.Swap(ctx, &types.MsgSwap{
+		Sender:        senderAddr,
+		PoolId:        poolId,
+		TokenInDenom:  "uzrn",
+		TokenInAmount: "10000",
+		DeadlineBlock: 9999,
+	})
+	if err != nil {
+		t.Fatalf("expected success with future deadline, got: %v", err)
+	}
+	out := new(big.Int)
+	out.SetString(resp.TokenOutAmount, 10)
+	if out.Sign() <= 0 {
+		t.Error("expected positive output amount")
+	}
+}
+
+// TestSwap_Deadline_ZeroMeansDisabled verifies that DeadlineBlock=0 applies
+// no deadline check — the swap succeeds regardless of block height.
+func TestSwap_Deadline_ZeroMeansDisabled(t *testing.T) {
+	ms, _, ctx, bk := setupMsgServer(t)
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "200000000000")
+
+	senderAddr := "zrn1sender0000000000000000000000"
+	bk.setBalance(senderAddr, "uzrn", 100_000)
+
+	// Advance to a very high block height to confirm deadline=0 doesn't block
+	highCtx := ctx.WithBlockHeight(1_000_000)
+
+	_, err := ms.Swap(highCtx, &types.MsgSwap{
+		Sender:        senderAddr,
+		PoolId:        poolId,
+		TokenInDenom:  "uzrn",
+		TokenInAmount: "10000",
+		DeadlineBlock: 0, // disabled
+	})
+	if err != nil {
+		t.Fatalf("deadline=0 should be disabled; got error: %v", err)
+	}
+}
+
+// TestSwap_Deadline_BlockBoundaryOneOff verifies the off-by-one boundary:
+// DeadlineBlock = currentBlock - 1 is expired; DeadlineBlock = currentBlock is not.
+func TestSwap_Deadline_BlockBoundaryOneOff(t *testing.T) {
+	ms, _, ctx, bk := setupMsgServer(t)
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "200000000000")
+
+	senderAddr := "zrn1sender0000000000000000000000"
+	bk.setBalance(senderAddr, "uzrn", 200_000)
+
+	// currentBlock = 100. deadline 99 → must fail.
+	_, err := ms.Swap(ctx, &types.MsgSwap{
+		Sender:        senderAddr,
+		PoolId:        poolId,
+		TokenInDenom:  "uzrn",
+		TokenInAmount: "10000",
+		DeadlineBlock: 99,
+	})
+	if err == nil {
+		t.Fatal("deadline=currentBlock-1 should be expired")
+	}
+
+	// deadline 100 = currentBlock → must succeed.
+	_, err = ms.Swap(ctx, &types.MsgSwap{
+		Sender:        senderAddr,
+		PoolId:        poolId,
+		TokenInDenom:  "uzrn",
+		TokenInAmount: "10000",
+		DeadlineBlock: 100,
+	})
+	if err != nil {
+		t.Fatalf("deadline=currentBlock should succeed: %v", err)
+	}
+}

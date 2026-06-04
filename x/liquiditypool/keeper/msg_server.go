@@ -146,6 +146,11 @@ func (m msgServer) Swap(goCtx context.Context, msg *types.MsgSwap) (*types.MsgSw
 		return nil, types.ErrPoolLocked
 	}
 
+	// Deadline check: if DeadlineBlock is set, the swap must execute at or before that block
+	if msg.DeadlineBlock > 0 && uint64(ctx.BlockHeight()) > msg.DeadlineBlock {
+		return nil, types.ErrSwapExpired
+	}
+
 	// Determine swap direction
 	tokenIn := new(big.Int)
 	if _, ok := tokenIn.SetString(msg.TokenInAmount, 10); !ok || tokenIn.Sign() <= 0 {
