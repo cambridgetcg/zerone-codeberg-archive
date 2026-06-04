@@ -343,6 +343,7 @@ func (k Keeper) RecordVerifierOutcome(
 	recordCalibrationBucket(c, pAcceptBps, outcomeAccept)
 
 	c.VerifierCalibrationScoreBps = ComputeVerifierCalibrationScore(c)
+	c.VerifierResolutionBps = ComputeVerifierResolutionScore(c)
 	c.LastUpdatedBlock = height
 	_ = k.SetAgentCalibration(ctx, c)
 	k.EmitCalibrationUpdated(ctx, c)
@@ -398,6 +399,68 @@ func ComputeVerifierCalibrationScore(c *types.AgentCalibration) uint64 {
 	return 1_000_000 - avgBrierBps
 }
 
+// ComputeVerifierResolutionScore computes Murphy's resolution from the calibration curve.
+//
+// Resolution measures how much information the verifier's confidence reports carry —
+// do they distinguish hard cases (likely-reject) from easy ones (likely-accept)?
+//
+// Murphy decomposition of the Brier score:
+//
+//	Resolution = Σ_k (n_k / N) × (hit_rate_k − overall_hit_rate)²
+//
+// where n_k = predictions in bucket k, N = total rounds, hit_rate_k = correct_k/n_k,
+// overall_hit_rate = Σ correct_k / N.
+//
+// The maximum value is 0.25 (when half the predictions are at 0% and half at 100%,
+// each correct). We scale by 4_000_000 to map [0, 0.25] → [0, 1_000_000] BPS.
+//
+// Returns 0 if the verifier has no calibration curve entries.
+func ComputeVerifierResolutionScore(c *types.AgentCalibration) uint64 {
+	if c == nil || len(c.CalibrationCurve) == 0 {
+		return 0
+	}
+
+	var totalCount, totalCorrect uint64
+	for _, b := range c.CalibrationCurve {
+		totalCount += b.TotalCount
+		totalCorrect += b.CorrectCount
+	}
+	if totalCount == 0 {
+		return 0
+	}
+
+	// overall_hit_rate in BPS (scaled to 1_000_000)
+	overallHitBps := totalCorrect * 1_000_000 / totalCount
+
+	// Σ_k (n_k/N) × (hit_rate_k − overall_hit_rate)²
+	// All values computed in BPS² space; divide by 1_000_000 to keep in BPS range.
+	var resolutionBps2 uint64 // accumulates in BPS² / 1_000_000 = BPS units
+	for _, b := range c.CalibrationCurve {
+		if b.TotalCount == 0 {
+			continue
+		}
+		hitRateBps := b.CorrectCount * 1_000_000 / b.TotalCount
+		var diffBps uint64
+		if hitRateBps >= overallHitBps {
+			diffBps = hitRateBps - overallHitBps
+		} else {
+			diffBps = overallHitBps - hitRateBps
+		}
+		// weight × diff² in BPS² space; keep precision by dividing 1_000_000 once
+		// (n_k / N) × diff² scaled: (n_k × diff² / 1_000_000) / totalCount
+		resolutionBps2 += b.TotalCount * (diffBps * diffBps / 1_000_000)
+	}
+	resolutionBps2 /= totalCount
+
+	// Scale from [0, 250_000] (max variance ≈ 0.25 × 1_000_000) to [0, 1_000_000]
+	// by multiplying by 4.
+	score := resolutionBps2 * 4
+	if score > 1_000_000 {
+		score = 1_000_000
+	}
+	return score
+}
+
 // EmitCalibrationUpdated emits an event for off-chain observers (training
 // pipelines, dashboards) to track calibration changes without polling.
 func (k Keeper) EmitCalibrationUpdated(ctx context.Context, c *types.AgentCalibration) {
@@ -415,5 +478,6 @@ func (k Keeper) EmitCalibrationUpdated(ctx context.Context, c *types.AgentCalibr
 		sdk.NewAttribute("calibration_score_bps", fmt.Sprintf("%d", c.CalibrationScoreBps)),
 		sdk.NewAttribute("verifier_rounds", fmt.Sprintf("%d", c.VerifierRounds)),
 		sdk.NewAttribute("verifier_calibration_score_bps", fmt.Sprintf("%d", c.VerifierCalibrationScoreBps)),
+		sdk.NewAttribute("verifier_resolution_bps", fmt.Sprintf("%d", c.VerifierResolutionBps)),
 	))
 }

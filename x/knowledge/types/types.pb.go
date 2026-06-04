@@ -4055,8 +4055,16 @@ type AgentCalibration struct {
 	// [900_000, 1_000_000] (inclusive). A well-calibrated agent's bucket hit-rate
 	// (correct_count/total_count) should match the midpoint confidence of the bucket.
 	CalibrationCurve []*CalibrationBucket `protobuf:"bytes,23,rep,name=calibration_curve,json=calibrationCurve,proto3" json:"calibration_curve,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Murphy resolution score in BPS (Calibrated Forecasting Gap 4).
+	// Resolution measures how much information the agent's confidence reports carry —
+	// do they distinguish hard cases from easy ones? Computed from calibration_curve as
+	// Σ_k (n_k/N) × (hit_rate_k − overall_hit_rate)², scaled from [0, 0.25] to [0, 1M].
+	// Higher = agent's forecasts separate low-probability from high-probability claims.
+	// An agent who always says ~50% scores 0; one who says 10% on rejects and 90% on
+	// accepts scores near 1_000_000 (if calibrated).
+	VerifierResolutionBps uint64 `protobuf:"varint,24,opt,name=verifier_resolution_bps,json=verifierResolutionBps,proto3" json:"verifier_resolution_bps,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *AgentCalibration) Reset() {
@@ -4234,6 +4242,13 @@ func (x *AgentCalibration) GetCalibrationCurve() []*CalibrationBucket {
 		return x.CalibrationCurve
 	}
 	return nil
+}
+
+func (x *AgentCalibration) GetVerifierResolutionBps() uint64 {
+	if x != nil {
+		return x.VerifierResolutionBps
+	}
+	return 0
 }
 
 // CalibrationBucket tracks prediction hit-rates within a confidence band.
@@ -8685,7 +8700,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x15corroborations_earned\x18\x04 \x01(\x04R\x14corroborationsEarned\x12\x1c\n" +
 	"\tdisproven\x18\x05 \x01(\x04R\tdisproven\x12'\n" +
 	"\x0fverifier_rounds\x18\x06 \x01(\x04R\x0everifierRounds\x123\n" +
-	"\x16verifier_sum_brier_bps\x18\a \x01(\x04R\x13verifierSumBrierBps\"\xdf\b\n" +
+	"\x16verifier_sum_brier_bps\x18\a \x01(\x04R\x13verifierSumBrierBps\"\x97\t\n" +
 	"\x10AgentCalibration\x12\x18\n" +
 	"\aaddress\x18\x01 \x01(\tR\aaddress\x12!\n" +
 	"\faccount_type\x18\x02 \x01(\tR\vaccountType\x12+\n" +
@@ -8709,7 +8724,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x0fverifier_rounds\x18\x14 \x01(\x04R\x0everifierRounds\x123\n" +
 	"\x16verifier_sum_brier_bps\x18\x15 \x01(\x04R\x13verifierSumBrierBps\x12C\n" +
 	"\x1everifier_calibration_score_bps\x18\x16 \x01(\x04R\x1bverifierCalibrationScoreBps\x12S\n" +
-	"\x11calibration_curve\x18\x17 \x03(\v2&.zerone.knowledge.v1.CalibrationBucketR\x10calibrationCurve\x1ac\n" +
+	"\x11calibration_curve\x18\x17 \x03(\v2&.zerone.knowledge.v1.CalibrationBucketR\x10calibrationCurve\x126\n" +
+	"\x17verifier_resolution_bps\x18\x18 \x01(\x04R\x15verifierResolutionBps\x1ac\n" +
 	"\x0ePerMethodEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12;\n" +
 	"\x05value\x18\x02 \x01(\v2%.zerone.knowledge.v1.AgentMethodStatsR\x05value:\x028\x01\"\xb5\x01\n" +
