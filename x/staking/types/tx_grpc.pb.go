@@ -19,13 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Msg_RegisterValidator_FullMethodName    = "/zerone.staking.v1.Msg/RegisterValidator"
-	Msg_Delegate_FullMethodName             = "/zerone.staking.v1.Msg/Delegate"
-	Msg_Undelegate_FullMethodName           = "/zerone.staking.v1.Msg/Undelegate"
-	Msg_Redelegate_FullMethodName           = "/zerone.staking.v1.Msg/Redelegate"
-	Msg_UpdateValidatorStake_FullMethodName = "/zerone.staking.v1.Msg/UpdateValidatorStake"
-	Msg_UpdateParams_FullMethodName         = "/zerone.staking.v1.Msg/UpdateParams"
-	Msg_SubmitSlashEvidence_FullMethodName  = "/zerone.staking.v1.Msg/SubmitSlashEvidence"
+	Msg_RegisterValidator_FullMethodName         = "/zerone.staking.v1.Msg/RegisterValidator"
+	Msg_Delegate_FullMethodName                  = "/zerone.staking.v1.Msg/Delegate"
+	Msg_Undelegate_FullMethodName                = "/zerone.staking.v1.Msg/Undelegate"
+	Msg_Redelegate_FullMethodName                = "/zerone.staking.v1.Msg/Redelegate"
+	Msg_UpdateValidatorStake_FullMethodName      = "/zerone.staking.v1.Msg/UpdateValidatorStake"
+	Msg_UpdateParams_FullMethodName              = "/zerone.staking.v1.Msg/UpdateParams"
+	Msg_SubmitSlashEvidence_FullMethodName       = "/zerone.staking.v1.Msg/SubmitSlashEvidence"
+	Msg_ContributeToInsuranceFund_FullMethodName = "/zerone.staking.v1.Msg/ContributeToInsuranceFund"
 )
 
 // MsgClient is the client API for Msg service.
@@ -41,6 +42,7 @@ type MsgClient interface {
 	UpdateValidatorStake(ctx context.Context, in *MsgUpdateValidatorStake, opts ...grpc.CallOption) (*MsgUpdateValidatorStakeResponse, error)
 	UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error)
 	SubmitSlashEvidence(ctx context.Context, in *MsgSubmitSlashEvidence, opts ...grpc.CallOption) (*MsgSubmitSlashEvidenceResponse, error)
+	ContributeToInsuranceFund(ctx context.Context, in *MsgContributeToInsuranceFund, opts ...grpc.CallOption) (*MsgContributeToInsuranceFundResponse, error)
 }
 
 type msgClient struct {
@@ -121,6 +123,16 @@ func (c *msgClient) SubmitSlashEvidence(ctx context.Context, in *MsgSubmitSlashE
 	return out, nil
 }
 
+func (c *msgClient) ContributeToInsuranceFund(ctx context.Context, in *MsgContributeToInsuranceFund, opts ...grpc.CallOption) (*MsgContributeToInsuranceFundResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgContributeToInsuranceFundResponse)
+	err := c.cc.Invoke(ctx, Msg_ContributeToInsuranceFund_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MsgServer is the server API for Msg service.
 // All implementations must embed UnimplementedMsgServer
 // for forward compatibility.
@@ -134,6 +146,7 @@ type MsgServer interface {
 	UpdateValidatorStake(context.Context, *MsgUpdateValidatorStake) (*MsgUpdateValidatorStakeResponse, error)
 	UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error)
 	SubmitSlashEvidence(context.Context, *MsgSubmitSlashEvidence) (*MsgSubmitSlashEvidenceResponse, error)
+	ContributeToInsuranceFund(context.Context, *MsgContributeToInsuranceFund) (*MsgContributeToInsuranceFundResponse, error)
 	mustEmbedUnimplementedMsgServer()
 }
 
@@ -164,6 +177,9 @@ func (UnimplementedMsgServer) UpdateParams(context.Context, *MsgUpdateParams) (*
 }
 func (UnimplementedMsgServer) SubmitSlashEvidence(context.Context, *MsgSubmitSlashEvidence) (*MsgSubmitSlashEvidenceResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SubmitSlashEvidence not implemented")
+}
+func (UnimplementedMsgServer) ContributeToInsuranceFund(context.Context, *MsgContributeToInsuranceFund) (*MsgContributeToInsuranceFundResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ContributeToInsuranceFund not implemented")
 }
 func (UnimplementedMsgServer) mustEmbedUnimplementedMsgServer() {}
 func (UnimplementedMsgServer) testEmbeddedByValue()             {}
@@ -312,6 +328,24 @@ func _Msg_SubmitSlashEvidence_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Msg_ContributeToInsuranceFund_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgContributeToInsuranceFund)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).ContributeToInsuranceFund(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_ContributeToInsuranceFund_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).ContributeToInsuranceFund(ctx, req.(*MsgContributeToInsuranceFund))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Msg_ServiceDesc is the grpc.ServiceDesc for Msg service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -346,6 +380,10 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SubmitSlashEvidence",
 			Handler:    _Msg_SubmitSlashEvidence_Handler,
+		},
+		{
+			MethodName: "ContributeToInsuranceFund",
+			Handler:    _Msg_ContributeToInsuranceFund_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

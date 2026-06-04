@@ -23,16 +23,17 @@ const (
 
 // Params defines the liquiditypool module parameters.
 type Params struct {
-	state               protoimpl.MessageState `protogen:"open.v1"`
-	DefaultSwapFeeBps   uint64                 `protobuf:"varint,1,opt,name=default_swap_fee_bps,json=defaultSwapFeeBps,proto3" json:"default_swap_fee_bps,omitempty"`    // default swap fee (1M bps scale)
-	MaxPools            uint64                 `protobuf:"varint,2,opt,name=max_pools,json=maxPools,proto3" json:"max_pools,omitempty"`                                   // maximum number of active pools
-	MinInitialLiquidity string                 `protobuf:"bytes,3,opt,name=min_initial_liquidity,json=minInitialLiquidity,proto3" json:"min_initial_liquidity,omitempty"` // minimum per-side liquidity in base units (bigint string)
-	TwapWindowBlocks    uint64                 `protobuf:"varint,4,opt,name=twap_window_blocks,json=twapWindowBlocks,proto3" json:"twap_window_blocks,omitempty"`         // default TWAP window in blocks
-	ProtocolFeeBps      uint64                 `protobuf:"varint,5,opt,name=protocol_fee_bps,json=protocolFeeBps,proto3" json:"protocol_fee_bps,omitempty"`               // protocol's share of swap fees (1M bps scale)
-	MinReserve          string                 `protobuf:"bytes,6,opt,name=min_reserve,json=minReserve,proto3" json:"min_reserve,omitempty"`                              // minimum reserve after swap (bigint string, default "1")
-	MaxSwapFractionBps  uint64                 `protobuf:"varint,7,opt,name=max_swap_fraction_bps,json=maxSwapFractionBps,proto3" json:"max_swap_fraction_bps,omitempty"` // maximum fraction of pool reserve swappable in one tx (1M bps scale, 0 = disabled)
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	state                   protoimpl.MessageState `protogen:"open.v1"`
+	DefaultSwapFeeBps       uint64                 `protobuf:"varint,1,opt,name=default_swap_fee_bps,json=defaultSwapFeeBps,proto3" json:"default_swap_fee_bps,omitempty"`                   // default swap fee (1M bps scale)
+	MaxPools                uint64                 `protobuf:"varint,2,opt,name=max_pools,json=maxPools,proto3" json:"max_pools,omitempty"`                                                  // maximum number of active pools
+	MinInitialLiquidity     string                 `protobuf:"bytes,3,opt,name=min_initial_liquidity,json=minInitialLiquidity,proto3" json:"min_initial_liquidity,omitempty"`                // minimum per-side liquidity in base units (bigint string)
+	TwapWindowBlocks        uint64                 `protobuf:"varint,4,opt,name=twap_window_blocks,json=twapWindowBlocks,proto3" json:"twap_window_blocks,omitempty"`                        // default TWAP window in blocks
+	ProtocolFeeBps          uint64                 `protobuf:"varint,5,opt,name=protocol_fee_bps,json=protocolFeeBps,proto3" json:"protocol_fee_bps,omitempty"`                              // protocol's share of swap fees (1M bps scale)
+	MinReserve              string                 `protobuf:"bytes,6,opt,name=min_reserve,json=minReserve,proto3" json:"min_reserve,omitempty"`                                             // minimum reserve after swap (bigint string, default "1")
+	MaxSwapFractionBps      uint64                 `protobuf:"varint,7,opt,name=max_swap_fraction_bps,json=maxSwapFractionBps,proto3" json:"max_swap_fraction_bps,omitempty"`                // maximum fraction of pool reserve swappable in one tx (1M bps scale, 0 = disabled)
+	CommitRevealDelayBlocks uint64                 `protobuf:"varint,8,opt,name=commit_reveal_delay_blocks,json=commitRevealDelayBlocks,proto3" json:"commit_reveal_delay_blocks,omitempty"` // minimum blocks between CommitSwap and RevealSwap (0 = commit-reveal disabled)
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -114,6 +115,13 @@ func (x *Params) GetMaxSwapFractionBps() uint64 {
 	return 0
 }
 
+func (x *Params) GetCommitRevealDelayBlocks() uint64 {
+	if x != nil {
+		return x.CommitRevealDelayBlocks
+	}
+	return 0
+}
+
 // GenesisState defines the liquiditypool module genesis state.
 type GenesisState struct {
 	state            protoimpl.MessageState   `protogen:"open.v1"`
@@ -122,6 +130,7 @@ type GenesisState struct {
 	TwapAccumulators []*TWAPAccumulator       `protobuf:"bytes,3,rep,name=twap_accumulators,json=twapAccumulators,proto3" json:"twap_accumulators,omitempty"`
 	MiningPeriods    []*LiquidityMiningPeriod `protobuf:"bytes,4,rep,name=mining_periods,json=miningPeriods,proto3" json:"mining_periods,omitempty"`
 	MinerPositions   []*LpMinerPosition       `protobuf:"bytes,5,rep,name=miner_positions,json=minerPositions,proto3" json:"miner_positions,omitempty"`
+	SwapCommitments  []*SwapCommitment        `protobuf:"bytes,6,rep,name=swap_commitments,json=swapCommitments,proto3" json:"swap_commitments,omitempty"` // pending commit-reveal commitments
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -191,11 +200,18 @@ func (x *GenesisState) GetMinerPositions() []*LpMinerPosition {
 	return nil
 }
 
+func (x *GenesisState) GetSwapCommitments() []*SwapCommitment {
+	if x != nil {
+		return x.SwapCommitments
+	}
+	return nil
+}
+
 var File_zerone_liquiditypool_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_liquiditypool_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"%zerone/liquiditypool/v1/genesis.proto\x12\x17zerone.liquiditypool.v1\x1a#zerone/liquiditypool/v1/types.proto\"\xb6\x02\n" +
+	"%zerone/liquiditypool/v1/genesis.proto\x12\x17zerone.liquiditypool.v1\x1a#zerone/liquiditypool/v1/types.proto\"\xf3\x02\n" +
 	"\x06Params\x12/\n" +
 	"\x14default_swap_fee_bps\x18\x01 \x01(\x04R\x11defaultSwapFeeBps\x12\x1b\n" +
 	"\tmax_pools\x18\x02 \x01(\x04R\bmaxPools\x122\n" +
@@ -204,13 +220,15 @@ const file_zerone_liquiditypool_v1_genesis_proto_rawDesc = "" +
 	"\x10protocol_fee_bps\x18\x05 \x01(\x04R\x0eprotocolFeeBps\x12\x1f\n" +
 	"\vmin_reserve\x18\x06 \x01(\tR\n" +
 	"minReserve\x121\n" +
-	"\x15max_swap_fraction_bps\x18\a \x01(\x04R\x12maxSwapFractionBps\"\xfd\x02\n" +
+	"\x15max_swap_fraction_bps\x18\a \x01(\x04R\x12maxSwapFractionBps\x12;\n" +
+	"\x1acommit_reveal_delay_blocks\x18\b \x01(\x04R\x17commitRevealDelayBlocks\"\xd1\x03\n" +
 	"\fGenesisState\x127\n" +
 	"\x06params\x18\x01 \x01(\v2\x1f.zerone.liquiditypool.v1.ParamsR\x06params\x123\n" +
 	"\x05pools\x18\x02 \x03(\v2\x1d.zerone.liquiditypool.v1.PoolR\x05pools\x12U\n" +
 	"\x11twap_accumulators\x18\x03 \x03(\v2(.zerone.liquiditypool.v1.TWAPAccumulatorR\x10twapAccumulators\x12U\n" +
 	"\x0emining_periods\x18\x04 \x03(\v2..zerone.liquiditypool.v1.LiquidityMiningPeriodR\rminingPeriods\x12Q\n" +
-	"\x0fminer_positions\x18\x05 \x03(\v2(.zerone.liquiditypool.v1.LpMinerPositionR\x0eminerPositionsB6Z4github.com/zerone-chain/zerone/x/liquiditypool/typesb\x06proto3"
+	"\x0fminer_positions\x18\x05 \x03(\v2(.zerone.liquiditypool.v1.LpMinerPositionR\x0eminerPositions\x12R\n" +
+	"\x10swap_commitments\x18\x06 \x03(\v2'.zerone.liquiditypool.v1.SwapCommitmentR\x0fswapCommitmentsB6Z4github.com/zerone-chain/zerone/x/liquiditypool/typesb\x06proto3"
 
 var (
 	file_zerone_liquiditypool_v1_genesis_proto_rawDescOnce sync.Once
@@ -232,6 +250,7 @@ var file_zerone_liquiditypool_v1_genesis_proto_goTypes = []any{
 	(*TWAPAccumulator)(nil),       // 3: zerone.liquiditypool.v1.TWAPAccumulator
 	(*LiquidityMiningPeriod)(nil), // 4: zerone.liquiditypool.v1.LiquidityMiningPeriod
 	(*LpMinerPosition)(nil),       // 5: zerone.liquiditypool.v1.LpMinerPosition
+	(*SwapCommitment)(nil),        // 6: zerone.liquiditypool.v1.SwapCommitment
 }
 var file_zerone_liquiditypool_v1_genesis_proto_depIdxs = []int32{
 	0, // 0: zerone.liquiditypool.v1.GenesisState.params:type_name -> zerone.liquiditypool.v1.Params
@@ -239,11 +258,12 @@ var file_zerone_liquiditypool_v1_genesis_proto_depIdxs = []int32{
 	3, // 2: zerone.liquiditypool.v1.GenesisState.twap_accumulators:type_name -> zerone.liquiditypool.v1.TWAPAccumulator
 	4, // 3: zerone.liquiditypool.v1.GenesisState.mining_periods:type_name -> zerone.liquiditypool.v1.LiquidityMiningPeriod
 	5, // 4: zerone.liquiditypool.v1.GenesisState.miner_positions:type_name -> zerone.liquiditypool.v1.LpMinerPosition
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	6, // 5: zerone.liquiditypool.v1.GenesisState.swap_commitments:type_name -> zerone.liquiditypool.v1.SwapCommitment
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_zerone_liquiditypool_v1_genesis_proto_init() }

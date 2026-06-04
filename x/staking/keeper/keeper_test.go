@@ -3790,3 +3790,150 @@ func TestProcessSlashEvidenceQueue_DisabledReward(t *testing.T) {
 		t.Error("expected module routing (dev fund) when reward=0")
 	}
 }
+
+// ===================================================================
+// Delegator Insurance Fund Tests (Slashing Gap 4)
+// ===================================================================
+
+func TestInsuranceFund_Contribute_Success(t *testing.T) {
+	k, ctx, _ := setupKeeperWithBank(t)
+	ms := keeper.NewMsgServerImpl(k)
+
+	valAddr := testAddr("ins_val1")
+	registerTestValidator(t, k, ctx, valAddr, "did:zrn:ins1", "5000000")
+
+	resp, err := ms.ContributeToInsuranceFund(ctx, &types.MsgContributeToInsuranceFund{
+		Operator: valAddr,
+		Amount:   "500000",
+	})
+	if err != nil {
+		t.Fatalf("contribute failed: %v", err)
+	}
+	if resp.NewBalance != "500000" {
+		t.Errorf("expected balance 500000, got %s", resp.NewBalance)
+	}
+	val, _ := k.GetValidator(ctx, valAddr)
+	if val.InsuranceFundBalance != "500000" {
+		t.Errorf("validator insurance balance: want 500000, got %s", val.InsuranceFundBalance)
+	}
+}
+
+func TestInsuranceFund_Slash_FullAbsorption(t *testing.T) {
+	// Insurance fully covers the overflow — delegated stake unchanged.
+	k, ctx, _ := setupKeeperWithBank(t)
+	ms := keeper.NewMsgServerImpl(k)
+
+	valAddr := testAddr("ins_val2")
+	registerTestValidator(t, k, ctx, valAddr, "did:zrn:ins2", "1000000")
+
+	// Give validator delegated stake directly
+	val, _ := k.GetValidator(ctx, valAddr)
+	val.DelegatedStake = "2000000"
+	val.TotalStake = "3000000"
+	k.SetValidator(ctx, val)
+
+	// Fund insurance with 3M — enough to absorb 500K overflow
+	_, err := ms.ContributeToInsuranceFund(ctx, &types.MsgContributeToInsuranceFund{
+		Operator: valAddr,
+		Amount:   "3000000",
+	})
+	if err != nil {
+		t.Fatalf("contribute failed: %v", err)
+	}
+
+	// Slash 1.5M: self_delegation=1M absorbed, overflow=500K, insurance absorbs 500K
+	k.SlashValidator(ctx, valAddr, big.NewInt(1_500_000), "test_slash")
+
+	val, _ = k.GetValidator(ctx, valAddr)
+	delegatedAfter, _ := new(big.Int).SetString(val.DelegatedStake, 10)
+	if delegatedAfter.Int64() != 2_000_000 {
+		t.Errorf("delegated stake should be unchanged: want 2000000, got %s", val.DelegatedStake)
+	}
+	insuranceAfter, _ := new(big.Int).SetString(val.InsuranceFundBalance, 10)
+	if insuranceAfter.Int64() != 2_500_000 {
+		t.Errorf("insurance balance: want 2500000 (reduced by 500K), got %s", val.InsuranceFundBalance)
+	}
+}
+
+func TestInsuranceFund_Slash_PartialAbsorption(t *testing.T) {
+	// Insurance partially covers overflow — remainder hits delegated.
+	k, ctx, _ := setupKeeperWithBank(t)
+	ms := keeper.NewMsgServerImpl(k)
+
+	valAddr := testAddr("ins_val3")
+	registerTestValidator(t, k, ctx, valAddr, "did:zrn:ins3", "1000000")
+
+	val, _ := k.GetValidator(ctx, valAddr)
+	val.DelegatedStake = "2000000"
+	val.TotalStake = "3000000"
+	k.SetValidator(ctx, val)
+
+	// Fund with 200K — less than the 500K overflow
+	_, err := ms.ContributeToInsuranceFund(ctx, &types.MsgContributeToInsuranceFund{
+		Operator: valAddr,
+		Amount:   "200000",
+	})
+	if err != nil {
+		t.Fatalf("contribute failed: %v", err)
+	}
+
+	// Slash 1.5M → overflow 500K → insurance covers 200K → remaining 300K hits delegated
+	// delegated = 2M - 300K = 1.7M
+	k.SlashValidator(ctx, valAddr, big.NewInt(1_500_000), "test_slash")
+
+	val, _ = k.GetValidator(ctx, valAddr)
+	delegatedAfter, _ := new(big.Int).SetString(val.DelegatedStake, 10)
+	if delegatedAfter.Int64() != 1_700_000 {
+		t.Errorf("delegated stake: want 1700000, got %s", val.DelegatedStake)
+	}
+	insuranceAfter, _ := new(big.Int).SetString(val.InsuranceFundBalance, 10)
+	if insuranceAfter.Int64() != 0 {
+		t.Errorf("insurance balance: want 0 (depleted), got %s", val.InsuranceFundBalance)
+	}
+}
+
+func TestInsuranceFund_NoFund_DelegatedAbsorbs(t *testing.T) {
+	// Without insurance, current behavior is unchanged.
+	k, ctx, _ := setupKeeperWithBank(t)
+
+	valAddr := testAddr("ins_val4")
+	registerTestValidator(t, k, ctx, valAddr, "did:zrn:ins4", "1000000")
+
+	val, _ := k.GetValidator(ctx, valAddr)
+	val.DelegatedStake = "2000000"
+	val.TotalStake = "3000000"
+	k.SetValidator(ctx, val)
+
+	// No insurance contribution
+	k.SlashValidator(ctx, valAddr, big.NewInt(1_500_000), "test_slash")
+
+	val, _ = k.GetValidator(ctx, valAddr)
+	delegatedAfter, _ := new(big.Int).SetString(val.DelegatedStake, 10)
+	// overflow=500K all hits delegated: 2M - 500K = 1.5M
+	if delegatedAfter.Int64() != 1_500_000 {
+		t.Errorf("delegated stake: want 1500000, got %s", val.DelegatedStake)
+	}
+}
+
+func TestInsuranceFund_MultipleContributions_Accumulate(t *testing.T) {
+	k, ctx, _ := setupKeeperWithBank(t)
+	ms := keeper.NewMsgServerImpl(k)
+
+	valAddr := testAddr("ins_val5")
+	registerTestValidator(t, k, ctx, valAddr, "did:zrn:ins5", "5000000")
+
+	for _, amt := range []string{"100000", "200000", "300000"} {
+		_, err := ms.ContributeToInsuranceFund(ctx, &types.MsgContributeToInsuranceFund{
+			Operator: valAddr,
+			Amount:   amt,
+		})
+		if err != nil {
+			t.Fatalf("contribute %s failed: %v", amt, err)
+		}
+	}
+
+	val, _ := k.GetValidator(ctx, valAddr)
+	if val.InsuranceFundBalance != "600000" {
+		t.Errorf("expected accumulated balance 600000, got %s", val.InsuranceFundBalance)
+	}
+}

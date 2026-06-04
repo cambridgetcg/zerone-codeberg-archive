@@ -25,6 +25,8 @@ const (
 	Msg_RemoveLiquidity_FullMethodName             = "/zerone.liquiditypool.v1.Msg/RemoveLiquidity"
 	Msg_CreateLiquidityMiningPeriod_FullMethodName = "/zerone.liquiditypool.v1.Msg/CreateLiquidityMiningPeriod"
 	Msg_ClaimLiquidityRewards_FullMethodName       = "/zerone.liquiditypool.v1.Msg/ClaimLiquidityRewards"
+	Msg_CommitSwap_FullMethodName                  = "/zerone.liquiditypool.v1.Msg/CommitSwap"
+	Msg_RevealSwap_FullMethodName                  = "/zerone.liquiditypool.v1.Msg/RevealSwap"
 	Msg_UpdateParams_FullMethodName                = "/zerone.liquiditypool.v1.Msg/UpdateParams"
 )
 
@@ -44,6 +46,9 @@ type MsgClient interface {
 	// Liquidity mining
 	CreateLiquidityMiningPeriod(ctx context.Context, in *MsgCreateLiquidityMiningPeriod, opts ...grpc.CallOption) (*MsgCreateLiquidityMiningPeriodResponse, error)
 	ClaimLiquidityRewards(ctx context.Context, in *MsgClaimLiquidityRewards, opts ...grpc.CallOption) (*MsgClaimLiquidityRewardsResponse, error)
+	// Commit-reveal swap (MEV protection — Gap 1)
+	CommitSwap(ctx context.Context, in *MsgCommitSwap, opts ...grpc.CallOption) (*MsgCommitSwapResponse, error)
+	RevealSwap(ctx context.Context, in *MsgRevealSwap, opts ...grpc.CallOption) (*MsgRevealSwapResponse, error)
 	// Governance
 	UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error)
 }
@@ -116,6 +121,26 @@ func (c *msgClient) ClaimLiquidityRewards(ctx context.Context, in *MsgClaimLiqui
 	return out, nil
 }
 
+func (c *msgClient) CommitSwap(ctx context.Context, in *MsgCommitSwap, opts ...grpc.CallOption) (*MsgCommitSwapResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgCommitSwapResponse)
+	err := c.cc.Invoke(ctx, Msg_CommitSwap_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) RevealSwap(ctx context.Context, in *MsgRevealSwap, opts ...grpc.CallOption) (*MsgRevealSwapResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgRevealSwapResponse)
+	err := c.cc.Invoke(ctx, Msg_RevealSwap_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *msgClient) UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MsgUpdateParamsResponse)
@@ -142,6 +167,9 @@ type MsgServer interface {
 	// Liquidity mining
 	CreateLiquidityMiningPeriod(context.Context, *MsgCreateLiquidityMiningPeriod) (*MsgCreateLiquidityMiningPeriodResponse, error)
 	ClaimLiquidityRewards(context.Context, *MsgClaimLiquidityRewards) (*MsgClaimLiquidityRewardsResponse, error)
+	// Commit-reveal swap (MEV protection — Gap 1)
+	CommitSwap(context.Context, *MsgCommitSwap) (*MsgCommitSwapResponse, error)
+	RevealSwap(context.Context, *MsgRevealSwap) (*MsgRevealSwapResponse, error)
 	// Governance
 	UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error)
 	mustEmbedUnimplementedMsgServer()
@@ -171,6 +199,12 @@ func (UnimplementedMsgServer) CreateLiquidityMiningPeriod(context.Context, *MsgC
 }
 func (UnimplementedMsgServer) ClaimLiquidityRewards(context.Context, *MsgClaimLiquidityRewards) (*MsgClaimLiquidityRewardsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ClaimLiquidityRewards not implemented")
+}
+func (UnimplementedMsgServer) CommitSwap(context.Context, *MsgCommitSwap) (*MsgCommitSwapResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CommitSwap not implemented")
+}
+func (UnimplementedMsgServer) RevealSwap(context.Context, *MsgRevealSwap) (*MsgRevealSwapResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RevealSwap not implemented")
 }
 func (UnimplementedMsgServer) UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateParams not implemented")
@@ -304,6 +338,42 @@ func _Msg_ClaimLiquidityRewards_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Msg_CommitSwap_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgCommitSwap)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).CommitSwap(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_CommitSwap_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).CommitSwap(ctx, req.(*MsgCommitSwap))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_RevealSwap_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgRevealSwap)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).RevealSwap(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_RevealSwap_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).RevealSwap(ctx, req.(*MsgRevealSwap))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Msg_UpdateParams_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MsgUpdateParams)
 	if err := dec(in); err != nil {
@@ -352,6 +422,14 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ClaimLiquidityRewards",
 			Handler:    _Msg_ClaimLiquidityRewards_Handler,
+		},
+		{
+			MethodName: "CommitSwap",
+			Handler:    _Msg_CommitSwap_Handler,
+		},
+		{
+			MethodName: "RevealSwap",
+			Handler:    _Msg_RevealSwap_Handler,
 		},
 		{
 			MethodName: "UpdateParams",

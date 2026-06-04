@@ -62,3 +62,16 @@ message SwapResult {
   string fee_amount       = 3; // bigint string
   uint64 price_impact_bps = 4; // 1M bps scale
 }
+
+// SwapCommitment stores a pending commit-reveal swap commitment.
+// Key: SwapCommitmentKeyPrefix + sender + "/" + pool_id.
+// One commitment per (sender, pool_id) at a time; overwriting is allowed.
+message SwapCommitment {
+  string sender       = 1;
+  string pool_id      = 2;
+  // sha256(nonce || "|" || pool_id || "|" || token_in_denom || "|" ||
+  //         token_in_amount || "|" || min_token_out || "|" || deadline_block_decimal)
+  // nonce is length-prefixed (4-byte big-endian uint32) to prevent preimage collision.
+  bytes  commitment   = 3;
+  uint64 commit_block = 4; // block height at which commit was recorded
+}

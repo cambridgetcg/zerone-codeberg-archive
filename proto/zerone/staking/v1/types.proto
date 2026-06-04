@@ -54,6 +54,8 @@ message Validator {
   string        website                        = 22;
   string        details                        = 23;
   uint64        commission_bps                 = 24; // up to 10,000 (100%)
+  string        insurance_fund_balance         = 25; // uzrn held in operator's delegator insurance pool
+  uint64        delegator_insurance_fund_bps   = 26; // operator's declared coverage rate (0 = no insurance)
 }
 
 // Delegation records a delegation from delegator to validator.

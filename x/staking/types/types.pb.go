@@ -213,7 +213,9 @@ type Validator struct {
 	LastSlashHeight               uint64                 `protobuf:"varint,21,opt,name=last_slash_height,json=lastSlashHeight,proto3" json:"last_slash_height,omitempty"`
 	Website                       string                 `protobuf:"bytes,22,opt,name=website,proto3" json:"website,omitempty"`
 	Details                       string                 `protobuf:"bytes,23,opt,name=details,proto3" json:"details,omitempty"`
-	CommissionBps                 uint64                 `protobuf:"varint,24,opt,name=commission_bps,json=commissionBps,proto3" json:"commission_bps,omitempty"` // up to 10,000 (100%)
+	CommissionBps                 uint64                 `protobuf:"varint,24,opt,name=commission_bps,json=commissionBps,proto3" json:"commission_bps,omitempty"`                                         // up to 10,000 (100%)
+	InsuranceFundBalance          string                 `protobuf:"bytes,25,opt,name=insurance_fund_balance,json=insuranceFundBalance,proto3" json:"insurance_fund_balance,omitempty"`                   // uzrn held in operator's delegator insurance pool
+	DelegatorInsuranceFundBps     uint64                 `protobuf:"varint,26,opt,name=delegator_insurance_fund_bps,json=delegatorInsuranceFundBps,proto3" json:"delegator_insurance_fund_bps,omitempty"` // operator's declared coverage rate (0 = no insurance)
 	unknownFields                 protoimpl.UnknownFields
 	sizeCache                     protoimpl.SizeCache
 }
@@ -412,6 +414,20 @@ func (x *Validator) GetDetails() string {
 func (x *Validator) GetCommissionBps() uint64 {
 	if x != nil {
 		return x.CommissionBps
+	}
+	return 0
+}
+
+func (x *Validator) GetInsuranceFundBalance() string {
+	if x != nil {
+		return x.InsuranceFundBalance
+	}
+	return ""
+}
+
+func (x *Validator) GetDelegatorInsuranceFundBps() uint64 {
+	if x != nil {
+		return x.DelegatorInsuranceFundBps
 	}
 	return 0
 }
@@ -837,7 +853,7 @@ const file_zerone_staking_v1_types_proto_rawDesc = "" +
 	"\x0fSlashRateConfig\x12;\n" +
 	"\n" +
 	"slash_type\x18\x01 \x01(\x0e2\x1c.zerone.staking.v1.SlashTypeR\tslashType\x12\x19\n" +
-	"\brate_bps\x18\x02 \x01(\x04R\arateBps\"\xba\a\n" +
+	"\brate_bps\x18\x02 \x01(\x04R\arateBps\"\xb1\b\n" +
 	"\tValidator\x12)\n" +
 	"\x10operator_address\x18\x01 \x01(\tR\x0foperatorAddress\x12)\n" +
 	"\x10consensus_pubkey\x18\x02 \x01(\tR\x0fconsensusPubkey\x12\x10\n" +
@@ -866,7 +882,9 @@ const file_zerone_staking_v1_types_proto_rawDesc = "" +
 	"\x11last_slash_height\x18\x15 \x01(\x04R\x0flastSlashHeight\x12\x18\n" +
 	"\awebsite\x18\x16 \x01(\tR\awebsite\x12\x18\n" +
 	"\adetails\x18\x17 \x01(\tR\adetails\x12%\n" +
-	"\x0ecommission_bps\x18\x18 \x01(\x04R\rcommissionBps\"\xa8\x01\n" +
+	"\x0ecommission_bps\x18\x18 \x01(\x04R\rcommissionBps\x124\n" +
+	"\x16insurance_fund_balance\x18\x19 \x01(\tR\x14insuranceFundBalance\x12?\n" +
+	"\x1cdelegator_insurance_fund_bps\x18\x1a \x01(\x04R\x19delegatorInsuranceFundBps\"\xa8\x01\n" +
 	"\n" +
 	"Delegation\x12+\n" +
 	"\x11delegator_address\x18\x01 \x01(\tR\x10delegatorAddress\x12+\n" +

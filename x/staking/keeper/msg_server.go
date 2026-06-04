@@ -594,3 +594,50 @@ func (ms *msgServer) UpdateParams(goCtx context.Context, msg *types.MsgUpdatePar
 
 	return &types.MsgUpdateParamsResponse{}, nil
 }
+
+// ContributeToInsuranceFund deposits uzrn from the operator into the per-validator
+// delegator insurance pool. Funds in this pool are used to absorb slash overflow
+// before it propagates to delegated stake.
+func (ms *msgServer) ContributeToInsuranceFund(goCtx context.Context, msg *types.MsgContributeToInsuranceFund) (*types.MsgContributeToInsuranceFundResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+
+	val, found := ms.GetValidator(ctx, msg.Operator)
+	if !found {
+		return nil, types.ErrValidatorNotFound
+	}
+
+	amount := new(big.Int)
+	if _, ok := amount.SetString(msg.Amount, 10); !ok || amount.Sign() <= 0 {
+		return nil, types.ErrInvalidInsuranceAmount
+	}
+
+	// Transfer from operator to module
+	operatorAddr, err := sdk.AccAddressFromBech32(msg.Operator)
+	if err != nil {
+		return nil, types.ErrInvalidAddress
+	}
+	coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(amount)))
+	if ms.bankKeeper != nil {
+		if err := ms.bankKeeper.SendCoinsFromAccountToModule(ctx, operatorAddr, types.ModuleName, coins); err != nil {
+			return nil, fmt.Errorf("insurance fund contribution transfer failed: %w", err)
+		}
+	}
+
+	// Credit the validator's insurance fund balance
+	current, _ := new(big.Int).SetString(val.InsuranceFundBalance, 10)
+	if current == nil {
+		current = new(big.Int)
+	}
+	current.Add(current, amount)
+	val.InsuranceFundBalance = current.String()
+	ms.SetValidator(ctx, val)
+
+	ctx.EventManager().EmitEvent(sdk.NewEvent(
+		"zerone.staking.insurance_fund_contributed",
+		sdk.NewAttribute("operator", msg.Operator),
+		sdk.NewAttribute("amount", amount.String()),
+		sdk.NewAttribute("new_balance", current.String()),
+	))
+
+	return &types.MsgContributeToInsuranceFundResponse{NewBalance: current.String()}, nil
+}

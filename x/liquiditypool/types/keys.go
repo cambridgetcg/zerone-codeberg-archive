@@ -13,10 +13,11 @@ var (
 	TWAPKeyPrefix         = []byte{0x02}
 	ParamsKey             = []byte{0x03}
 	PoolCounterKey        = []byte{0x04}
-	DenomIndexPrefix      = []byte{0x10} // index: denom pair -> pool ID
-	MiningPeriodKeyPrefix = []byte{0x05} // LiquidityMiningPeriod by period id
-	PoolMiningIndexPrefix = []byte{0x06} // index: pool_id -> active mining period id
-	LpMinerPositionPrefix = []byte{0x07} // LpMinerPosition by pool_id+"/"+addr
+	DenomIndexPrefix        = []byte{0x10} // index: denom pair -> pool ID
+	MiningPeriodKeyPrefix   = []byte{0x05} // LiquidityMiningPeriod by period id
+	PoolMiningIndexPrefix   = []byte{0x06} // index: pool_id -> active mining period id
+	LpMinerPositionPrefix   = []byte{0x07} // LpMinerPosition by pool_id+"/"+addr
+	SwapCommitmentKeyPrefix = []byte{0x08} // SwapCommitment by sender+"/"+pool_id
 )
 
 func PoolKey(poolId string) []byte {
@@ -58,4 +59,9 @@ func LpMinerPositionKey(poolId, addr string) []byte {
 // LpMinerPositionPoolPrefix returns the prefix for iterating all positions in a pool.
 func LpMinerPositionPoolPrefix(poolId string) []byte {
 	return append(LpMinerPositionPrefix, []byte(poolId+"/")...)
+}
+
+// SwapCommitmentKey returns the storage key for a SwapCommitment (sender + "/" + pool_id).
+func SwapCommitmentKey(sender, poolId string) []byte {
+	return append(SwapCommitmentKeyPrefix, []byte(sender+"/"+poolId)...)
 }

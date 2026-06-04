@@ -497,6 +497,31 @@ func (k Keeper) RecordVerification(ctx sdk.Context, validatorAddr string, correc
 	k.SetValidator(ctx, val)
 }
 
+// absorbOverflowFromInsurance reduces overflow using the validator's insurance fund.
+// Returns (absorbed, remaining): absorbed is deducted from the insurance balance,
+// remaining is what still needs to come from DelegatedStake.
+// The caller is responsible for updating val.InsuranceFundBalance after the call.
+func absorbOverflowFromInsurance(val *types.Validator, overflow *big.Int) (absorbed, remaining *big.Int) {
+	insurance, _ := new(big.Int).SetString(val.InsuranceFundBalance, 10)
+	if insurance == nil || insurance.Sign() <= 0 {
+		return new(big.Int), new(big.Int).Set(overflow)
+	}
+	absorbed = new(big.Int)
+	remaining = new(big.Int)
+	if insurance.Cmp(overflow) >= 0 {
+		// Insurance fully covers the overflow
+		absorbed.Set(overflow)
+		remaining.SetInt64(0)
+	} else {
+		// Insurance partially covers: absorb what's available
+		absorbed.Set(insurance)
+		remaining.Sub(overflow, insurance)
+	}
+	newBalance := new(big.Int).Sub(insurance, absorbed)
+	val.InsuranceFundBalance = newBalance.String()
+	return absorbed, remaining
+}
+
 // SlashValidator slashes a validator with progressive escalation.
 func (k Keeper) SlashValidator(ctx sdk.Context, validatorAddr string, amount *big.Int, reason string) {
 	val, found := k.GetValidator(ctx, validatorAddr)
@@ -525,7 +550,7 @@ func (k Keeper) SlashValidator(ctx sdk.Context, validatorAddr string, amount *bi
 		}
 	}
 
-	// Slash from own stake first, delegated absorbs overflow.
+	// Slash from own stake first, insurance absorbs overflow before delegated stake.
 	selfStake, _ := new(big.Int).SetString(val.SelfDelegation, 10)
 	if selfStake == nil {
 		selfStake = new(big.Int)
@@ -533,18 +558,21 @@ func (k Keeper) SlashValidator(ctx sdk.Context, validatorAddr string, amount *bi
 	slashInt := new(big.Int).Set(adjustedAmount)
 	if slashInt.Cmp(selfStake) > 0 {
 		slashInt.Set(selfStake)
-		// Overflow to delegated
+		// Overflow: insurance fund absorbs first, remainder hits delegated stake.
 		overflow := new(big.Int).Sub(adjustedAmount, selfStake)
+		absorbed, remaining := absorbOverflowFromInsurance(val, overflow)
+		_ = absorbed // balance already updated inside absorbOverflowFromInsurance
+
 		delegated, _ := new(big.Int).SetString(val.DelegatedStake, 10)
 		if delegated == nil {
 			delegated = new(big.Int)
 		}
-		if overflow.Cmp(delegated) > 0 {
-			overflow.Set(delegated)
+		if remaining.Cmp(delegated) > 0 {
+			remaining.Set(delegated)
 		}
-		delegated.Sub(delegated, overflow)
+		delegated.Sub(delegated, remaining)
 		val.DelegatedStake = delegated.String()
-		slashInt.Add(slashInt, overflow)
+		slashInt.Add(slashInt, remaining)
 	}
 
 	// Route slashed tokens: burn fraction first, remainder to development fund.
@@ -659,7 +687,7 @@ func (k Keeper) SlashValidatorToModule(ctx sdk.Context, validatorAddr string, am
 		}
 	}
 
-	// Slash from own stake first, delegated absorbs overflow.
+	// Slash from own stake first, insurance absorbs overflow before delegated stake.
 	selfStake, _ := new(big.Int).SetString(val.SelfDelegation, 10)
 	if selfStake == nil {
 		selfStake = new(big.Int)
@@ -667,18 +695,21 @@ func (k Keeper) SlashValidatorToModule(ctx sdk.Context, validatorAddr string, am
 	slashInt := new(big.Int).Set(adjustedAmount)
 	if slashInt.Cmp(selfStake) > 0 {
 		slashInt.Set(selfStake)
-		// Overflow to delegated
+		// Overflow: insurance fund absorbs first, remainder hits delegated stake.
 		overflow := new(big.Int).Sub(adjustedAmount, selfStake)
+		absorbed, remaining := absorbOverflowFromInsurance(val, overflow)
+		_ = absorbed // balance already updated inside absorbOverflowFromInsurance
+
 		delegated, _ := new(big.Int).SetString(val.DelegatedStake, 10)
 		if delegated == nil {
 			delegated = new(big.Int)
 		}
-		if overflow.Cmp(delegated) > 0 {
-			overflow.Set(delegated)
+		if remaining.Cmp(delegated) > 0 {
+			remaining.Set(delegated)
 		}
-		delegated.Sub(delegated, overflow)
+		delegated.Sub(delegated, remaining)
 		val.DelegatedStake = delegated.String()
-		slashInt.Add(slashInt, overflow)
+		slashInt.Add(slashInt, remaining)
 	}
 
 	// Route slashed tokens: burn fraction first, remainder to destModule.

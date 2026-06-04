@@ -25,4 +25,8 @@ var (
 	ErrMiningPeriodInvalid   = errors.Register(ModuleName, 21, "invalid liquidity mining period: end_block must exceed start_block and amount_per_block must be positive")
 	ErrNoRewardsToClaim      = errors.Register(ModuleName, 22, "no liquidity rewards to claim")
 	ErrSwapExpired           = errors.Register(ModuleName, 23, "swap deadline has passed")
+	ErrNoCommitFound         = errors.Register(ModuleName, 24, "no swap commitment found for this sender+pool")
+	ErrCommitmentMismatch    = errors.Register(ModuleName, 25, "reveal parameters do not match commitment hash")
+	ErrRevealTooEarly        = errors.Register(ModuleName, 26, "reveal submitted before commit-reveal delay has elapsed")
+	ErrInvalidCommitment     = errors.Register(ModuleName, 27, "commitment must be a 32-byte sha256 hash")
 )

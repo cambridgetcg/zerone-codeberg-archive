@@ -1759,3 +1759,384 @@ func TestSwap_Deadline_BlockBoundaryOneOff(t *testing.T) {
 		t.Fatalf("deadline=currentBlock should succeed: %v", err)
 	}
 }
+
+// ===================================================================
+// Commit-Reveal Swap Tests (Market Microstructure Gap 1)
+// ===================================================================
+
+// TestCommitSwap_Success stores a commitment and verifies it is retrievable.
+func TestCommitSwap_Success(t *testing.T) {
+	ms, k, ctx, bk := setupMsgServer(t)
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "200000000000")
+
+	sender := "zrn1commit0000000000000000000000"
+	nonce := []byte("random-nonce-bytes")
+	hash := keeper.ComputeSwapCommitmentHash(nonce, poolId, "uzrn", "10000", "", 0)
+
+	_, err := ms.CommitSwap(ctx, &types.MsgCommitSwap{
+		Sender:     sender,
+		PoolId:     poolId,
+		Commitment: hash,
+	})
+	if err != nil {
+		t.Fatalf("CommitSwap failed: %v", err)
+	}
+
+	// Commitment must be stored
+	commit, found := k.GetSwapCommitment(ctx, sender, poolId)
+	if !found {
+		t.Fatal("expected commitment to be stored")
+	}
+	if commit.CommitBlock != 100 {
+		t.Errorf("expected CommitBlock=100, got %d", commit.CommitBlock)
+	}
+}
+
+// TestCommitSwap_PoolNotFound rejects commits to nonexistent pools.
+func TestCommitSwap_PoolNotFound(t *testing.T) {
+	ms, _, ctx, _ := setupMsgServer(t)
+
+	_, err := ms.CommitSwap(ctx, &types.MsgCommitSwap{
+		Sender:     "zrn1commit0000000000000000000000",
+		PoolId:     "nonexistent",
+		Commitment: make([]byte, 32),
+	})
+	if err == nil {
+		t.Fatal("expected ErrPoolNotFound")
+	}
+}
+
+// TestCommitSwap_InvalidLength rejects commitments that are not 32 bytes.
+func TestCommitSwap_InvalidLength(t *testing.T) {
+	ms, _, ctx, bk := setupMsgServer(t)
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "200000000000")
+
+	_, err := ms.CommitSwap(ctx, &types.MsgCommitSwap{
+		Sender:     "zrn1commit0000000000000000000000",
+		PoolId:     poolId,
+		Commitment: []byte("short"),
+	})
+	if err == nil {
+		t.Fatal("expected ErrInvalidCommitment for wrong length")
+	}
+}
+
+// TestRevealSwap_Success executes a full commit-reveal swap cycle.
+func TestRevealSwap_Success(t *testing.T) {
+	ms, _, ctx, bk := setupMsgServer(t)
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "200000000000")
+
+	sender := "zrn1commit0000000000000000000000"
+	bk.setBalance(sender, "uzrn", 100_000)
+
+	nonce := []byte("my-secret-nonce")
+	tokenInAmount := "10000"
+	hash := keeper.ComputeSwapCommitmentHash(nonce, poolId, "uzrn", tokenInAmount, "", 0)
+
+	// Commit
+	_, err := ms.CommitSwap(ctx, &types.MsgCommitSwap{
+		Sender:     sender,
+		PoolId:     poolId,
+		Commitment: hash,
+	})
+	if err != nil {
+		t.Fatalf("CommitSwap failed: %v", err)
+	}
+
+	// Reveal
+	resp, err := ms.RevealSwap(ctx, &types.MsgRevealSwap{
+		Sender:        sender,
+		PoolId:        poolId,
+		Nonce:         nonce,
+		TokenInDenom:  "uzrn",
+		TokenInAmount: tokenInAmount,
+		MinTokenOut:   "",
+		DeadlineBlock: 0,
+	})
+	if err != nil {
+		t.Fatalf("RevealSwap failed: %v", err)
+	}
+	if resp.TokenOutAmount == "" || resp.TokenOutAmount == "0" {
+		t.Error("expected non-zero output")
+	}
+}
+
+// TestRevealSwap_NoCommit rejects reveals without a prior commit.
+func TestRevealSwap_NoCommit(t *testing.T) {
+	ms, _, ctx, _ := setupMsgServer(t)
+
+	_, err := ms.RevealSwap(ctx, &types.MsgRevealSwap{
+		Sender:        "zrn1nobody0000000000000000000000",
+		PoolId:        "pool_1",
+		Nonce:         []byte("nonce"),
+		TokenInDenom:  "uzrn",
+		TokenInAmount: "1000",
+	})
+	if err == nil {
+		t.Fatal("expected ErrNoCommitFound")
+	}
+}
+
+// TestRevealSwap_WrongHash rejects reveals when parameters don't match the commitment.
+func TestRevealSwap_WrongHash(t *testing.T) {
+	ms, _, ctx, bk := setupMsgServer(t)
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "200000000000")
+
+	sender := "zrn1commit0000000000000000000000"
+	nonce := []byte("secret")
+	hash := keeper.ComputeSwapCommitmentHash(nonce, poolId, "uzrn", "10000", "", 0)
+
+	_, err := ms.CommitSwap(ctx, &types.MsgCommitSwap{
+		Sender:     sender,
+		PoolId:     poolId,
+		Commitment: hash,
+	})
+	if err != nil {
+		t.Fatalf("CommitSwap failed: %v", err)
+	}
+
+	// Reveal with different amount — hash mismatch
+	_, err = ms.RevealSwap(ctx, &types.MsgRevealSwap{
+		Sender:        sender,
+		PoolId:        poolId,
+		Nonce:         nonce,
+		TokenInDenom:  "uzrn",
+		TokenInAmount: "99999", // different from committed 10000
+	})
+	if err == nil {
+		t.Fatal("expected ErrCommitmentMismatch")
+	}
+}
+
+// TestRevealSwap_TooEarly enforces the commit-reveal delay.
+func TestRevealSwap_TooEarly(t *testing.T) {
+	ms, k, ctx, bk := setupMsgServer(t)
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "200000000000")
+
+	// Enable a 5-block delay
+	params := k.GetParams(ctx)
+	params.CommitRevealDelayBlocks = 5
+	k.SetParams(ctx, params)
+
+	sender := "zrn1commit0000000000000000000000"
+	nonce := []byte("nonce")
+	hash := keeper.ComputeSwapCommitmentHash(nonce, poolId, "uzrn", "10000", "", 0)
+
+	// Commit at block 100
+	_, err := ms.CommitSwap(ctx, &types.MsgCommitSwap{
+		Sender:     sender,
+		PoolId:     poolId,
+		Commitment: hash,
+	})
+	if err != nil {
+		t.Fatalf("CommitSwap failed: %v", err)
+	}
+
+	// Reveal at block 104 (delay=5, need block ≥ 105)
+	earlyCtx := ctx.WithBlockHeight(104)
+	_, err = ms.RevealSwap(earlyCtx, &types.MsgRevealSwap{
+		Sender:        sender,
+		PoolId:        poolId,
+		Nonce:         nonce,
+		TokenInDenom:  "uzrn",
+		TokenInAmount: "10000",
+	})
+	if err == nil {
+		t.Fatal("expected ErrRevealTooEarly")
+	}
+}
+
+// TestRevealSwap_ExactDelay passes when reveal is at exactly commit_block + delay.
+func TestRevealSwap_ExactDelay(t *testing.T) {
+	ms, k, ctx, bk := setupMsgServer(t)
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "200000000000")
+
+	params := k.GetParams(ctx)
+	params.CommitRevealDelayBlocks = 5
+	k.SetParams(ctx, params)
+
+	sender := "zrn1commit0000000000000000000000"
+	bk.setBalance(sender, "uzrn", 100_000)
+	nonce := []byte("nonce")
+	hash := keeper.ComputeSwapCommitmentHash(nonce, poolId, "uzrn", "10000", "", 0)
+
+	// Commit at block 100
+	_, err := ms.CommitSwap(ctx, &types.MsgCommitSwap{
+		Sender:     sender,
+		PoolId:     poolId,
+		Commitment: hash,
+	})
+	if err != nil {
+		t.Fatalf("CommitSwap failed: %v", err)
+	}
+
+	// Reveal at exactly block 105 (= 100 + 5) — must succeed
+	exactCtx := ctx.WithBlockHeight(105)
+	_, err = ms.RevealSwap(exactCtx, &types.MsgRevealSwap{
+		Sender:        sender,
+		PoolId:        poolId,
+		Nonce:         nonce,
+		TokenInDenom:  "uzrn",
+		TokenInAmount: "10000",
+	})
+	if err != nil {
+		t.Fatalf("reveal at exactly commit+delay should succeed: %v", err)
+	}
+}
+
+// TestRevealSwap_DelayDisabled allows immediate reveal when delay=0.
+func TestRevealSwap_DelayDisabled(t *testing.T) {
+	ms, k, ctx, bk := setupMsgServer(t)
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "200000000000")
+
+	// Default delay is 0 — no wait required
+	if k.GetParams(ctx).CommitRevealDelayBlocks != 0 {
+		t.Skip("test assumes default CommitRevealDelayBlocks=0")
+	}
+
+	sender := "zrn1commit0000000000000000000000"
+	bk.setBalance(sender, "uzrn", 100_000)
+	nonce := []byte("nonce")
+	hash := keeper.ComputeSwapCommitmentHash(nonce, poolId, "uzrn", "10000", "", 0)
+
+	_, err := ms.CommitSwap(ctx, &types.MsgCommitSwap{
+		Sender:     sender,
+		PoolId:     poolId,
+		Commitment: hash,
+	})
+	if err != nil {
+		t.Fatalf("CommitSwap failed: %v", err)
+	}
+
+	// Reveal in same block — should succeed
+	_, err = ms.RevealSwap(ctx, &types.MsgRevealSwap{
+		Sender:        sender,
+		PoolId:        poolId,
+		Nonce:         nonce,
+		TokenInDenom:  "uzrn",
+		TokenInAmount: "10000",
+	})
+	if err != nil {
+		t.Fatalf("reveal with delay=0 should succeed immediately: %v", err)
+	}
+}
+
+// TestRevealSwap_OneUse verifies the commitment is deleted after a successful reveal.
+func TestRevealSwap_OneUse(t *testing.T) {
+	ms, k, ctx, bk := setupMsgServer(t)
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "200000000000")
+
+	sender := "zrn1commit0000000000000000000000"
+	bk.setBalance(sender, "uzrn", 200_000)
+	nonce := []byte("nonce")
+	hash := keeper.ComputeSwapCommitmentHash(nonce, poolId, "uzrn", "10000", "", 0)
+
+	_, err := ms.CommitSwap(ctx, &types.MsgCommitSwap{
+		Sender:     sender,
+		PoolId:     poolId,
+		Commitment: hash,
+	})
+	if err != nil {
+		t.Fatalf("CommitSwap failed: %v", err)
+	}
+
+	// First reveal succeeds
+	_, err = ms.RevealSwap(ctx, &types.MsgRevealSwap{
+		Sender:        sender,
+		PoolId:        poolId,
+		Nonce:         nonce,
+		TokenInDenom:  "uzrn",
+		TokenInAmount: "10000",
+	})
+	if err != nil {
+		t.Fatalf("first RevealSwap failed: %v", err)
+	}
+
+	// Commitment must be gone
+	if _, found := k.GetSwapCommitment(ctx, sender, poolId); found {
+		t.Error("commitment should be deleted after reveal")
+	}
+
+	// Second reveal must fail (no commitment)
+	_, err = ms.RevealSwap(ctx, &types.MsgRevealSwap{
+		Sender:        sender,
+		PoolId:        poolId,
+		Nonce:         nonce,
+		TokenInDenom:  "uzrn",
+		TokenInAmount: "10000",
+	})
+	if err == nil {
+		t.Fatal("second reveal should fail with ErrNoCommitFound")
+	}
+}
+
+// TestCommitReveal_GenesisRoundTrip verifies commitments are exported and imported via genesis.
+func TestCommitReveal_GenesisRoundTrip(t *testing.T) {
+	ms, k, ctx, bk := setupMsgServer(t)
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "200000000000")
+
+	sender := "zrn1commit0000000000000000000000"
+	nonce := []byte("nonce")
+	hash := keeper.ComputeSwapCommitmentHash(nonce, poolId, "uzrn", "10000", "", 0)
+
+	_, err := ms.CommitSwap(ctx, &types.MsgCommitSwap{
+		Sender:     sender,
+		PoolId:     poolId,
+		Commitment: hash,
+	})
+	if err != nil {
+		t.Fatalf("CommitSwap failed: %v", err)
+	}
+
+	// Export and re-import
+	gs := k.ExportGenesis(ctx)
+	if len(gs.SwapCommitments) != 1 {
+		t.Fatalf("expected 1 commitment in genesis, got %d", len(gs.SwapCommitments))
+	}
+
+	// Fresh keeper with imported genesis
+	_, k2, ctx2, _ := setupMsgServer(t)
+	k2.InitGenesis(ctx2, gs)
+
+	commit, found := k2.GetSwapCommitment(ctx2, sender, poolId)
+	if !found {
+		t.Fatal("commitment not found after genesis round-trip")
+	}
+	if commit.CommitBlock != 100 {
+		t.Errorf("expected CommitBlock=100, got %d", commit.CommitBlock)
+	}
+}
+
+// TestCommitReveal_SlippageViaReveal verifies slippage protection works through the reveal path.
+func TestCommitReveal_SlippageViaReveal(t *testing.T) {
+	ms, _, ctx, bk := setupMsgServer(t)
+	poolId := createTestPool(t, ms, ctx, bk, "uzrn", "uatom", "100000000000", "200000000000")
+
+	sender := "zrn1commit0000000000000000000000"
+	bk.setBalance(sender, "uzrn", 100_000)
+	nonce := []byte("nonce")
+	// Commit with min_token_out = unreachably high value
+	minOut := "999999999999999"
+	hash := keeper.ComputeSwapCommitmentHash(nonce, poolId, "uzrn", "10000", minOut, 0)
+
+	_, err := ms.CommitSwap(ctx, &types.MsgCommitSwap{
+		Sender:     sender,
+		PoolId:     poolId,
+		Commitment: hash,
+	})
+	if err != nil {
+		t.Fatalf("CommitSwap failed: %v", err)
+	}
+
+	_, err = ms.RevealSwap(ctx, &types.MsgRevealSwap{
+		Sender:        sender,
+		PoolId:        poolId,
+		Nonce:         nonce,
+		TokenInDenom:  "uzrn",
+		TokenInAmount: "10000",
+		MinTokenOut:   minOut,
+	})
+	if err == nil {
+		t.Fatal("expected ErrSlippageExceeded through reveal path")
+	}
+}

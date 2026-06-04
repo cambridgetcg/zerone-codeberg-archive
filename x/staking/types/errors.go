@@ -27,4 +27,5 @@ var (
 	ErrInvalidEvidence          = errors.Register(ModuleName, 23, "invalid slash evidence")
 	ErrEvidenceAlreadySubmitted = errors.Register(ModuleName, 24, "slash evidence already submitted by this address for this validator this block")
 	ErrValidatorNotSlashable    = errors.Register(ModuleName, 25, "validator cannot be slashed (no configured rate for slash type)")
+	ErrInvalidInsuranceAmount   = errors.Register(ModuleName, 26, "insurance contribution amount must be positive")
 )

@@ -18,6 +18,7 @@ service Msg {
   rpc UpdateValidatorStake(MsgUpdateValidatorStake) returns (MsgUpdateValidatorStakeResponse);
   rpc UpdateParams(MsgUpdateParams)           returns (MsgUpdateParamsResponse);
   rpc SubmitSlashEvidence(MsgSubmitSlashEvidence) returns (MsgSubmitSlashEvidenceResponse);
+  rpc ContributeToInsuranceFund(MsgContributeToInsuranceFund) returns (MsgContributeToInsuranceFundResponse);
 }
 
 // MsgRegisterValidator registers a new validator.
@@ -114,4 +115,17 @@ message MsgSubmitSlashEvidence {
 
 message MsgSubmitSlashEvidenceResponse {
   string evidence_id = 1; // unique id assigned to the queued evidence
+}
+
+// MsgContributeToInsuranceFund deposits uzrn into the validator's delegator
+// insurance pool. Any validator operator can call this to pre-fund coverage
+// for their delegators against slash overflow.
+message MsgContributeToInsuranceFund {
+  option (cosmos.msg.v1.signer) = "operator";
+
+  string operator       = 1; // validator operator address
+  string amount         = 2; // uzrn bigint string — amount to contribute
+}
+message MsgContributeToInsuranceFundResponse {
+  string new_balance = 1; // insurance fund balance after contribution
 }

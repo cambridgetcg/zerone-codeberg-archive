@@ -111,6 +111,11 @@ func (k Keeper) InitGenesis(ctx sdk.Context, gs *types.GenesisState) {
 			k.SetLpMinerPosition(ctx, pos)
 		}
 	}
+	for _, sc := range gs.SwapCommitments {
+		if sc != nil {
+			k.SetSwapCommitment(ctx, sc)
+		}
+	}
 }
 
 func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
@@ -134,12 +139,18 @@ func (k Keeper) ExportGenesis(ctx sdk.Context) *types.GenesisState {
 		positions = append(positions, pos)
 		return false
 	})
+	var commitments []*types.SwapCommitment
+	k.IterateSwapCommitments(ctx, func(sc *types.SwapCommitment) bool {
+		commitments = append(commitments, sc)
+		return false
+	})
 	return &types.GenesisState{
 		Params:           k.GetParams(ctx),
 		Pools:            pools,
 		TwapAccumulators: accs,
 		MiningPeriods:    periods,
 		MinerPositions:   positions,
+		SwapCommitments:  commitments,
 	}
 }
 

@@ -470,6 +470,82 @@ func (x *SwapResult) GetPriceImpactBps() uint64 {
 	return 0
 }
 
+// SwapCommitment stores a pending commit-reveal swap commitment.
+// Key: SwapCommitmentKeyPrefix + sender + "/" + pool_id.
+// One commitment per (sender, pool_id) at a time; overwriting is allowed.
+type SwapCommitment struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Sender string                 `protobuf:"bytes,1,opt,name=sender,proto3" json:"sender,omitempty"`
+	PoolId string                 `protobuf:"bytes,2,opt,name=pool_id,json=poolId,proto3" json:"pool_id,omitempty"`
+	// sha256(nonce || "|" || pool_id || "|" || token_in_denom || "|" ||
+	//
+	//	token_in_amount || "|" || min_token_out || "|" || deadline_block_decimal)
+	//
+	// nonce is length-prefixed (4-byte big-endian uint32) to prevent preimage collision.
+	Commitment    []byte `protobuf:"bytes,3,opt,name=commitment,proto3" json:"commitment,omitempty"`
+	CommitBlock   uint64 `protobuf:"varint,4,opt,name=commit_block,json=commitBlock,proto3" json:"commit_block,omitempty"` // block height at which commit was recorded
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SwapCommitment) Reset() {
+	*x = SwapCommitment{}
+	mi := &file_zerone_liquiditypool_v1_types_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SwapCommitment) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SwapCommitment) ProtoMessage() {}
+
+func (x *SwapCommitment) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_liquiditypool_v1_types_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SwapCommitment.ProtoReflect.Descriptor instead.
+func (*SwapCommitment) Descriptor() ([]byte, []int) {
+	return file_zerone_liquiditypool_v1_types_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *SwapCommitment) GetSender() string {
+	if x != nil {
+		return x.Sender
+	}
+	return ""
+}
+
+func (x *SwapCommitment) GetPoolId() string {
+	if x != nil {
+		return x.PoolId
+	}
+	return ""
+}
+
+func (x *SwapCommitment) GetCommitment() []byte {
+	if x != nil {
+		return x.Commitment
+	}
+	return nil
+}
+
+func (x *SwapCommitment) GetCommitBlock() uint64 {
+	if x != nil {
+		return x.CommitBlock
+	}
+	return 0
+}
+
 var File_zerone_liquiditypool_v1_types_proto protoreflect.FileDescriptor
 
 const file_zerone_liquiditypool_v1_types_proto_rawDesc = "" +
@@ -520,7 +596,14 @@ const file_zerone_liquiditypool_v1_types_proto_rawDesc = "" +
 	"\x10token_out_amount\x18\x02 \x01(\tR\x0etokenOutAmount\x12\x1d\n" +
 	"\n" +
 	"fee_amount\x18\x03 \x01(\tR\tfeeAmount\x12(\n" +
-	"\x10price_impact_bps\x18\x04 \x01(\x04R\x0epriceImpactBpsB6Z4github.com/zerone-chain/zerone/x/liquiditypool/typesb\x06proto3"
+	"\x10price_impact_bps\x18\x04 \x01(\x04R\x0epriceImpactBps\"\x84\x01\n" +
+	"\x0eSwapCommitment\x12\x16\n" +
+	"\x06sender\x18\x01 \x01(\tR\x06sender\x12\x17\n" +
+	"\apool_id\x18\x02 \x01(\tR\x06poolId\x12\x1e\n" +
+	"\n" +
+	"commitment\x18\x03 \x01(\fR\n" +
+	"commitment\x12!\n" +
+	"\fcommit_block\x18\x04 \x01(\x04R\vcommitBlockB6Z4github.com/zerone-chain/zerone/x/liquiditypool/typesb\x06proto3"
 
 var (
 	file_zerone_liquiditypool_v1_types_proto_rawDescOnce sync.Once
@@ -534,13 +617,14 @@ func file_zerone_liquiditypool_v1_types_proto_rawDescGZIP() []byte {
 	return file_zerone_liquiditypool_v1_types_proto_rawDescData
 }
 
-var file_zerone_liquiditypool_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_zerone_liquiditypool_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_zerone_liquiditypool_v1_types_proto_goTypes = []any{
 	(*Pool)(nil),                  // 0: zerone.liquiditypool.v1.Pool
 	(*LiquidityMiningPeriod)(nil), // 1: zerone.liquiditypool.v1.LiquidityMiningPeriod
 	(*LpMinerPosition)(nil),       // 2: zerone.liquiditypool.v1.LpMinerPosition
 	(*TWAPAccumulator)(nil),       // 3: zerone.liquiditypool.v1.TWAPAccumulator
 	(*SwapResult)(nil),            // 4: zerone.liquiditypool.v1.SwapResult
+	(*SwapCommitment)(nil),        // 5: zerone.liquiditypool.v1.SwapCommitment
 }
 var file_zerone_liquiditypool_v1_types_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -561,7 +645,7 @@ func file_zerone_liquiditypool_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_zerone_liquiditypool_v1_types_proto_rawDesc), len(file_zerone_liquiditypool_v1_types_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

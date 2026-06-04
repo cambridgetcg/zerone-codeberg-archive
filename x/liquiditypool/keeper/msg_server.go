@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/big"
@@ -528,4 +529,87 @@ func (m msgServer) ClaimLiquidityRewards(goCtx context.Context, msg *types.MsgCl
 	}
 
 	return &types.MsgClaimLiquidityRewardsResponse{ClaimedAmount: claimed.String()}, nil
+}
+
+// CommitSwap stores a sha256 commitment for a swap — the parameters stay hidden until RevealSwap.
+// This breaks the front-running window: by the time the reveal is visible in the mempool, the
+// commit is already included in a block and the validator cannot sandwich the swap.
+func (m msgServer) CommitSwap(goCtx context.Context, msg *types.MsgCommitSwap) (*types.MsgCommitSwapResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+
+	// Pool must exist
+	if _, found := m.Keeper.GetPool(ctx, msg.PoolId); !found {
+		return nil, types.ErrPoolNotFound
+	}
+
+	// Commitment must be exactly 32 bytes (sha256 output)
+	if len(msg.Commitment) != 32 {
+		return nil, types.ErrInvalidCommitment
+	}
+
+	// Store (overwrite allowed — user may re-commit if they change their mind)
+	m.Keeper.SetSwapCommitment(ctx, &types.SwapCommitment{
+		Sender:      msg.Sender,
+		PoolId:      msg.PoolId,
+		Commitment:  msg.Commitment,
+		CommitBlock: uint64(ctx.BlockHeight()),
+	})
+
+	return &types.MsgCommitSwapResponse{}, nil
+}
+
+// RevealSwap verifies a commitment and executes the swap.
+// The nonce and all swap parameters must reproduce the stored sha256 hash exactly.
+// One-use: the commitment is deleted after a successful reveal.
+func (m msgServer) RevealSwap(goCtx context.Context, msg *types.MsgRevealSwap) (*types.MsgRevealSwapResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+
+	// Load commitment
+	commit, found := m.Keeper.GetSwapCommitment(ctx, msg.Sender, msg.PoolId)
+	if !found {
+		return nil, types.ErrNoCommitFound
+	}
+
+	// Delay check: if commit-reveal delay is configured, enforce it
+	params := m.Keeper.GetParams(ctx)
+	if params.CommitRevealDelayBlocks > 0 {
+		revealBlock := uint64(ctx.BlockHeight())
+		if revealBlock < commit.CommitBlock+params.CommitRevealDelayBlocks {
+			return nil, types.ErrRevealTooEarly
+		}
+	}
+
+	// Verify commitment: recompute hash from reveal parameters and compare
+	expected := ComputeSwapCommitmentHash(
+		msg.Nonce,
+		msg.PoolId,
+		msg.TokenInDenom,
+		msg.TokenInAmount,
+		msg.MinTokenOut,
+		msg.DeadlineBlock,
+	)
+	if !bytes.Equal(expected, commit.Commitment) {
+		return nil, types.ErrCommitmentMismatch
+	}
+
+	// Delete commitment before execution (one-use only; prevents replay even on error)
+	m.Keeper.DeleteSwapCommitment(ctx, msg.Sender, msg.PoolId)
+
+	// Execute the underlying swap
+	swapResp, err := m.Swap(goCtx, &types.MsgSwap{
+		Sender:        msg.Sender,
+		PoolId:        msg.PoolId,
+		TokenInDenom:  msg.TokenInDenom,
+		TokenInAmount: msg.TokenInAmount,
+		MinTokenOut:   msg.MinTokenOut,
+		DeadlineBlock: msg.DeadlineBlock,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.MsgRevealSwapResponse{
+		TokenOutAmount: swapResp.TokenOutAmount,
+		FeeAmount:      swapResp.FeeAmount,
+	}, nil
 }
