@@ -401,6 +401,14 @@ message Params {
   // longer penalised purely for being wrong; they are rewarded for being *correctly
   // wrong about something they were willing to test*. 0 = disabled (default).
   uint64 null_result_credit_uzrn = 171; // default: 0 (disabled)
+
+  // proof_certificate_bypass_enabled (Formal Logic Gap 1 — Tier 0 verification).
+  // When true, M-FORMAL claims that carry a PROOF_FORMAT_CANONICAL_CHAIN certificate
+  // with all premise_fact_ids verified as accepted on-chain facts skip the
+  // Proof-of-Truth panel and are auto-accepted at their declared confidence.
+  // Default: false (all claims go through PoT until governance activates bypass
+  // after the canonical certificate format is validated in production).
+  bool proof_certificate_bypass_enabled = 172; // default: false
 }
 
 // GenesisState is the genesis state of the knowledge module.

@@ -380,8 +380,15 @@ type Params struct {
 	// longer penalised purely for being wrong; they are rewarded for being *correctly
 	// wrong about something they were willing to test*. 0 = disabled (default).
 	NullResultCreditUzrn uint64 `protobuf:"varint,171,opt,name=null_result_credit_uzrn,json=nullResultCreditUzrn,proto3" json:"null_result_credit_uzrn,omitempty"` // default: 0 (disabled)
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// proof_certificate_bypass_enabled (Formal Logic Gap 1 — Tier 0 verification).
+	// When true, M-FORMAL claims that carry a PROOF_FORMAT_CANONICAL_CHAIN certificate
+	// with all premise_fact_ids verified as accepted on-chain facts skip the
+	// Proof-of-Truth panel and are auto-accepted at their declared confidence.
+	// Default: false (all claims go through PoT until governance activates bypass
+	// after the canonical certificate format is validated in production).
+	ProofCertificateBypassEnabled bool `protobuf:"varint,172,opt,name=proof_certificate_bypass_enabled,json=proofCertificateBypassEnabled,proto3" json:"proof_certificate_bypass_enabled,omitempty"` // default: false
+	unknownFields                 protoimpl.UnknownFields
+	sizeCache                     protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -1611,6 +1618,13 @@ func (x *Params) GetNullResultCreditUzrn() uint64 {
 	return 0
 }
 
+func (x *Params) GetProofCertificateBypassEnabled() bool {
+	if x != nil {
+		return x.ProofCertificateBypassEnabled
+	}
+	return false
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -1848,7 +1862,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xbdT\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\x87U\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2021,7 +2035,8 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\x1dmin_verifier_independence_bps\x18\xa8\x01 \x01(\x04R\x1aminVerifierIndependenceBps\x12H\n" +
 	" min_verifier_independence_rounds\x18\xa9\x01 \x01(\x04R\x1dminVerifierIndependenceRounds\x12:\n" +
 	"\x19min_round_duration_blocks\x18\xaa\x01 \x01(\x04R\x16minRoundDurationBlocks\x126\n" +
-	"\x17null_result_credit_uzrn\x18\xab\x01 \x01(\x04R\x14nullResultCreditUzrn\x1aN\n" +
+	"\x17null_result_credit_uzrn\x18\xab\x01 \x01(\x04R\x14nullResultCreditUzrn\x12H\n" +
+	" proof_certificate_bypass_enabled\x18\xac\x01 \x01(\bR\x1dproofCertificateBypassEnabled\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xe5\x0e\n" +

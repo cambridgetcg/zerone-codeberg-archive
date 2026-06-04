@@ -236,6 +236,12 @@ message MsgSubmitClaim {
   // If non-empty, the claim is tagged as "testable with declared conditions" — eligible for
   // null_result_credit if later rejected, and easier to challenge with targeted evidence.
   repeated string refutation_conditions = 15;
+
+  // proof_certificate: machine-verifiable derivation for M-FORMAL claims.
+  // See Claim.proof_certificate for full semantics. When present with
+  // format PROOF_FORMAT_CANONICAL_CHAIN, the chain attempts premise verification
+  // at claim creation and may auto-accept without a PoT panel if bypass is enabled.
+  ProofCertificate proof_certificate = 16;
 }
 
 message MsgSubmitClaimResponse {

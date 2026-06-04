@@ -704,6 +704,29 @@ message CommonKnowledgeEntry {
   uint64 added_block  = 6;
 }
 
+// ProofFormat identifies the formal system used to encode a proof certificate.
+enum ProofFormat {
+  PROOF_FORMAT_UNSPECIFIED     = 0;
+  PROOF_FORMAT_CANONICAL_CHAIN = 1; // chain-native: premises + derivation in canonical form
+  PROOF_FORMAT_LEAN4           = 2; // Lean 4 proof term (stored as commitment, external verifier)
+  PROOF_FORMAT_HASH_ONLY       = 3; // SHA-256 of an external proof (light commitment)
+}
+
+// ProofCertificate is a machine-verifiable derivation attached to an M-FORMAL claim.
+// When format == PROOF_FORMAT_CANONICAL_CHAIN, the chain verifies that all
+// premise_fact_ids reference accepted facts on-chain. Claims that pass this check
+// set Claim.certificate_verified = true and may bypass the Proof-of-Truth panel
+// (Tier 0 verification) when Params.proof_certificate_bypass_enabled is true.
+//
+// Other formats (LEAN4, HASH_ONLY) are stored as commitments only — the chain
+// cannot verify them mechanically and they never set certificate_verified.
+message ProofCertificate {
+  ProofFormat     format            = 1;
+  bytes           certificate_bytes = 2; // proof body (format-specific encoding)
+  string          formal_system     = 3; // e.g. "CANONICAL_FORM_V1", "LEAN4", "COQ"
+  repeated string premise_fact_ids  = 4; // accepted fact IDs this derivation depends on
+}
+
 // Claim is an unverified submission awaiting or undergoing verification.
 message Claim {
   string id                    = 1;
@@ -761,6 +784,21 @@ message Claim {
   // challenge targeting (challengers know exactly what to disprove), and
   // calibration diagnostics (submitters with declared conditions are more trackable).
   repeated string refutation_conditions = 25;
+
+  // proof_certificate: machine-verifiable derivation for M-FORMAL claims.
+  // When present with format PROOF_FORMAT_CANONICAL_CHAIN and all premise_fact_ids
+  // referencing accepted on-chain facts, the chain sets certificate_verified = true
+  // at claim creation. With Params.proof_certificate_bypass_enabled, a verified
+  // M-FORMAL claim is auto-accepted without a Proof-of-Truth panel (Tier 0).
+  // For other formats (LEAN4, HASH_ONLY) the certificate is stored as a commitment
+  // only — certificate_verified remains false.
+  ProofCertificate proof_certificate = 26;
+
+  // certificate_verified: set true by the chain at claim creation when
+  // proof_certificate.format == CANONICAL_CHAIN and all premise_fact_ids are
+  // accepted facts. Only chain-verifiable proofs set this field; external proof
+  // formats (LEAN4, HASH_ONLY) leave it false regardless of content.
+  bool certificate_verified = 27;
 }
 
 // VerificationRound tracks one commit-reveal verification cycle.

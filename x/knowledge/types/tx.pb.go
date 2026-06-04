@@ -50,8 +50,13 @@ type MsgSubmitClaim struct {
 	// If non-empty, the claim is tagged as "testable with declared conditions" — eligible for
 	// null_result_credit if later rejected, and easier to challenge with targeted evidence.
 	RefutationConditions []string `protobuf:"bytes,15,rep,name=refutation_conditions,json=refutationConditions,proto3" json:"refutation_conditions,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// proof_certificate: machine-verifiable derivation for M-FORMAL claims.
+	// See Claim.proof_certificate for full semantics. When present with
+	// format PROOF_FORMAT_CANONICAL_CHAIN, the chain attempts premise verification
+	// at claim creation and may auto-accept without a PoT panel if bypass is enabled.
+	ProofCertificate *ProofCertificate `protobuf:"bytes,16,opt,name=proof_certificate,json=proofCertificate,proto3" json:"proof_certificate,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *MsgSubmitClaim) Reset() {
@@ -185,6 +190,13 @@ func (x *MsgSubmitClaim) GetRequiresHumanVerifiers() bool {
 func (x *MsgSubmitClaim) GetRefutationConditions() []string {
 	if x != nil {
 		return x.RefutationConditions
+	}
+	return nil
+}
+
+func (x *MsgSubmitClaim) GetProofCertificate() *ProofCertificate {
+	if x != nil {
+		return x.ProofCertificate
 	}
 	return nil
 }
@@ -5721,7 +5733,7 @@ var File_zerone_knowledge_v1_tx_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_tx_proto_rawDesc = "" +
 	"\n" +
-	"\x1czerone/knowledge/v1/tx.proto\x12\x13zerone.knowledge.v1\x1a\x17cosmos/msg/v1/msg.proto\x1a\x1fzerone/knowledge/v1/types.proto\x1a!zerone/knowledge/v1/genesis.proto\"\x94\x05\n" +
+	"\x1czerone/knowledge/v1/tx.proto\x12\x13zerone.knowledge.v1\x1a\x17cosmos/msg/v1/msg.proto\x1a\x1fzerone/knowledge/v1/types.proto\x1a!zerone/knowledge/v1/genesis.proto\"\xe8\x05\n" +
 	"\x0eMsgSubmitClaim\x12\x1c\n" +
 	"\tsubmitter\x18\x01 \x01(\tR\tsubmitter\x12!\n" +
 	"\ffact_content\x18\x02 \x01(\tR\vfactContent\x12\x16\n" +
@@ -5741,7 +5753,8 @@ const file_zerone_knowledge_v1_tx_proto_rawDesc = "" +
 	"\tsponsored\x18\f \x01(\bR\tsponsored\x12(\n" +
 	"\x10priority_tip_bps\x18\r \x01(\x04R\x0epriorityTipBps\x128\n" +
 	"\x18requires_human_verifiers\x18\x0e \x01(\bR\x16requiresHumanVerifiers\x123\n" +
-	"\x15refutation_conditions\x18\x0f \x03(\tR\x14refutationConditions:\x0e\x82\xe7\xb0*\tsubmitter\"3\n" +
+	"\x15refutation_conditions\x18\x0f \x03(\tR\x14refutationConditions\x12R\n" +
+	"\x11proof_certificate\x18\x10 \x01(\v2%.zerone.knowledge.v1.ProofCertificateR\x10proofCertificate:\x0e\x82\xe7\xb0*\tsubmitter\"3\n" +
 	"\x16MsgSubmitClaimResponse\x12\x19\n" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\"|\n" +
 	"\x13MsgSubmitCommitment\x12\x1a\n" +
@@ -6314,130 +6327,132 @@ var file_zerone_knowledge_v1_tx_proto_goTypes = []any{
 	(ClaimType)(0),                                   // 99: zerone.knowledge.v1.ClaimType
 	(*ClaimRelation)(nil),                            // 100: zerone.knowledge.v1.ClaimRelation
 	(*ClaimStructure)(nil),                           // 101: zerone.knowledge.v1.ClaimStructure
-	(*Params)(nil),                                   // 102: zerone.knowledge.v1.Params
-	(*TokenizerSpec)(nil),                            // 103: zerone.knowledge.v1.TokenizerSpec
-	(AugmentationVerdict)(0),                         // 104: zerone.knowledge.v1.AugmentationVerdict
-	(*TraceSchema)(nil),                              // 105: zerone.knowledge.v1.TraceSchema
-	(*CorpusSelector)(nil),                           // 106: zerone.knowledge.v1.CorpusSelector
-	(IncidentSeverity)(0),                            // 107: zerone.knowledge.v1.IncidentSeverity
-	(RemediationType)(0),                             // 108: zerone.knowledge.v1.RemediationType
+	(*ProofCertificate)(nil),                         // 102: zerone.knowledge.v1.ProofCertificate
+	(*Params)(nil),                                   // 103: zerone.knowledge.v1.Params
+	(*TokenizerSpec)(nil),                            // 104: zerone.knowledge.v1.TokenizerSpec
+	(AugmentationVerdict)(0),                         // 105: zerone.knowledge.v1.AugmentationVerdict
+	(*TraceSchema)(nil),                              // 106: zerone.knowledge.v1.TraceSchema
+	(*CorpusSelector)(nil),                           // 107: zerone.knowledge.v1.CorpusSelector
+	(IncidentSeverity)(0),                            // 108: zerone.knowledge.v1.IncidentSeverity
+	(RemediationType)(0),                             // 109: zerone.knowledge.v1.RemediationType
 }
 var file_zerone_knowledge_v1_tx_proto_depIdxs = []int32{
 	99,  // 0: zerone.knowledge.v1.MsgSubmitClaim.claim_type:type_name -> zerone.knowledge.v1.ClaimType
 	100, // 1: zerone.knowledge.v1.MsgSubmitClaim.relations:type_name -> zerone.knowledge.v1.ClaimRelation
 	101, // 2: zerone.knowledge.v1.MsgSubmitClaim.structure:type_name -> zerone.knowledge.v1.ClaimStructure
-	102, // 3: zerone.knowledge.v1.MsgUpdateParams.params:type_name -> zerone.knowledge.v1.Params
-	39,  // 4: zerone.knowledge.v1.MsgReportDemand.reports:type_name -> zerone.knowledge.v1.DemandReport
-	103, // 5: zerone.knowledge.v1.MsgAmendTokenizerSpec.spec:type_name -> zerone.knowledge.v1.TokenizerSpec
-	104, // 6: zerone.knowledge.v1.MsgVoteOnAugmentation.vote:type_name -> zerone.knowledge.v1.AugmentationVerdict
-	104, // 7: zerone.knowledge.v1.MsgVoteOnAugmentationResponse.finalized_verdict:type_name -> zerone.knowledge.v1.AugmentationVerdict
-	105, // 8: zerone.knowledge.v1.MsgAmendTraceSchema.schema:type_name -> zerone.knowledge.v1.TraceSchema
-	106, // 9: zerone.knowledge.v1.MsgCreateTrainingManifest.corpus_selector:type_name -> zerone.knowledge.v1.CorpusSelector
-	107, // 10: zerone.knowledge.v1.MsgOpenIncident.severity:type_name -> zerone.knowledge.v1.IncidentSeverity
-	108, // 11: zerone.knowledge.v1.MsgRecordRemediation.type:type_name -> zerone.knowledge.v1.RemediationType
-	0,   // 12: zerone.knowledge.v1.Msg.SubmitClaim:input_type -> zerone.knowledge.v1.MsgSubmitClaim
-	2,   // 13: zerone.knowledge.v1.Msg.SubmitCommitment:input_type -> zerone.knowledge.v1.MsgSubmitCommitment
-	4,   // 14: zerone.knowledge.v1.Msg.SubmitReveal:input_type -> zerone.knowledge.v1.MsgSubmitReveal
-	6,   // 15: zerone.knowledge.v1.Msg.ChallengeFact:input_type -> zerone.knowledge.v1.MsgChallengeFact
-	8,   // 16: zerone.knowledge.v1.Msg.AddFact:input_type -> zerone.knowledge.v1.MsgAddFact
-	10,  // 17: zerone.knowledge.v1.Msg.SubmitContradiction:input_type -> zerone.knowledge.v1.MsgSubmitContradiction
-	12,  // 18: zerone.knowledge.v1.Msg.PatronizeFact:input_type -> zerone.knowledge.v1.MsgPatronizeFact
-	14,  // 19: zerone.knowledge.v1.Msg.ProposeDomain:input_type -> zerone.knowledge.v1.MsgProposeDomain
-	16,  // 20: zerone.knowledge.v1.Msg.EndorseDomainProposal:input_type -> zerone.knowledge.v1.MsgEndorseDomainProposal
-	18,  // 21: zerone.knowledge.v1.Msg.ChallengeDomainProposal:input_type -> zerone.knowledge.v1.MsgChallengeDomainProposal
-	20,  // 22: zerone.knowledge.v1.Msg.RegisterStratum:input_type -> zerone.knowledge.v1.MsgRegisterStratum
-	22,  // 23: zerone.knowledge.v1.Msg.ChallengeProvisionalFact:input_type -> zerone.knowledge.v1.MsgChallengeProvisionalFact
-	24,  // 24: zerone.knowledge.v1.Msg.UpdateParams:input_type -> zerone.knowledge.v1.MsgUpdateParams
-	26,  // 25: zerone.knowledge.v1.Msg.UpdateExtendedParams:input_type -> zerone.knowledge.v1.MsgUpdateExtendedParams
-	28,  // 26: zerone.knowledge.v1.Msg.ProposeResearchFund:input_type -> zerone.knowledge.v1.MsgProposeResearchFund
-	30,  // 27: zerone.knowledge.v1.Msg.VoteResearchProposal:input_type -> zerone.knowledge.v1.MsgVoteResearchProposal
-	32,  // 28: zerone.knowledge.v1.Msg.ExecuteResearchProposal:input_type -> zerone.knowledge.v1.MsgExecuteResearchProposal
-	34,  // 29: zerone.knowledge.v1.Msg.AddCommonKnowledge:input_type -> zerone.knowledge.v1.MsgAddCommonKnowledge
-	36,  // 30: zerone.knowledge.v1.Msg.RemoveCommonKnowledge:input_type -> zerone.knowledge.v1.MsgRemoveCommonKnowledge
-	38,  // 31: zerone.knowledge.v1.Msg.ReportDemand:input_type -> zerone.knowledge.v1.MsgReportDemand
-	41,  // 32: zerone.knowledge.v1.Msg.RateFact:input_type -> zerone.knowledge.v1.MsgRateFact
-	43,  // 33: zerone.knowledge.v1.Msg.RegisterTrainingPipeline:input_type -> zerone.knowledge.v1.MsgRegisterTrainingPipeline
-	45,  // 34: zerone.knowledge.v1.Msg.UpdateTrainingPipeline:input_type -> zerone.knowledge.v1.MsgUpdateTrainingPipeline
-	47,  // 35: zerone.knowledge.v1.Msg.RegisterModelCard:input_type -> zerone.knowledge.v1.MsgRegisterModelCard
-	49,  // 36: zerone.knowledge.v1.Msg.UpdateModelCard:input_type -> zerone.knowledge.v1.MsgUpdateModelCard
-	51,  // 37: zerone.knowledge.v1.Msg.RetireModelCard:input_type -> zerone.knowledge.v1.MsgRetireModelCard
-	53,  // 38: zerone.knowledge.v1.Msg.AmendTokenizerSpec:input_type -> zerone.knowledge.v1.MsgAmendTokenizerSpec
-	55,  // 39: zerone.knowledge.v1.Msg.AttributeContributions:input_type -> zerone.knowledge.v1.MsgAttributeContributions
-	57,  // 40: zerone.knowledge.v1.Msg.AttestTraining:input_type -> zerone.knowledge.v1.MsgAttestTraining
-	59,  // 41: zerone.knowledge.v1.Msg.CreateAugmentationBounty:input_type -> zerone.knowledge.v1.MsgCreateAugmentationBounty
-	61,  // 42: zerone.knowledge.v1.Msg.SubmitAugmentation:input_type -> zerone.knowledge.v1.MsgSubmitAugmentation
-	63,  // 43: zerone.knowledge.v1.Msg.AcceptAugmentation:input_type -> zerone.knowledge.v1.MsgAcceptAugmentation
-	65,  // 44: zerone.knowledge.v1.Msg.VoteOnAugmentation:input_type -> zerone.knowledge.v1.MsgVoteOnAugmentation
-	67,  // 45: zerone.knowledge.v1.Msg.SponsorVetoAugmentation:input_type -> zerone.knowledge.v1.MsgSponsorVetoAugmentation
-	69,  // 46: zerone.knowledge.v1.Msg.ChallengeContribution:input_type -> zerone.knowledge.v1.MsgChallengeContribution
-	71,  // 47: zerone.knowledge.v1.Msg.ResolveContributionChallenge:input_type -> zerone.knowledge.v1.MsgResolveContributionChallenge
-	73,  // 48: zerone.knowledge.v1.Msg.ClaimTrainingFundDisbursement:input_type -> zerone.knowledge.v1.MsgClaimTrainingFundDisbursement
-	75,  // 49: zerone.knowledge.v1.Msg.AmendTraceSchema:input_type -> zerone.knowledge.v1.MsgAmendTraceSchema
-	77,  // 50: zerone.knowledge.v1.Msg.CreateTrainingManifest:input_type -> zerone.knowledge.v1.MsgCreateTrainingManifest
-	79,  // 51: zerone.knowledge.v1.Msg.FinalizeTrainingManifest:input_type -> zerone.knowledge.v1.MsgFinalizeTrainingManifest
-	81,  // 52: zerone.knowledge.v1.Msg.BindManifestToAttestation:input_type -> zerone.knowledge.v1.MsgBindManifestToAttestation
-	83,  // 53: zerone.knowledge.v1.Msg.OpenIncident:input_type -> zerone.knowledge.v1.MsgOpenIncident
-	85,  // 54: zerone.knowledge.v1.Msg.RecordRemediation:input_type -> zerone.knowledge.v1.MsgRecordRemediation
-	87,  // 55: zerone.knowledge.v1.Msg.ResolveIncident:input_type -> zerone.knowledge.v1.MsgResolveIncident
-	89,  // 56: zerone.knowledge.v1.Msg.CloseIncident:input_type -> zerone.knowledge.v1.MsgCloseIncident
-	91,  // 57: zerone.knowledge.v1.Msg.PauseModule:input_type -> zerone.knowledge.v1.MsgPauseModule
-	93,  // 58: zerone.knowledge.v1.Msg.UnpauseModule:input_type -> zerone.knowledge.v1.MsgUnpauseModule
-	95,  // 59: zerone.knowledge.v1.Msg.CorrectManifestMerkleRoot:input_type -> zerone.knowledge.v1.MsgCorrectManifestMerkleRoot
-	97,  // 60: zerone.knowledge.v1.Msg.VetoFactInjection:input_type -> zerone.knowledge.v1.MsgVetoFactInjection
-	1,   // 61: zerone.knowledge.v1.Msg.SubmitClaim:output_type -> zerone.knowledge.v1.MsgSubmitClaimResponse
-	3,   // 62: zerone.knowledge.v1.Msg.SubmitCommitment:output_type -> zerone.knowledge.v1.MsgSubmitCommitmentResponse
-	5,   // 63: zerone.knowledge.v1.Msg.SubmitReveal:output_type -> zerone.knowledge.v1.MsgSubmitRevealResponse
-	7,   // 64: zerone.knowledge.v1.Msg.ChallengeFact:output_type -> zerone.knowledge.v1.MsgChallengeFactResponse
-	9,   // 65: zerone.knowledge.v1.Msg.AddFact:output_type -> zerone.knowledge.v1.MsgAddFactResponse
-	11,  // 66: zerone.knowledge.v1.Msg.SubmitContradiction:output_type -> zerone.knowledge.v1.MsgSubmitContradictionResponse
-	13,  // 67: zerone.knowledge.v1.Msg.PatronizeFact:output_type -> zerone.knowledge.v1.MsgPatronizeFactResponse
-	15,  // 68: zerone.knowledge.v1.Msg.ProposeDomain:output_type -> zerone.knowledge.v1.MsgProposeDomainResponse
-	17,  // 69: zerone.knowledge.v1.Msg.EndorseDomainProposal:output_type -> zerone.knowledge.v1.MsgEndorseDomainProposalResponse
-	19,  // 70: zerone.knowledge.v1.Msg.ChallengeDomainProposal:output_type -> zerone.knowledge.v1.MsgChallengeDomainProposalResponse
-	21,  // 71: zerone.knowledge.v1.Msg.RegisterStratum:output_type -> zerone.knowledge.v1.MsgRegisterStratumResponse
-	23,  // 72: zerone.knowledge.v1.Msg.ChallengeProvisionalFact:output_type -> zerone.knowledge.v1.MsgChallengeProvisionalFactResponse
-	25,  // 73: zerone.knowledge.v1.Msg.UpdateParams:output_type -> zerone.knowledge.v1.MsgUpdateParamsResponse
-	27,  // 74: zerone.knowledge.v1.Msg.UpdateExtendedParams:output_type -> zerone.knowledge.v1.MsgUpdateExtendedParamsResponse
-	29,  // 75: zerone.knowledge.v1.Msg.ProposeResearchFund:output_type -> zerone.knowledge.v1.MsgProposeResearchFundResponse
-	31,  // 76: zerone.knowledge.v1.Msg.VoteResearchProposal:output_type -> zerone.knowledge.v1.MsgVoteResearchProposalResponse
-	33,  // 77: zerone.knowledge.v1.Msg.ExecuteResearchProposal:output_type -> zerone.knowledge.v1.MsgExecuteResearchProposalResponse
-	35,  // 78: zerone.knowledge.v1.Msg.AddCommonKnowledge:output_type -> zerone.knowledge.v1.MsgAddCommonKnowledgeResponse
-	37,  // 79: zerone.knowledge.v1.Msg.RemoveCommonKnowledge:output_type -> zerone.knowledge.v1.MsgRemoveCommonKnowledgeResponse
-	40,  // 80: zerone.knowledge.v1.Msg.ReportDemand:output_type -> zerone.knowledge.v1.MsgReportDemandResponse
-	42,  // 81: zerone.knowledge.v1.Msg.RateFact:output_type -> zerone.knowledge.v1.MsgRateFactResponse
-	44,  // 82: zerone.knowledge.v1.Msg.RegisterTrainingPipeline:output_type -> zerone.knowledge.v1.MsgRegisterTrainingPipelineResponse
-	46,  // 83: zerone.knowledge.v1.Msg.UpdateTrainingPipeline:output_type -> zerone.knowledge.v1.MsgUpdateTrainingPipelineResponse
-	48,  // 84: zerone.knowledge.v1.Msg.RegisterModelCard:output_type -> zerone.knowledge.v1.MsgRegisterModelCardResponse
-	50,  // 85: zerone.knowledge.v1.Msg.UpdateModelCard:output_type -> zerone.knowledge.v1.MsgUpdateModelCardResponse
-	52,  // 86: zerone.knowledge.v1.Msg.RetireModelCard:output_type -> zerone.knowledge.v1.MsgRetireModelCardResponse
-	54,  // 87: zerone.knowledge.v1.Msg.AmendTokenizerSpec:output_type -> zerone.knowledge.v1.MsgAmendTokenizerSpecResponse
-	56,  // 88: zerone.knowledge.v1.Msg.AttributeContributions:output_type -> zerone.knowledge.v1.MsgAttributeContributionsResponse
-	58,  // 89: zerone.knowledge.v1.Msg.AttestTraining:output_type -> zerone.knowledge.v1.MsgAttestTrainingResponse
-	60,  // 90: zerone.knowledge.v1.Msg.CreateAugmentationBounty:output_type -> zerone.knowledge.v1.MsgCreateAugmentationBountyResponse
-	62,  // 91: zerone.knowledge.v1.Msg.SubmitAugmentation:output_type -> zerone.knowledge.v1.MsgSubmitAugmentationResponse
-	64,  // 92: zerone.knowledge.v1.Msg.AcceptAugmentation:output_type -> zerone.knowledge.v1.MsgAcceptAugmentationResponse
-	66,  // 93: zerone.knowledge.v1.Msg.VoteOnAugmentation:output_type -> zerone.knowledge.v1.MsgVoteOnAugmentationResponse
-	68,  // 94: zerone.knowledge.v1.Msg.SponsorVetoAugmentation:output_type -> zerone.knowledge.v1.MsgSponsorVetoAugmentationResponse
-	70,  // 95: zerone.knowledge.v1.Msg.ChallengeContribution:output_type -> zerone.knowledge.v1.MsgChallengeContributionResponse
-	72,  // 96: zerone.knowledge.v1.Msg.ResolveContributionChallenge:output_type -> zerone.knowledge.v1.MsgResolveContributionChallengeResponse
-	74,  // 97: zerone.knowledge.v1.Msg.ClaimTrainingFundDisbursement:output_type -> zerone.knowledge.v1.MsgClaimTrainingFundDisbursementResponse
-	76,  // 98: zerone.knowledge.v1.Msg.AmendTraceSchema:output_type -> zerone.knowledge.v1.MsgAmendTraceSchemaResponse
-	78,  // 99: zerone.knowledge.v1.Msg.CreateTrainingManifest:output_type -> zerone.knowledge.v1.MsgCreateTrainingManifestResponse
-	80,  // 100: zerone.knowledge.v1.Msg.FinalizeTrainingManifest:output_type -> zerone.knowledge.v1.MsgFinalizeTrainingManifestResponse
-	82,  // 101: zerone.knowledge.v1.Msg.BindManifestToAttestation:output_type -> zerone.knowledge.v1.MsgBindManifestToAttestationResponse
-	84,  // 102: zerone.knowledge.v1.Msg.OpenIncident:output_type -> zerone.knowledge.v1.MsgOpenIncidentResponse
-	86,  // 103: zerone.knowledge.v1.Msg.RecordRemediation:output_type -> zerone.knowledge.v1.MsgRecordRemediationResponse
-	88,  // 104: zerone.knowledge.v1.Msg.ResolveIncident:output_type -> zerone.knowledge.v1.MsgResolveIncidentResponse
-	90,  // 105: zerone.knowledge.v1.Msg.CloseIncident:output_type -> zerone.knowledge.v1.MsgCloseIncidentResponse
-	92,  // 106: zerone.knowledge.v1.Msg.PauseModule:output_type -> zerone.knowledge.v1.MsgPauseModuleResponse
-	94,  // 107: zerone.knowledge.v1.Msg.UnpauseModule:output_type -> zerone.knowledge.v1.MsgUnpauseModuleResponse
-	96,  // 108: zerone.knowledge.v1.Msg.CorrectManifestMerkleRoot:output_type -> zerone.knowledge.v1.MsgCorrectManifestMerkleRootResponse
-	98,  // 109: zerone.knowledge.v1.Msg.VetoFactInjection:output_type -> zerone.knowledge.v1.MsgVetoFactInjectionResponse
-	61,  // [61:110] is the sub-list for method output_type
-	12,  // [12:61] is the sub-list for method input_type
-	12,  // [12:12] is the sub-list for extension type_name
-	12,  // [12:12] is the sub-list for extension extendee
-	0,   // [0:12] is the sub-list for field type_name
+	102, // 3: zerone.knowledge.v1.MsgSubmitClaim.proof_certificate:type_name -> zerone.knowledge.v1.ProofCertificate
+	103, // 4: zerone.knowledge.v1.MsgUpdateParams.params:type_name -> zerone.knowledge.v1.Params
+	39,  // 5: zerone.knowledge.v1.MsgReportDemand.reports:type_name -> zerone.knowledge.v1.DemandReport
+	104, // 6: zerone.knowledge.v1.MsgAmendTokenizerSpec.spec:type_name -> zerone.knowledge.v1.TokenizerSpec
+	105, // 7: zerone.knowledge.v1.MsgVoteOnAugmentation.vote:type_name -> zerone.knowledge.v1.AugmentationVerdict
+	105, // 8: zerone.knowledge.v1.MsgVoteOnAugmentationResponse.finalized_verdict:type_name -> zerone.knowledge.v1.AugmentationVerdict
+	106, // 9: zerone.knowledge.v1.MsgAmendTraceSchema.schema:type_name -> zerone.knowledge.v1.TraceSchema
+	107, // 10: zerone.knowledge.v1.MsgCreateTrainingManifest.corpus_selector:type_name -> zerone.knowledge.v1.CorpusSelector
+	108, // 11: zerone.knowledge.v1.MsgOpenIncident.severity:type_name -> zerone.knowledge.v1.IncidentSeverity
+	109, // 12: zerone.knowledge.v1.MsgRecordRemediation.type:type_name -> zerone.knowledge.v1.RemediationType
+	0,   // 13: zerone.knowledge.v1.Msg.SubmitClaim:input_type -> zerone.knowledge.v1.MsgSubmitClaim
+	2,   // 14: zerone.knowledge.v1.Msg.SubmitCommitment:input_type -> zerone.knowledge.v1.MsgSubmitCommitment
+	4,   // 15: zerone.knowledge.v1.Msg.SubmitReveal:input_type -> zerone.knowledge.v1.MsgSubmitReveal
+	6,   // 16: zerone.knowledge.v1.Msg.ChallengeFact:input_type -> zerone.knowledge.v1.MsgChallengeFact
+	8,   // 17: zerone.knowledge.v1.Msg.AddFact:input_type -> zerone.knowledge.v1.MsgAddFact
+	10,  // 18: zerone.knowledge.v1.Msg.SubmitContradiction:input_type -> zerone.knowledge.v1.MsgSubmitContradiction
+	12,  // 19: zerone.knowledge.v1.Msg.PatronizeFact:input_type -> zerone.knowledge.v1.MsgPatronizeFact
+	14,  // 20: zerone.knowledge.v1.Msg.ProposeDomain:input_type -> zerone.knowledge.v1.MsgProposeDomain
+	16,  // 21: zerone.knowledge.v1.Msg.EndorseDomainProposal:input_type -> zerone.knowledge.v1.MsgEndorseDomainProposal
+	18,  // 22: zerone.knowledge.v1.Msg.ChallengeDomainProposal:input_type -> zerone.knowledge.v1.MsgChallengeDomainProposal
+	20,  // 23: zerone.knowledge.v1.Msg.RegisterStratum:input_type -> zerone.knowledge.v1.MsgRegisterStratum
+	22,  // 24: zerone.knowledge.v1.Msg.ChallengeProvisionalFact:input_type -> zerone.knowledge.v1.MsgChallengeProvisionalFact
+	24,  // 25: zerone.knowledge.v1.Msg.UpdateParams:input_type -> zerone.knowledge.v1.MsgUpdateParams
+	26,  // 26: zerone.knowledge.v1.Msg.UpdateExtendedParams:input_type -> zerone.knowledge.v1.MsgUpdateExtendedParams
+	28,  // 27: zerone.knowledge.v1.Msg.ProposeResearchFund:input_type -> zerone.knowledge.v1.MsgProposeResearchFund
+	30,  // 28: zerone.knowledge.v1.Msg.VoteResearchProposal:input_type -> zerone.knowledge.v1.MsgVoteResearchProposal
+	32,  // 29: zerone.knowledge.v1.Msg.ExecuteResearchProposal:input_type -> zerone.knowledge.v1.MsgExecuteResearchProposal
+	34,  // 30: zerone.knowledge.v1.Msg.AddCommonKnowledge:input_type -> zerone.knowledge.v1.MsgAddCommonKnowledge
+	36,  // 31: zerone.knowledge.v1.Msg.RemoveCommonKnowledge:input_type -> zerone.knowledge.v1.MsgRemoveCommonKnowledge
+	38,  // 32: zerone.knowledge.v1.Msg.ReportDemand:input_type -> zerone.knowledge.v1.MsgReportDemand
+	41,  // 33: zerone.knowledge.v1.Msg.RateFact:input_type -> zerone.knowledge.v1.MsgRateFact
+	43,  // 34: zerone.knowledge.v1.Msg.RegisterTrainingPipeline:input_type -> zerone.knowledge.v1.MsgRegisterTrainingPipeline
+	45,  // 35: zerone.knowledge.v1.Msg.UpdateTrainingPipeline:input_type -> zerone.knowledge.v1.MsgUpdateTrainingPipeline
+	47,  // 36: zerone.knowledge.v1.Msg.RegisterModelCard:input_type -> zerone.knowledge.v1.MsgRegisterModelCard
+	49,  // 37: zerone.knowledge.v1.Msg.UpdateModelCard:input_type -> zerone.knowledge.v1.MsgUpdateModelCard
+	51,  // 38: zerone.knowledge.v1.Msg.RetireModelCard:input_type -> zerone.knowledge.v1.MsgRetireModelCard
+	53,  // 39: zerone.knowledge.v1.Msg.AmendTokenizerSpec:input_type -> zerone.knowledge.v1.MsgAmendTokenizerSpec
+	55,  // 40: zerone.knowledge.v1.Msg.AttributeContributions:input_type -> zerone.knowledge.v1.MsgAttributeContributions
+	57,  // 41: zerone.knowledge.v1.Msg.AttestTraining:input_type -> zerone.knowledge.v1.MsgAttestTraining
+	59,  // 42: zerone.knowledge.v1.Msg.CreateAugmentationBounty:input_type -> zerone.knowledge.v1.MsgCreateAugmentationBounty
+	61,  // 43: zerone.knowledge.v1.Msg.SubmitAugmentation:input_type -> zerone.knowledge.v1.MsgSubmitAugmentation
+	63,  // 44: zerone.knowledge.v1.Msg.AcceptAugmentation:input_type -> zerone.knowledge.v1.MsgAcceptAugmentation
+	65,  // 45: zerone.knowledge.v1.Msg.VoteOnAugmentation:input_type -> zerone.knowledge.v1.MsgVoteOnAugmentation
+	67,  // 46: zerone.knowledge.v1.Msg.SponsorVetoAugmentation:input_type -> zerone.knowledge.v1.MsgSponsorVetoAugmentation
+	69,  // 47: zerone.knowledge.v1.Msg.ChallengeContribution:input_type -> zerone.knowledge.v1.MsgChallengeContribution
+	71,  // 48: zerone.knowledge.v1.Msg.ResolveContributionChallenge:input_type -> zerone.knowledge.v1.MsgResolveContributionChallenge
+	73,  // 49: zerone.knowledge.v1.Msg.ClaimTrainingFundDisbursement:input_type -> zerone.knowledge.v1.MsgClaimTrainingFundDisbursement
+	75,  // 50: zerone.knowledge.v1.Msg.AmendTraceSchema:input_type -> zerone.knowledge.v1.MsgAmendTraceSchema
+	77,  // 51: zerone.knowledge.v1.Msg.CreateTrainingManifest:input_type -> zerone.knowledge.v1.MsgCreateTrainingManifest
+	79,  // 52: zerone.knowledge.v1.Msg.FinalizeTrainingManifest:input_type -> zerone.knowledge.v1.MsgFinalizeTrainingManifest
+	81,  // 53: zerone.knowledge.v1.Msg.BindManifestToAttestation:input_type -> zerone.knowledge.v1.MsgBindManifestToAttestation
+	83,  // 54: zerone.knowledge.v1.Msg.OpenIncident:input_type -> zerone.knowledge.v1.MsgOpenIncident
+	85,  // 55: zerone.knowledge.v1.Msg.RecordRemediation:input_type -> zerone.knowledge.v1.MsgRecordRemediation
+	87,  // 56: zerone.knowledge.v1.Msg.ResolveIncident:input_type -> zerone.knowledge.v1.MsgResolveIncident
+	89,  // 57: zerone.knowledge.v1.Msg.CloseIncident:input_type -> zerone.knowledge.v1.MsgCloseIncident
+	91,  // 58: zerone.knowledge.v1.Msg.PauseModule:input_type -> zerone.knowledge.v1.MsgPauseModule
+	93,  // 59: zerone.knowledge.v1.Msg.UnpauseModule:input_type -> zerone.knowledge.v1.MsgUnpauseModule
+	95,  // 60: zerone.knowledge.v1.Msg.CorrectManifestMerkleRoot:input_type -> zerone.knowledge.v1.MsgCorrectManifestMerkleRoot
+	97,  // 61: zerone.knowledge.v1.Msg.VetoFactInjection:input_type -> zerone.knowledge.v1.MsgVetoFactInjection
+	1,   // 62: zerone.knowledge.v1.Msg.SubmitClaim:output_type -> zerone.knowledge.v1.MsgSubmitClaimResponse
+	3,   // 63: zerone.knowledge.v1.Msg.SubmitCommitment:output_type -> zerone.knowledge.v1.MsgSubmitCommitmentResponse
+	5,   // 64: zerone.knowledge.v1.Msg.SubmitReveal:output_type -> zerone.knowledge.v1.MsgSubmitRevealResponse
+	7,   // 65: zerone.knowledge.v1.Msg.ChallengeFact:output_type -> zerone.knowledge.v1.MsgChallengeFactResponse
+	9,   // 66: zerone.knowledge.v1.Msg.AddFact:output_type -> zerone.knowledge.v1.MsgAddFactResponse
+	11,  // 67: zerone.knowledge.v1.Msg.SubmitContradiction:output_type -> zerone.knowledge.v1.MsgSubmitContradictionResponse
+	13,  // 68: zerone.knowledge.v1.Msg.PatronizeFact:output_type -> zerone.knowledge.v1.MsgPatronizeFactResponse
+	15,  // 69: zerone.knowledge.v1.Msg.ProposeDomain:output_type -> zerone.knowledge.v1.MsgProposeDomainResponse
+	17,  // 70: zerone.knowledge.v1.Msg.EndorseDomainProposal:output_type -> zerone.knowledge.v1.MsgEndorseDomainProposalResponse
+	19,  // 71: zerone.knowledge.v1.Msg.ChallengeDomainProposal:output_type -> zerone.knowledge.v1.MsgChallengeDomainProposalResponse
+	21,  // 72: zerone.knowledge.v1.Msg.RegisterStratum:output_type -> zerone.knowledge.v1.MsgRegisterStratumResponse
+	23,  // 73: zerone.knowledge.v1.Msg.ChallengeProvisionalFact:output_type -> zerone.knowledge.v1.MsgChallengeProvisionalFactResponse
+	25,  // 74: zerone.knowledge.v1.Msg.UpdateParams:output_type -> zerone.knowledge.v1.MsgUpdateParamsResponse
+	27,  // 75: zerone.knowledge.v1.Msg.UpdateExtendedParams:output_type -> zerone.knowledge.v1.MsgUpdateExtendedParamsResponse
+	29,  // 76: zerone.knowledge.v1.Msg.ProposeResearchFund:output_type -> zerone.knowledge.v1.MsgProposeResearchFundResponse
+	31,  // 77: zerone.knowledge.v1.Msg.VoteResearchProposal:output_type -> zerone.knowledge.v1.MsgVoteResearchProposalResponse
+	33,  // 78: zerone.knowledge.v1.Msg.ExecuteResearchProposal:output_type -> zerone.knowledge.v1.MsgExecuteResearchProposalResponse
+	35,  // 79: zerone.knowledge.v1.Msg.AddCommonKnowledge:output_type -> zerone.knowledge.v1.MsgAddCommonKnowledgeResponse
+	37,  // 80: zerone.knowledge.v1.Msg.RemoveCommonKnowledge:output_type -> zerone.knowledge.v1.MsgRemoveCommonKnowledgeResponse
+	40,  // 81: zerone.knowledge.v1.Msg.ReportDemand:output_type -> zerone.knowledge.v1.MsgReportDemandResponse
+	42,  // 82: zerone.knowledge.v1.Msg.RateFact:output_type -> zerone.knowledge.v1.MsgRateFactResponse
+	44,  // 83: zerone.knowledge.v1.Msg.RegisterTrainingPipeline:output_type -> zerone.knowledge.v1.MsgRegisterTrainingPipelineResponse
+	46,  // 84: zerone.knowledge.v1.Msg.UpdateTrainingPipeline:output_type -> zerone.knowledge.v1.MsgUpdateTrainingPipelineResponse
+	48,  // 85: zerone.knowledge.v1.Msg.RegisterModelCard:output_type -> zerone.knowledge.v1.MsgRegisterModelCardResponse
+	50,  // 86: zerone.knowledge.v1.Msg.UpdateModelCard:output_type -> zerone.knowledge.v1.MsgUpdateModelCardResponse
+	52,  // 87: zerone.knowledge.v1.Msg.RetireModelCard:output_type -> zerone.knowledge.v1.MsgRetireModelCardResponse
+	54,  // 88: zerone.knowledge.v1.Msg.AmendTokenizerSpec:output_type -> zerone.knowledge.v1.MsgAmendTokenizerSpecResponse
+	56,  // 89: zerone.knowledge.v1.Msg.AttributeContributions:output_type -> zerone.knowledge.v1.MsgAttributeContributionsResponse
+	58,  // 90: zerone.knowledge.v1.Msg.AttestTraining:output_type -> zerone.knowledge.v1.MsgAttestTrainingResponse
+	60,  // 91: zerone.knowledge.v1.Msg.CreateAugmentationBounty:output_type -> zerone.knowledge.v1.MsgCreateAugmentationBountyResponse
+	62,  // 92: zerone.knowledge.v1.Msg.SubmitAugmentation:output_type -> zerone.knowledge.v1.MsgSubmitAugmentationResponse
+	64,  // 93: zerone.knowledge.v1.Msg.AcceptAugmentation:output_type -> zerone.knowledge.v1.MsgAcceptAugmentationResponse
+	66,  // 94: zerone.knowledge.v1.Msg.VoteOnAugmentation:output_type -> zerone.knowledge.v1.MsgVoteOnAugmentationResponse
+	68,  // 95: zerone.knowledge.v1.Msg.SponsorVetoAugmentation:output_type -> zerone.knowledge.v1.MsgSponsorVetoAugmentationResponse
+	70,  // 96: zerone.knowledge.v1.Msg.ChallengeContribution:output_type -> zerone.knowledge.v1.MsgChallengeContributionResponse
+	72,  // 97: zerone.knowledge.v1.Msg.ResolveContributionChallenge:output_type -> zerone.knowledge.v1.MsgResolveContributionChallengeResponse
+	74,  // 98: zerone.knowledge.v1.Msg.ClaimTrainingFundDisbursement:output_type -> zerone.knowledge.v1.MsgClaimTrainingFundDisbursementResponse
+	76,  // 99: zerone.knowledge.v1.Msg.AmendTraceSchema:output_type -> zerone.knowledge.v1.MsgAmendTraceSchemaResponse
+	78,  // 100: zerone.knowledge.v1.Msg.CreateTrainingManifest:output_type -> zerone.knowledge.v1.MsgCreateTrainingManifestResponse
+	80,  // 101: zerone.knowledge.v1.Msg.FinalizeTrainingManifest:output_type -> zerone.knowledge.v1.MsgFinalizeTrainingManifestResponse
+	82,  // 102: zerone.knowledge.v1.Msg.BindManifestToAttestation:output_type -> zerone.knowledge.v1.MsgBindManifestToAttestationResponse
+	84,  // 103: zerone.knowledge.v1.Msg.OpenIncident:output_type -> zerone.knowledge.v1.MsgOpenIncidentResponse
+	86,  // 104: zerone.knowledge.v1.Msg.RecordRemediation:output_type -> zerone.knowledge.v1.MsgRecordRemediationResponse
+	88,  // 105: zerone.knowledge.v1.Msg.ResolveIncident:output_type -> zerone.knowledge.v1.MsgResolveIncidentResponse
+	90,  // 106: zerone.knowledge.v1.Msg.CloseIncident:output_type -> zerone.knowledge.v1.MsgCloseIncidentResponse
+	92,  // 107: zerone.knowledge.v1.Msg.PauseModule:output_type -> zerone.knowledge.v1.MsgPauseModuleResponse
+	94,  // 108: zerone.knowledge.v1.Msg.UnpauseModule:output_type -> zerone.knowledge.v1.MsgUnpauseModuleResponse
+	96,  // 109: zerone.knowledge.v1.Msg.CorrectManifestMerkleRoot:output_type -> zerone.knowledge.v1.MsgCorrectManifestMerkleRootResponse
+	98,  // 110: zerone.knowledge.v1.Msg.VetoFactInjection:output_type -> zerone.knowledge.v1.MsgVetoFactInjectionResponse
+	62,  // [62:111] is the sub-list for method output_type
+	13,  // [13:62] is the sub-list for method input_type
+	13,  // [13:13] is the sub-list for extension type_name
+	13,  // [13:13] is the sub-list for extension extendee
+	0,   // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_zerone_knowledge_v1_tx_proto_init() }

@@ -193,6 +193,14 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 		claimType = types.ClaimType_CLAIM_TYPE_ASSERTION
 	}
 
+	// Verify proof certificate if present (Formal Logic Gap 1 — Tier 0 verification).
+	// For PROOF_FORMAT_CANONICAL_CHAIN: all premise_fact_ids must be accepted facts.
+	// Other formats are stored-only (returned false → certificate_verified stays false).
+	var certVerified bool
+	if msg.ProofCertificate != nil {
+		certVerified = m.keeper.VerifyProofCertificate(ctx, msg.ProofCertificate)
+	}
+
 	claim := &types.Claim{
 		Id:                     claimID,
 		FactContent:            msg.FactContent,
@@ -212,6 +220,8 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 		CanonicalHash:          canonicalHash,
 		RequiresHumanVerifiers: msg.RequiresHumanVerifiers,
 		RefutationConditions:   msg.RefutationConditions,
+		ProofCertificate:       msg.ProofCertificate,
+		CertificateVerified:    certVerified,
 	}
 
 	if err := m.keeper.SetClaim(ctx, claim); err != nil {
@@ -230,6 +240,24 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 				targetFact.Status = types.FactStatus_FACT_STATUS_CONTESTED
 				_ = m.keeper.SetFact(ctx, targetFact)
 			}
+		}
+	}
+
+	// Tier 0 bypass: if the claim carries a verified proof certificate AND
+	// bypass is enabled in governance, auto-accept without creating a PoT round.
+	if claim.CertificateVerified {
+		accepted, err := m.keeper.MaybeAutoAcceptCertifiedClaim(ctx, claim)
+		if err != nil {
+			return nil, fmt.Errorf("proof certificate auto-accept: %w", err)
+		}
+		if accepted {
+			// Claim accepted at Tier 0 — no verification round needed.
+			sdkCtx.EventManager().EmitEvent(
+				sdk.NewEvent("zerone.knowledge.submit_claim",
+					sdk.NewAttribute("claim_id", claimID),
+					sdk.NewAttribute("tier", "0"),
+				))
+			return &types.MsgSubmitClaimResponse{ClaimId: claimID}, nil
 		}
 	}
 
