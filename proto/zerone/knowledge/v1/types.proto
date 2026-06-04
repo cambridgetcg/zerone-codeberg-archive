@@ -667,6 +667,21 @@ message AgentCalibration {
   uint64 verifier_rounds               = 20;  // total rounds this agent participated in as verifier
   uint64 verifier_sum_brier_bps        = 21;  // Σ Brier errors × 1_000_000 / 1_000_000 (BPS accum)
   uint64 verifier_calibration_score_bps = 22; // derived: 1_000_000 − (sum_brier / rounds)
+
+  // Calibration curve: 10 equal-width buckets partitioning P(ACCEPT) ∈ [0, 1].
+  // Bucket k covers P(ACCEPT) ∈ [k×100_000, (k+1)×100_000). Bucket 9 is
+  // [900_000, 1_000_000] (inclusive). A well-calibrated agent's bucket hit-rate
+  // (correct_count/total_count) should match the midpoint confidence of the bucket.
+  repeated CalibrationBucket calibration_curve = 23;
+}
+
+// CalibrationBucket tracks prediction hit-rates within a confidence band.
+// Part of the calibration curve on AgentCalibration (field 23).
+message CalibrationBucket {
+  uint64 min_confidence_bps = 1; // inclusive lower bound (0..1_000_000)
+  uint64 max_confidence_bps = 2; // exclusive upper bound (except bucket 9 which is inclusive)
+  uint64 correct_count      = 3; // times the outcome (ACCEPT) matched the prediction band
+  uint64 total_count        = 4; // total predictions where P(ACCEPT) fell in this band
 }
 
 // CommonKnowledgeEntry represents a subject that LLMs already know.

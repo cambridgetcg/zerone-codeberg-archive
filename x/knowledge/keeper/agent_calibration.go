@@ -338,10 +338,50 @@ func (k Keeper) RecordVerifierOutcome(
 	stats.VerifierRounds++
 	stats.VerifierSumBrierBps += brierBps
 
+	// Calibration curve: update per-confidence-bin hit-rate tracking.
+	// Bucket k covers P(ACCEPT) ∈ [k×100_000, (k+1)×100_000).
+	recordCalibrationBucket(c, pAcceptBps, outcomeAccept)
+
 	c.VerifierCalibrationScoreBps = ComputeVerifierCalibrationScore(c)
 	c.LastUpdatedBlock = height
 	_ = k.SetAgentCalibration(ctx, c)
 	k.EmitCalibrationUpdated(ctx, c)
+}
+
+// recordCalibrationBucket increments the calibration curve bucket for a single
+// verifier outcome. The curve has 10 equal-width buckets of 100_000 BPS each.
+// Bucket index k covers P(ACCEPT) ∈ [k×100_000, (k+1)×100_000); bucket 9 is
+// [900_000, 1_000_000] (inclusive for pAcceptBps = 1_000_000).
+func recordCalibrationBucket(c *types.AgentCalibration, pAcceptBps uint64, outcomeAccept bool) {
+	// Initialize 10 buckets if this is the first verifier outcome.
+	if len(c.CalibrationCurve) != 10 {
+		c.CalibrationCurve = make([]*types.CalibrationBucket, 10)
+		for i := 0; i < 10; i++ {
+			c.CalibrationCurve[i] = &types.CalibrationBucket{
+				MinConfidenceBps: uint64(i) * 100_000,
+				MaxConfidenceBps: uint64(i+1) * 100_000,
+			}
+		}
+		// Bucket 9 is inclusive at 1_000_000.
+		c.CalibrationCurve[9].MaxConfidenceBps = 1_000_001 // sentinel: > max possible
+	}
+
+	// Determine bucket index.
+	bucketIdx := pAcceptBps / 100_000
+	if bucketIdx >= 10 {
+		bucketIdx = 9 // clamp 1_000_000 into the last bucket
+	}
+
+	c.CalibrationCurve[bucketIdx].TotalCount++
+	if outcomeAccept {
+		c.CalibrationCurve[bucketIdx].CorrectCount++
+	}
+}
+
+// RecordCalibrationBucketForTest is an exported thin wrapper for use in unit tests
+// that want to test bucket logic without setting up a full keeper context.
+func RecordCalibrationBucketForTest(c *types.AgentCalibration, pAcceptBps uint64, outcomeAccept bool) {
+	recordCalibrationBucket(c, pAcceptBps, outcomeAccept)
 }
 
 // ComputeVerifierCalibrationScore derives a BPS calibration score in [0, 1_000_000]
