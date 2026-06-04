@@ -231,6 +231,11 @@ message MsgSubmitClaim {
   // requires_human_verifiers: if true, only human accounts may verify this claim.
   // See Claim.requires_human_verifiers for semantics. Defaults to false.
   bool requires_human_verifiers = 14;
+
+  // refutation_conditions: explicit falsifiability declaration. See Claim.refutation_conditions.
+  // If non-empty, the claim is tagged as "testable with declared conditions" — eligible for
+  // null_result_credit if later rejected, and easier to challenge with targeted evidence.
+  repeated string refutation_conditions = 15;
 }
 
 message MsgSubmitClaimResponse {

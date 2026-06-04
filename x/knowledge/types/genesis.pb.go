@@ -372,8 +372,16 @@ type Params struct {
 	// because stake cycles too rapidly relative to potential manipulation profit.
 	// (Settlement Finality Gap 2)
 	MinRoundDurationBlocks uint64 `protobuf:"varint,170,opt,name=min_round_duration_blocks,json=minRoundDurationBlocks,proto3" json:"min_round_duration_blocks,omitempty"` // default: 0 (disabled)
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// Null-result credit (Scientific Method Gap 5 — Peirce's self-correcting community).
+	// When a claim is REJECTED and its submitter had declared RefutationConditions
+	// (Claim.refutation_conditions is non-empty), the submitter receives
+	// null_result_credit_uzrn as compensation for contributing a testable claim
+	// that turned out false. This corrects publication bias: submitters are no
+	// longer penalised purely for being wrong; they are rewarded for being *correctly
+	// wrong about something they were willing to test*. 0 = disabled (default).
+	NullResultCreditUzrn uint64 `protobuf:"varint,171,opt,name=null_result_credit_uzrn,json=nullResultCreditUzrn,proto3" json:"null_result_credit_uzrn,omitempty"` // default: 0 (disabled)
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -1596,6 +1604,13 @@ func (x *Params) GetMinRoundDurationBlocks() uint64 {
 	return 0
 }
 
+func (x *Params) GetNullResultCreditUzrn() uint64 {
+	if x != nil {
+		return x.NullResultCreditUzrn
+	}
+	return 0
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -1833,7 +1848,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\x85T\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xbdT\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2005,7 +2020,8 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\x14max_priority_tip_bps\x18\xa7\x01 \x01(\x04R\x11maxPriorityTipBps\x12B\n" +
 	"\x1dmin_verifier_independence_bps\x18\xa8\x01 \x01(\x04R\x1aminVerifierIndependenceBps\x12H\n" +
 	" min_verifier_independence_rounds\x18\xa9\x01 \x01(\x04R\x1dminVerifierIndependenceRounds\x12:\n" +
-	"\x19min_round_duration_blocks\x18\xaa\x01 \x01(\x04R\x16minRoundDurationBlocks\x1aN\n" +
+	"\x19min_round_duration_blocks\x18\xaa\x01 \x01(\x04R\x16minRoundDurationBlocks\x126\n" +
+	"\x17null_result_credit_uzrn\x18\xab\x01 \x01(\x04R\x14nullResultCreditUzrn\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xe5\x0e\n" +

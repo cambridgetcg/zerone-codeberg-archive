@@ -46,8 +46,12 @@ type MsgSubmitClaim struct {
 	// requires_human_verifiers: if true, only human accounts may verify this claim.
 	// See Claim.requires_human_verifiers for semantics. Defaults to false.
 	RequiresHumanVerifiers bool `protobuf:"varint,14,opt,name=requires_human_verifiers,json=requiresHumanVerifiers,proto3" json:"requires_human_verifiers,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// refutation_conditions: explicit falsifiability declaration. See Claim.refutation_conditions.
+	// If non-empty, the claim is tagged as "testable with declared conditions" — eligible for
+	// null_result_credit if later rejected, and easier to challenge with targeted evidence.
+	RefutationConditions []string `protobuf:"bytes,15,rep,name=refutation_conditions,json=refutationConditions,proto3" json:"refutation_conditions,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *MsgSubmitClaim) Reset() {
@@ -176,6 +180,13 @@ func (x *MsgSubmitClaim) GetRequiresHumanVerifiers() bool {
 		return x.RequiresHumanVerifiers
 	}
 	return false
+}
+
+func (x *MsgSubmitClaim) GetRefutationConditions() []string {
+	if x != nil {
+		return x.RefutationConditions
+	}
+	return nil
 }
 
 type MsgSubmitClaimResponse struct {
@@ -5710,7 +5721,7 @@ var File_zerone_knowledge_v1_tx_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_tx_proto_rawDesc = "" +
 	"\n" +
-	"\x1czerone/knowledge/v1/tx.proto\x12\x13zerone.knowledge.v1\x1a\x17cosmos/msg/v1/msg.proto\x1a\x1fzerone/knowledge/v1/types.proto\x1a!zerone/knowledge/v1/genesis.proto\"\xdf\x04\n" +
+	"\x1czerone/knowledge/v1/tx.proto\x12\x13zerone.knowledge.v1\x1a\x17cosmos/msg/v1/msg.proto\x1a\x1fzerone/knowledge/v1/types.proto\x1a!zerone/knowledge/v1/genesis.proto\"\x94\x05\n" +
 	"\x0eMsgSubmitClaim\x12\x1c\n" +
 	"\tsubmitter\x18\x01 \x01(\tR\tsubmitter\x12!\n" +
 	"\ffact_content\x18\x02 \x01(\tR\vfactContent\x12\x16\n" +
@@ -5729,7 +5740,8 @@ const file_zerone_knowledge_v1_tx_proto_rawDesc = "" +
 	"\x0ecanonical_form\x18\v \x01(\tR\rcanonicalForm\x12\x1c\n" +
 	"\tsponsored\x18\f \x01(\bR\tsponsored\x12(\n" +
 	"\x10priority_tip_bps\x18\r \x01(\x04R\x0epriorityTipBps\x128\n" +
-	"\x18requires_human_verifiers\x18\x0e \x01(\bR\x16requiresHumanVerifiers:\x0e\x82\xe7\xb0*\tsubmitter\"3\n" +
+	"\x18requires_human_verifiers\x18\x0e \x01(\bR\x16requiresHumanVerifiers\x123\n" +
+	"\x15refutation_conditions\x18\x0f \x03(\tR\x14refutationConditions:\x0e\x82\xe7\xb0*\tsubmitter\"3\n" +
 	"\x16MsgSubmitClaimResponse\x12\x19\n" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\"|\n" +
 	"\x13MsgSubmitCommitment\x12\x1a\n" +

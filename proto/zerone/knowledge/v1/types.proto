@@ -750,6 +750,17 @@ message Claim {
   // Default false (mixed panels allowed). Set true in MsgSubmitClaim by the
   // claim submitter; propagated to the Claim on creation.
   bool requires_human_verifiers = 24;
+
+  // refutation_conditions: explicit falsifiability declaration at the claim layer.
+  // The submitter states in advance what evidence or outcome would disprove this
+  // claim. Non-empty means the submitter is being a good Popperian citizen —
+  // they have a skin-in-the-game commitment to what would change their mind.
+  // Empty = no falsifiability declared (claim is not necessarily unfalsifiable,
+  // but the submitter chose not to commit in advance).
+  // Used by: null_result_credit (reward for good falsifiability that gets falsified),
+  // challenge targeting (challengers know exactly what to disprove), and
+  // calibration diagnostics (submitters with declared conditions are more trackable).
+  repeated string refutation_conditions = 25;
 }
 
 // VerificationRound tracks one commit-reveal verification cycle.

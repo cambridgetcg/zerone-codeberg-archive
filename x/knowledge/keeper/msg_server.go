@@ -211,6 +211,7 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 		CanonicalForm:          canonicalForm,
 		CanonicalHash:          canonicalHash,
 		RequiresHumanVerifiers: msg.RequiresHumanVerifiers,
+		RefutationConditions:   msg.RefutationConditions,
 	}
 
 	if err := m.keeper.SetClaim(ctx, claim); err != nil {

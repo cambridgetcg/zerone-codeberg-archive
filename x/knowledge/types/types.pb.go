@@ -4453,8 +4453,18 @@ type Claim struct {
 	// Default false (mixed panels allowed). Set true in MsgSubmitClaim by the
 	// claim submitter; propagated to the Claim on creation.
 	RequiresHumanVerifiers bool `protobuf:"varint,24,opt,name=requires_human_verifiers,json=requiresHumanVerifiers,proto3" json:"requires_human_verifiers,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// refutation_conditions: explicit falsifiability declaration at the claim layer.
+	// The submitter states in advance what evidence or outcome would disprove this
+	// claim. Non-empty means the submitter is being a good Popperian citizen —
+	// they have a skin-in-the-game commitment to what would change their mind.
+	// Empty = no falsifiability declared (claim is not necessarily unfalsifiable,
+	// but the submitter chose not to commit in advance).
+	// Used by: null_result_credit (reward for good falsifiability that gets falsified),
+	// challenge targeting (challengers know exactly what to disprove), and
+	// calibration diagnostics (submitters with declared conditions are more trackable).
+	RefutationConditions []string `protobuf:"bytes,25,rep,name=refutation_conditions,json=refutationConditions,proto3" json:"refutation_conditions,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *Claim) Reset() {
@@ -4653,6 +4663,13 @@ func (x *Claim) GetRequiresHumanVerifiers() bool {
 		return x.RequiresHumanVerifiers
 	}
 	return false
+}
+
+func (x *Claim) GetRefutationConditions() []string {
+	if x != nil {
+		return x.RefutationConditions
+	}
+	return nil
 }
 
 // VerificationRound tracks one commit-reveal verification cycle.
@@ -8743,7 +8760,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\vpenalty_bps\x18\x05 \x01(\x04R\n" +
 	"penaltyBps\x12\x1f\n" +
 	"\vadded_block\x18\x06 \x01(\x04R\n" +
-	"addedBlock\"\xe6\a\n" +
+	"addedBlock\"\x9b\b\n" +
 	"\x05Claim\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\ffact_content\x18\x02 \x01(\tR\vfactContent\x12\x16\n" +
@@ -8772,7 +8789,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x0freasoning_trace\x18\x15 \x01(\tR\x0ereasoningTrace\x12#\n" +
 	"\rargument_text\x18\x16 \x01(\tR\fargumentText\x12#\n" +
 	"\rrebuttal_text\x18\x17 \x01(\tR\frebuttalText\x128\n" +
-	"\x18requires_human_verifiers\x18\x18 \x01(\bR\x16requiresHumanVerifiers\"\x87\x05\n" +
+	"\x18requires_human_verifiers\x18\x18 \x01(\bR\x16requiresHumanVerifiers\x123\n" +
+	"\x15refutation_conditions\x18\x19 \x03(\tR\x14refutationConditions\"\x87\x05\n" +
 	"\x11VerificationRound\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\bclaim_id\x18\x02 \x01(\tR\aclaimId\x12(\n" +

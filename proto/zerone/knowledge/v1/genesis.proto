@@ -392,6 +392,15 @@ message Params {
   // because stake cycles too rapidly relative to potential manipulation profit.
   // (Settlement Finality Gap 2)
   uint64 min_round_duration_blocks = 170; // default: 0 (disabled)
+
+  // Null-result credit (Scientific Method Gap 5 — Peirce's self-correcting community).
+  // When a claim is REJECTED and its submitter had declared RefutationConditions
+  // (Claim.refutation_conditions is non-empty), the submitter receives
+  // null_result_credit_uzrn as compensation for contributing a testable claim
+  // that turned out false. This corrects publication bias: submitters are no
+  // longer penalised purely for being wrong; they are rewarded for being *correctly
+  // wrong about something they were willing to test*. 0 = disabled (default).
+  uint64 null_result_credit_uzrn = 171; // default: 0 (disabled)
 }
 
 // GenesisState is the genesis state of the knowledge module.
