@@ -18,6 +18,11 @@ type DomainStats struct {
 	TotalEnergy           uint64 `json:"total_energy"`
 	LastUpdated           uint64 `json:"last_updated"`            // block height
 	MentorshipGraduations uint64 `json:"mentorship_graduations"` // R31-5: Water → Wood
+	// Base-rate tracking (Calibrated Forecasting Gap 3).
+	// DomainAccepted + DomainRejected count all binary verdicts in this domain.
+	// The prior probability P(ACCEPT|domain) = DomainAccepted / (DomainAccepted + DomainRejected).
+	DomainAccepted uint64 `json:"domain_accepted"`
+	DomainRejected uint64 `json:"domain_rejected"`
 }
 
 func (k Keeper) SetDomainStats(ctx context.Context, stats *DomainStats) {
@@ -69,6 +74,34 @@ func (k Keeper) DecrementDomainFactCount(ctx context.Context, domain string, was
 		stats.TotalEnergy -= energy
 	}
 	k.SetDomainStats(ctx, stats)
+}
+
+// RecordDomainVerdict increments the lifetime accept/reject counters for a domain.
+// Called from CompleteRound for ACCEPT and REJECT verdicts. MALFORMED and
+// INCONCLUSIVE are excluded: they reflect claim quality issues rather than the
+// domain's inherent acceptance prior (Calibrated Forecasting Gap 3).
+func (k Keeper) RecordDomainVerdict(ctx context.Context, domain string, accepted bool) {
+	if domain == "" {
+		return
+	}
+	stats, _ := k.GetDomainStats(ctx, domain)
+	stats.Domain = domain
+	if accepted {
+		stats.DomainAccepted++
+	} else {
+		stats.DomainRejected++
+	}
+	k.SetDomainStats(ctx, stats)
+}
+
+// DomainAcceptanceRateBps returns the domain's prior acceptance rate in BPS.
+// Returns 0 if no binary verdicts have been recorded yet.
+func DomainAcceptanceRateBps(stats *DomainStats) uint64 {
+	total := stats.DomainAccepted + stats.DomainRejected
+	if total == 0 {
+		return 0
+	}
+	return stats.DomainAccepted * 1_000_000 / total
 }
 
 // ApplyMentorshipDividend adds energy to a domain and increments its graduation

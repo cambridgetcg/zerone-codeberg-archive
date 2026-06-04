@@ -1213,13 +1213,17 @@ message QueryDomainCapacityRequest {
 }
 
 message QueryDomainCapacityResponse {
-  string domain         = 1;
-  uint64 active_count   = 2;
-  uint64 at_risk_count  = 3;
-  uint64 capacity       = 4;
-  uint64 pressure_bps   = 5;
-  string category       = 6;
-  uint64 total_energy   = 7;
+  string domain              = 1;
+  uint64 active_count        = 2;
+  uint64 at_risk_count       = 3;
+  uint64 capacity            = 4;
+  uint64 pressure_bps        = 5;
+  string category            = 6;
+  uint64 total_energy        = 7;
+  // Base-rate tracking (Gap 3 — Calibrated Forecasting).
+  uint64 domain_accepted     = 8;  // lifetime accepted verdicts in this domain
+  uint64 domain_rejected     = 9;  // lifetime rejected verdicts in this domain
+  uint64 acceptance_rate_bps = 10; // domain_accepted/(domain_accepted+domain_rejected) × 1M; 0 if no verdicts
 }
 
 // ─── Epistemic temperature query messages (R29-2) ────────────────────────────

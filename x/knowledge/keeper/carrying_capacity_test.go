@@ -708,3 +708,107 @@ func TestGetDomainCarryingCapacity_MentorshipBonus(t *testing.T) {
 	capacity := k.GetDomainCarryingCapacity(ctx, "physics")
 	require.Equal(t, uint64(1015), capacity)
 }
+
+// ─── Base Rate Tracking (Calibrated Forecasting Gap 3) ───────────────────────
+
+func TestRecordDomainVerdict_AcceptIncrementsAccepted(t *testing.T) {
+	k, ctx := setupKnowledgeTest(t)
+
+	k.RecordDomainVerdict(ctx, "physics", true)
+
+	stats, found := k.GetDomainStats(ctx, "physics")
+	require.True(t, found)
+	require.Equal(t, uint64(1), stats.DomainAccepted)
+	require.Equal(t, uint64(0), stats.DomainRejected)
+}
+
+func TestRecordDomainVerdict_RejectIncrementsRejected(t *testing.T) {
+	k, ctx := setupKnowledgeTest(t)
+
+	k.RecordDomainVerdict(ctx, "biology", false)
+
+	stats, found := k.GetDomainStats(ctx, "biology")
+	require.True(t, found)
+	require.Equal(t, uint64(0), stats.DomainAccepted)
+	require.Equal(t, uint64(1), stats.DomainRejected)
+}
+
+func TestRecordDomainVerdict_Cumulative(t *testing.T) {
+	k, ctx := setupKnowledgeTest(t)
+
+	k.RecordDomainVerdict(ctx, "math", true)
+	k.RecordDomainVerdict(ctx, "math", true)
+	k.RecordDomainVerdict(ctx, "math", false)
+
+	stats, _ := k.GetDomainStats(ctx, "math")
+	require.Equal(t, uint64(2), stats.DomainAccepted)
+	require.Equal(t, uint64(1), stats.DomainRejected)
+}
+
+func TestRecordDomainVerdict_EmptyDomainSkipped(t *testing.T) {
+	k, ctx := setupKnowledgeTest(t)
+
+	// Should not panic — empty domain is a no-op
+	k.RecordDomainVerdict(ctx, "", true)
+
+	// No records created
+	_, found := k.GetDomainStats(ctx, "")
+	require.False(t, found)
+}
+
+func TestDomainAcceptanceRateBps_NoVerdicts(t *testing.T) {
+	stats := &keeper.DomainStats{Domain: "empty"}
+	rate := keeper.DomainAcceptanceRateBps(stats)
+	require.Equal(t, uint64(0), rate)
+}
+
+func TestDomainAcceptanceRateBps_AllAccepted(t *testing.T) {
+	stats := &keeper.DomainStats{Domain: "d", DomainAccepted: 10, DomainRejected: 0}
+	rate := keeper.DomainAcceptanceRateBps(stats)
+	require.Equal(t, uint64(1_000_000), rate) // 100%
+}
+
+func TestDomainAcceptanceRateBps_AllRejected(t *testing.T) {
+	stats := &keeper.DomainStats{Domain: "d", DomainAccepted: 0, DomainRejected: 5}
+	rate := keeper.DomainAcceptanceRateBps(stats)
+	require.Equal(t, uint64(0), rate) // 0%
+}
+
+func TestDomainAcceptanceRateBps_Mixed(t *testing.T) {
+	// 3 accepted, 1 rejected → 75%
+	stats := &keeper.DomainStats{Domain: "d", DomainAccepted: 3, DomainRejected: 1}
+	rate := keeper.DomainAcceptanceRateBps(stats)
+	require.Equal(t, uint64(750_000), rate) // 75%
+}
+
+func TestRecordDomainVerdict_DoesNotAffectOtherFields(t *testing.T) {
+	k, ctx := setupKnowledgeTest(t)
+
+	// Pre-seed some carrying capacity stats
+	k.IncrementDomainFactCount(ctx, "chemistry", true, 100)
+	k.IncrementDomainFactCount(ctx, "chemistry", false, 50)
+
+	k.RecordDomainVerdict(ctx, "chemistry", true)
+
+	stats, _ := k.GetDomainStats(ctx, "chemistry")
+	require.Equal(t, uint64(1), stats.ActiveCount)
+	require.Equal(t, uint64(1), stats.AtRiskCount)
+	require.Equal(t, uint64(150), stats.TotalEnergy)
+	require.Equal(t, uint64(1), stats.DomainAccepted)
+}
+
+func TestDomainCapacityQuery_ExposesBaseRate(t *testing.T) {
+	k, ctx := setupKnowledgeTest(t)
+
+	k.RecordDomainVerdict(ctx, "physics", true)
+	k.RecordDomainVerdict(ctx, "physics", true)
+	k.RecordDomainVerdict(ctx, "physics", false)
+
+	stats, _ := k.GetDomainStats(ctx, "physics")
+	rate := keeper.DomainAcceptanceRateBps(stats)
+
+	// 2 accepted / 3 total = 66.666...% → 666_666 BPS
+	require.Equal(t, uint64(666_666), rate)
+	require.Equal(t, uint64(2), stats.DomainAccepted)
+	require.Equal(t, uint64(1), stats.DomainRejected)
+}

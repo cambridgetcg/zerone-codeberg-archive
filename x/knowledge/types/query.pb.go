@@ -6822,16 +6822,20 @@ func (x *QueryDomainCapacityRequest) GetDomain() string {
 }
 
 type QueryDomainCapacityResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Domain        string                 `protobuf:"bytes,1,opt,name=domain,proto3" json:"domain,omitempty"`
-	ActiveCount   uint64                 `protobuf:"varint,2,opt,name=active_count,json=activeCount,proto3" json:"active_count,omitempty"`
-	AtRiskCount   uint64                 `protobuf:"varint,3,opt,name=at_risk_count,json=atRiskCount,proto3" json:"at_risk_count,omitempty"`
-	Capacity      uint64                 `protobuf:"varint,4,opt,name=capacity,proto3" json:"capacity,omitempty"`
-	PressureBps   uint64                 `protobuf:"varint,5,opt,name=pressure_bps,json=pressureBps,proto3" json:"pressure_bps,omitempty"`
-	Category      string                 `protobuf:"bytes,6,opt,name=category,proto3" json:"category,omitempty"`
-	TotalEnergy   uint64                 `protobuf:"varint,7,opt,name=total_energy,json=totalEnergy,proto3" json:"total_energy,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Domain      string                 `protobuf:"bytes,1,opt,name=domain,proto3" json:"domain,omitempty"`
+	ActiveCount uint64                 `protobuf:"varint,2,opt,name=active_count,json=activeCount,proto3" json:"active_count,omitempty"`
+	AtRiskCount uint64                 `protobuf:"varint,3,opt,name=at_risk_count,json=atRiskCount,proto3" json:"at_risk_count,omitempty"`
+	Capacity    uint64                 `protobuf:"varint,4,opt,name=capacity,proto3" json:"capacity,omitempty"`
+	PressureBps uint64                 `protobuf:"varint,5,opt,name=pressure_bps,json=pressureBps,proto3" json:"pressure_bps,omitempty"`
+	Category    string                 `protobuf:"bytes,6,opt,name=category,proto3" json:"category,omitempty"`
+	TotalEnergy uint64                 `protobuf:"varint,7,opt,name=total_energy,json=totalEnergy,proto3" json:"total_energy,omitempty"`
+	// Base-rate tracking (Gap 3 — Calibrated Forecasting).
+	DomainAccepted    uint64 `protobuf:"varint,8,opt,name=domain_accepted,json=domainAccepted,proto3" json:"domain_accepted,omitempty"`             // lifetime accepted verdicts in this domain
+	DomainRejected    uint64 `protobuf:"varint,9,opt,name=domain_rejected,json=domainRejected,proto3" json:"domain_rejected,omitempty"`             // lifetime rejected verdicts in this domain
+	AcceptanceRateBps uint64 `protobuf:"varint,10,opt,name=acceptance_rate_bps,json=acceptanceRateBps,proto3" json:"acceptance_rate_bps,omitempty"` // domain_accepted/(domain_accepted+domain_rejected) × 1M; 0 if no verdicts
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *QueryDomainCapacityResponse) Reset() {
@@ -6909,6 +6913,27 @@ func (x *QueryDomainCapacityResponse) GetCategory() string {
 func (x *QueryDomainCapacityResponse) GetTotalEnergy() uint64 {
 	if x != nil {
 		return x.TotalEnergy
+	}
+	return 0
+}
+
+func (x *QueryDomainCapacityResponse) GetDomainAccepted() uint64 {
+	if x != nil {
+		return x.DomainAccepted
+	}
+	return 0
+}
+
+func (x *QueryDomainCapacityResponse) GetDomainRejected() uint64 {
+	if x != nil {
+		return x.DomainRejected
+	}
+	return 0
+}
+
+func (x *QueryDomainCapacityResponse) GetAcceptanceRateBps() uint64 {
+	if x != nil {
+		return x.AcceptanceRateBps
 	}
 	return 0
 }
@@ -11218,7 +11243,7 @@ const file_zerone_knowledge_v1_query_proto_rawDesc = "" +
 	"\rcurrent_epoch\x18\a \x01(\x04R\fcurrentEpoch\x12(\n" +
 	"\x10next_epoch_block\x18\b \x01(\x04R\x0enextEpochBlock\"4\n" +
 	"\x1aQueryDomainCapacityRequest\x12\x16\n" +
-	"\x06domain\x18\x01 \x01(\tR\x06domain\"\xfa\x01\n" +
+	"\x06domain\x18\x01 \x01(\tR\x06domain\"\xfc\x02\n" +
 	"\x1bQueryDomainCapacityResponse\x12\x16\n" +
 	"\x06domain\x18\x01 \x01(\tR\x06domain\x12!\n" +
 	"\factive_count\x18\x02 \x01(\x04R\vactiveCount\x12\"\n" +
@@ -11226,7 +11251,11 @@ const file_zerone_knowledge_v1_query_proto_rawDesc = "" +
 	"\bcapacity\x18\x04 \x01(\x04R\bcapacity\x12!\n" +
 	"\fpressure_bps\x18\x05 \x01(\x04R\vpressureBps\x12\x1a\n" +
 	"\bcategory\x18\x06 \x01(\tR\bcategory\x12!\n" +
-	"\ftotal_energy\x18\a \x01(\x04R\vtotalEnergy\":\n" +
+	"\ftotal_energy\x18\a \x01(\x04R\vtotalEnergy\x12'\n" +
+	"\x0fdomain_accepted\x18\b \x01(\x04R\x0edomainAccepted\x12'\n" +
+	"\x0fdomain_rejected\x18\t \x01(\x04R\x0edomainRejected\x12.\n" +
+	"\x13acceptance_rate_bps\x18\n" +
+	" \x01(\x04R\x11acceptanceRateBps\":\n" +
 	" QueryEpistemicTemperatureRequest\x12\x16\n" +
 	"\x06domain\x18\x01 \x01(\tR\x06domain\"\xcc\x02\n" +
 	"!QueryEpistemicTemperatureResponse\x12\x16\n" +

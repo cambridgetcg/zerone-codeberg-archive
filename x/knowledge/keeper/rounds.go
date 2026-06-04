@@ -131,10 +131,14 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 		}
 		// Review fee already distributed at submission time — no refund.
 		claim.Status = types.ClaimStatus_CLAIM_STATUS_ACCEPTED
+		// Base-rate tracking: record binary outcome for this domain's prior (Gap 3).
+		k.RecordDomainVerdict(ctx, claim.Domain, true)
 
 	case types.Verdict_VERDICT_REJECT:
 		// Review fee already distributed at submission time — the fee IS the cost of rejection.
 		claim.Status = types.ClaimStatus_CLAIM_STATUS_REJECTED
+		// Base-rate tracking: record binary outcome for this domain's prior (Gap 3).
+		k.RecordDomainVerdict(ctx, claim.Domain, false)
 		// If this was a challenge claim, the original fact survived — energy boost
 		k.handleChallengeSurvival(ctx, claim)
 		// Challenge lost: record on the challenger's side of the ledger (Phase 5).

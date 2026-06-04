@@ -1873,13 +1873,16 @@ func (q *queryServer) DomainCapacity(ctx context.Context, req *types.QueryDomain
 	pressure := q.keeper.GetDomainPressure(ctx, req.Domain)
 
 	return &types.QueryDomainCapacityResponse{
-		Domain:      req.Domain,
-		ActiveCount: stats.ActiveCount,
-		AtRiskCount: stats.AtRiskCount,
-		Capacity:    capacity,
-		PressureBps: pressure,
-		Category:    PressureCategory(pressure),
-		TotalEnergy: stats.TotalEnergy,
+		Domain:            req.Domain,
+		ActiveCount:       stats.ActiveCount,
+		AtRiskCount:       stats.AtRiskCount,
+		Capacity:          capacity,
+		PressureBps:       pressure,
+		Category:          PressureCategory(pressure),
+		TotalEnergy:       stats.TotalEnergy,
+		DomainAccepted:    stats.DomainAccepted,
+		DomainRejected:    stats.DomainRejected,
+		AcceptanceRateBps: DomainAcceptanceRateBps(stats),
 	}, nil
 }
 
