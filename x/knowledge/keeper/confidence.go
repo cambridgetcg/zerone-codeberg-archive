@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"context"
+	"math"
 	"math/big"
 
 	"github.com/zerone-chain/zerone/x/knowledge/types"
@@ -139,6 +140,18 @@ func (k Keeper) AggregateVerificationResult(ctx context.Context, round *types.Ve
 	default:
 		result.Verdict = types.Verdict_VERDICT_INCONCLUSIVE
 		result.Confidence = 0
+	}
+
+	// Apply aggregate extremizing (Calibrated Forecasting Gap 5).
+	// Tetlock's formula corrects for under-confidence at the aggregate level:
+	// individual probability estimates share evidence, so the simple average
+	// under-weights their combined signal. Extremizing pushes the result away
+	// from 50% by a governance-configured factor α.
+	// Only applied to binary (ACCEPT/REJECT) verdicts; MALFORMED/INCONCLUSIVE
+	// are not probability estimates and are left unchanged.
+	if params.AggregationExtremizingAlpha >= 1000 &&
+		(result.Verdict == types.Verdict_VERDICT_ACCEPT || result.Verdict == types.Verdict_VERDICT_REJECT) {
+		result.Confidence = extremizeConfidence(result.Confidence, params.AggregationExtremizingAlpha)
 	}
 
 	// Apply stratum ceiling to confidence
@@ -368,4 +381,48 @@ func EffectiveMinChallengeStake(params *types.Params, targetConfidence uint64) *
 	scaled := new(big.Int).Mul(base, new(big.Int).SetUint64(multiplierBps))
 	scaled.Div(scaled, new(big.Int).SetUint64(bps))
 	return scaled
+}
+
+// extremizeConfidence applies Tetlock's aggregate-extremizing formula to a
+// panel confidence score, pushing it away from 50% (500_000 BPS).
+//
+//	extremized = p^α / (p^α + (1−p)^α)
+//
+// alphaMilli is α stored as milliunits: 1000 = α=1.0 (identity), 1500 = α=1.5.
+// 50% is the fixed point: extremizing 500_000 yields 500_000.
+// Results ≤0 clamp to 0; results ≥1_000_000 clamp to 1_000_000.
+//
+// Exported for testing via ExtremeizeConfidenceForTest.
+func extremizeConfidence(confidenceBps uint64, alphaMilli uint64) uint64 {
+	if alphaMilli == 0 || alphaMilli == 1000 {
+		return confidenceBps // disabled or identity
+	}
+	if confidenceBps == 0 {
+		return 0
+	}
+	if confidenceBps >= 1_000_000 {
+		return 1_000_000
+	}
+	p := float64(confidenceBps) / 1_000_000.0
+	alpha := float64(alphaMilli) / 1000.0
+	pAlpha := math.Pow(p, alpha)
+	qAlpha := math.Pow(1.0-p, alpha)
+	denom := pAlpha + qAlpha
+	if denom == 0 {
+		return confidenceBps // degenerate: shouldn't happen for p ∈ (0,1)
+	}
+	result := pAlpha / denom
+	if result < 0 {
+		return 0
+	}
+	if result > 1.0 {
+		return 1_000_000
+	}
+	return uint64(math.Round(result * 1_000_000))
+}
+
+// ExtremizeConfidenceForTest is an exported thin wrapper for unit tests
+// (package keeper_test cannot access unexported extremizeConfidence directly).
+func ExtremizeConfidenceForTest(confidenceBps uint64, alphaMilli uint64) uint64 {
+	return extremizeConfidence(confidenceBps, alphaMilli)
 }

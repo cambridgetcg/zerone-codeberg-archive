@@ -397,8 +397,27 @@ type Params struct {
 	// position — preserving backward compatibility for pre-Wave-4 reveals.
 	// Default: false (equal-share distribution, existing behaviour).
 	ProperScoringRuleEnabled bool `protobuf:"varint,173,opt,name=proper_scoring_rule_enabled,json=properScoringRuleEnabled,proto3" json:"proper_scoring_rule_enabled,omitempty"` // default: false
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// aggregation_extremizing_alpha (Calibrated Forecasting Gap 5).
+	// Applies Tetlock's aggregate-extremizing formula to panel confidence scores
+	// after stake-weighted vote aggregation but before stratum ceiling and the
+	// global MaxConfidence cap.  Extremizing pushes the aggregate probability
+	// away from 50%, correcting for the systematic under-confidence that
+	// results from averaging independent probability estimates whose shared
+	// evidence components have been double-counted.
+	//
+	// Formula: extremized = p^α / (p^α + (1−p)^α)
+	// where p is the raw aggregate confidence (0..1) and α > 1 pushes away
+	// from 0.5.  50% is the fixed point (extremizing 50% yields 50%).  Typical
+	// GJP values: 1.5 (conservative), 2.0 (moderate), 2.5 (aggressive).
+	//
+	// Storage: milliunits — 1000 = α=1.0 (identity), 1500 = α=1.5, 2000 = α=2.0.
+	// 0 = disabled (no extremizing, existing behaviour).
+	// Only applied to binary verdicts (ACCEPT / REJECT); MALFORMED / INCONCLUSIVE
+	// are left unchanged because they are not probability estimates.
+	// Result is clamped by MaxConfidence and stratum ceilings as usual.
+	AggregationExtremizingAlpha uint64 `protobuf:"varint,174,opt,name=aggregation_extremizing_alpha,json=aggregationExtremizingAlpha,proto3" json:"aggregation_extremizing_alpha,omitempty"` // default: 0 (disabled)
+	unknownFields               protoimpl.UnknownFields
+	sizeCache                   protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -1642,6 +1661,13 @@ func (x *Params) GetProperScoringRuleEnabled() bool {
 	return false
 }
 
+func (x *Params) GetAggregationExtremizingAlpha() uint64 {
+	if x != nil {
+		return x.AggregationExtremizingAlpha
+	}
+	return 0
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -1879,7 +1905,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xc7U\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\x8cV\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2054,7 +2080,8 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\x19min_round_duration_blocks\x18\xaa\x01 \x01(\x04R\x16minRoundDurationBlocks\x126\n" +
 	"\x17null_result_credit_uzrn\x18\xab\x01 \x01(\x04R\x14nullResultCreditUzrn\x12H\n" +
 	" proof_certificate_bypass_enabled\x18\xac\x01 \x01(\bR\x1dproofCertificateBypassEnabled\x12>\n" +
-	"\x1bproper_scoring_rule_enabled\x18\xad\x01 \x01(\bR\x18properScoringRuleEnabled\x1aN\n" +
+	"\x1bproper_scoring_rule_enabled\x18\xad\x01 \x01(\bR\x18properScoringRuleEnabled\x12C\n" +
+	"\x1daggregation_extremizing_alpha\x18\xae\x01 \x01(\x04R\x1baggregationExtremizingAlpha\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xe5\x0e\n" +

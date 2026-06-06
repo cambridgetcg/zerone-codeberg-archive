@@ -420,6 +420,26 @@ message Params {
   // position — preserving backward compatibility for pre-Wave-4 reveals.
   // Default: false (equal-share distribution, existing behaviour).
   bool proper_scoring_rule_enabled = 173; // default: false
+
+  // aggregation_extremizing_alpha (Calibrated Forecasting Gap 5).
+  // Applies Tetlock's aggregate-extremizing formula to panel confidence scores
+  // after stake-weighted vote aggregation but before stratum ceiling and the
+  // global MaxConfidence cap.  Extremizing pushes the aggregate probability
+  // away from 50%, correcting for the systematic under-confidence that
+  // results from averaging independent probability estimates whose shared
+  // evidence components have been double-counted.
+  //
+  // Formula: extremized = p^α / (p^α + (1−p)^α)
+  // where p is the raw aggregate confidence (0..1) and α > 1 pushes away
+  // from 0.5.  50% is the fixed point (extremizing 50% yields 50%).  Typical
+  // GJP values: 1.5 (conservative), 2.0 (moderate), 2.5 (aggressive).
+  //
+  // Storage: milliunits — 1000 = α=1.0 (identity), 1500 = α=1.5, 2000 = α=2.0.
+  // 0 = disabled (no extremizing, existing behaviour).
+  // Only applied to binary verdicts (ACCEPT / REJECT); MALFORMED / INCONCLUSIVE
+  // are left unchanged because they are not probability estimates.
+  // Result is clamped by MaxConfidence and stratum ceilings as usual.
+  uint64 aggregation_extremizing_alpha = 174; // default: 0 (disabled)
 }
 
 // GenesisState is the genesis state of the knowledge module.

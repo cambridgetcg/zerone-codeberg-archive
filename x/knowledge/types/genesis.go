@@ -877,5 +877,17 @@ func (p *Params) Validate() error {
 		}
 	}
 
+	// ─── Aggregate extremizing alpha (Calibrated Forecasting Gap 5) ─────────────
+	// 0 = disabled. When enabled, α must be ≥ 1.0 (stored as milliunits: 1000).
+	// α < 1.0 would compress rather than extremize — compressing toward 50% is
+	// the opposite of what we want and is disallowed. Upper bound: 10000 (α=10)
+	// is structurally valid (approaches binary) but unlikely in practice.
+	if p.AggregationExtremizingAlpha > 0 && p.AggregationExtremizingAlpha < 1000 {
+		return fmt.Errorf("aggregation_extremizing_alpha must be 0 (disabled) or ≥ 1000 (α≥1.0); got %d", p.AggregationExtremizingAlpha)
+	}
+	if p.AggregationExtremizingAlpha > 10_000 {
+		return fmt.Errorf("aggregation_extremizing_alpha must be ≤ 10000 (α≤10.0); got %d", p.AggregationExtremizingAlpha)
+	}
+
 	return nil
 }
