@@ -387,8 +387,18 @@ type Params struct {
 	// Default: false (all claims go through PoT until governance activates bypass
 	// after the canonical certificate format is validated in production).
 	ProofCertificateBypassEnabled bool `protobuf:"varint,172,opt,name=proof_certificate_bypass_enabled,json=proofCertificateBypassEnabled,proto3" json:"proof_certificate_bypass_enabled,omitempty"` // default: false
-	unknownFields                 protoimpl.UnknownFields
-	sizeCache                     protoimpl.SizeCache
+	// proper_scoring_rule_enabled (Calibrated Forecasting Gap 1).
+	// When true, verifier reward shares within each correct-verifier pool are
+	// proportional to the individual Brier correctness score computed from the
+	// verifier's stated ConfidenceBps.  Higher confidence in a correct direction
+	// → larger share; lower confidence → smaller (but still positive) share.
+	// Verifiers who did not report ConfidenceBps (ConfidenceBps == 0) are treated
+	// as if they reported 50% (BPS 500_000) — the maximum-uncertainty neutral
+	// position — preserving backward compatibility for pre-Wave-4 reveals.
+	// Default: false (equal-share distribution, existing behaviour).
+	ProperScoringRuleEnabled bool `protobuf:"varint,173,opt,name=proper_scoring_rule_enabled,json=properScoringRuleEnabled,proto3" json:"proper_scoring_rule_enabled,omitempty"` // default: false
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -1625,6 +1635,13 @@ func (x *Params) GetProofCertificateBypassEnabled() bool {
 	return false
 }
 
+func (x *Params) GetProperScoringRuleEnabled() bool {
+	if x != nil {
+		return x.ProperScoringRuleEnabled
+	}
+	return false
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -1862,7 +1879,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\x87U\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xc7U\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2036,7 +2053,8 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	" min_verifier_independence_rounds\x18\xa9\x01 \x01(\x04R\x1dminVerifierIndependenceRounds\x12:\n" +
 	"\x19min_round_duration_blocks\x18\xaa\x01 \x01(\x04R\x16minRoundDurationBlocks\x126\n" +
 	"\x17null_result_credit_uzrn\x18\xab\x01 \x01(\x04R\x14nullResultCreditUzrn\x12H\n" +
-	" proof_certificate_bypass_enabled\x18\xac\x01 \x01(\bR\x1dproofCertificateBypassEnabled\x1aN\n" +
+	" proof_certificate_bypass_enabled\x18\xac\x01 \x01(\bR\x1dproofCertificateBypassEnabled\x12>\n" +
+	"\x1bproper_scoring_rule_enabled\x18\xad\x01 \x01(\bR\x18properScoringRuleEnabled\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xe5\x0e\n" +

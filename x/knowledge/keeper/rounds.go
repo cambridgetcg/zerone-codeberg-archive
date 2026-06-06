@@ -394,27 +394,121 @@ func (k Keeper) distributeVerifierRewardsFromPool(ctx context.Context, claim *ty
 		}
 	}
 
-	// Distribute base pool equally among all correct verifiers (existing logic).
-	perVerifier := basePool / uint64(len(result.Rewards))
-	remainder := basePool - (perVerifier * uint64(len(result.Rewards)))
-
+	// Distribute base pool: Brier-score-proportional (proper scoring rule) when
+	// params.ProperScoringRuleEnabled is true; equal-share otherwise (existing logic).
+	//
+	// Proper scoring rule (Calibrated Forecasting Gap 1):
+	//   Each correct verifier's share ∝ brierCorrectnessBps(reveal, outcome).
+	//   brierCorrectnessBps = 1_000_000 − (p_accept − outcome)² / 1_000_000.
+	//   ConfidenceBps == 0 (not reported) → neutral position (500_000).
 	var withheldTotal uint64
-	for i, reward := range result.Rewards {
-		amount := perVerifier
-		if i == 0 {
-			amount += remainder // first verifier gets dust
+	properScoringApplied := false
+
+	if params != nil && params.ProperScoringRuleEnabled && round != nil &&
+		(result.Verdict == types.Verdict_VERDICT_ACCEPT || result.Verdict == types.Verdict_VERDICT_REJECT) {
+
+		// Build O(1) reveal lookup.
+		revealMap := make(map[string]*types.RevealEntry, len(round.Reveals))
+		for _, rev := range round.Reveals {
+			revealMap[rev.Verifier] = rev
 		}
-		modulated := k.applyIndependenceMultiplier(ctx, reward.Verifier, amount, params)
-		if modulated < amount {
-			withheldTotal += amount - modulated
+		outcomeAcceptBps := uint64(0)
+		if result.Verdict == types.Verdict_VERDICT_ACCEPT {
+			outcomeAcceptBps = 1_000_000
 		}
-		k.distributeVerifierReward(ctx, reward.Verifier, modulated)
+
+		// Compute Brier correctness score per correct verifier.
+		scores := make([]uint64, len(result.Rewards))
+		var totalScore uint64
+		for i, reward := range result.Rewards {
+			scores[i] = brierCorrectnessBps(revealMap[reward.Verifier], outcomeAcceptBps)
+			totalScore += scores[i]
+		}
+
+		if totalScore > 0 {
+			properScoringApplied = true
+			var distributed uint64
+			for i, reward := range result.Rewards {
+				amount := safeMulDiv(basePool, scores[i], totalScore)
+				modulated := k.applyIndependenceMultiplier(ctx, reward.Verifier, amount, params)
+				if modulated < amount {
+					withheldTotal += amount - modulated
+				}
+				k.distributeVerifierReward(ctx, reward.Verifier, modulated)
+				distributed += amount
+			}
+			// Rounding remainder → first verifier.
+			if rem := basePool - distributed; rem > 0 {
+				k.distributeVerifierReward(ctx, result.Rewards[0].Verifier, rem)
+			}
+		}
+		// If totalScore == 0 (shouldn't happen: correct verifiers always score > 0
+		// unless all said exactly 100% against their correct vote, which is impossible
+		// by definition), fall through to equal-share.
 	}
 
-	// Withheld portion flows to development fund.
+	if !properScoringApplied {
+		// Equal-share distribution among all correct verifiers.
+		perVerifier := basePool / uint64(len(result.Rewards))
+		remainder := basePool - (perVerifier * uint64(len(result.Rewards)))
+		for i, reward := range result.Rewards {
+			amount := perVerifier
+			if i == 0 {
+				amount += remainder // first verifier absorbs dust
+			}
+			modulated := k.applyIndependenceMultiplier(ctx, reward.Verifier, amount, params)
+			if modulated < amount {
+				withheldTotal += amount - modulated
+			}
+			k.distributeVerifierReward(ctx, reward.Verifier, modulated)
+		}
+	}
+
+	// Withheld portion (independence modulation) flows to development fund.
 	if withheldTotal > 0 {
 		k.forwardWithheldToDevelopmentFund(ctx, withheldTotal)
 	}
+}
+
+// BrierCorrectnessBpsForTest is an exported thin wrapper for use in unit tests
+// (package keeper_test cannot access unexported brierCorrectnessBps directly).
+func BrierCorrectnessBpsForTest(reveal *types.RevealEntry, outcomeAcceptBps uint64) uint64 {
+	return brierCorrectnessBps(reveal, outcomeAcceptBps)
+}
+
+// brierCorrectnessBps computes the Brier correctness score for a single verifier
+// reveal against a known outcome, scaled to BPS (0..1_000_000).
+//
+//   brierCorrectness = 1_000_000 − brierError
+//   brierError       = (p_accept_bps − outcome_accept_bps)² / 1_000_000
+//
+// outcomeAcceptBps is 1_000_000 for ACCEPT, 0 for REJECT.
+// ConfidenceBps == 0 (pre-Wave-4 or not reported) → neutral 50% (500_000).
+//
+// A perfectly confident correct verifier (ConfidenceBps=1_000_000, correct direction)
+// scores 1_000_000.  A neutral verifier (ConfidenceBps=0) scores 750_000.
+// A perfectly confident wrong verifier would score 0, but correct verifiers
+// always have brierCorrectness > 0 by definition.
+func brierCorrectnessBps(reveal *types.RevealEntry, outcomeAcceptBps uint64) uint64 {
+	var pAcceptBps uint64
+	if reveal == nil || reveal.ConfidenceBps == 0 {
+		pAcceptBps = 500_000 // neutral: no confidence reported
+	} else if reveal.Vote == "accept" {
+		pAcceptBps = reveal.ConfidenceBps
+	} else {
+		// REJECT vote: complement maps ConfidenceBps to P(accept).
+		if reveal.ConfidenceBps > 1_000_000 {
+			pAcceptBps = 0
+		} else {
+			pAcceptBps = 1_000_000 - reveal.ConfidenceBps
+		}
+	}
+	diff := int64(pAcceptBps) - int64(outcomeAcceptBps)
+	brierError := uint64(diff*diff) / 1_000_000
+	if brierError > 1_000_000 {
+		brierError = 1_000_000
+	}
+	return 1_000_000 - brierError
 }
 
 // applyIndependenceMultiplier returns the reward amount after modulation.

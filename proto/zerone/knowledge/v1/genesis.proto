@@ -409,6 +409,17 @@ message Params {
   // Default: false (all claims go through PoT until governance activates bypass
   // after the canonical certificate format is validated in production).
   bool proof_certificate_bypass_enabled = 172; // default: false
+
+  // proper_scoring_rule_enabled (Calibrated Forecasting Gap 1).
+  // When true, verifier reward shares within each correct-verifier pool are
+  // proportional to the individual Brier correctness score computed from the
+  // verifier's stated ConfidenceBps.  Higher confidence in a correct direction
+  // → larger share; lower confidence → smaller (but still positive) share.
+  // Verifiers who did not report ConfidenceBps (ConfidenceBps == 0) are treated
+  // as if they reported 50% (BPS 500_000) — the maximum-uncertainty neutral
+  // position — preserving backward compatibility for pre-Wave-4 reveals.
+  // Default: false (equal-share distribution, existing behaviour).
+  bool proper_scoring_rule_enabled = 173; // default: false
 }
 
 // GenesisState is the genesis state of the knowledge module.
