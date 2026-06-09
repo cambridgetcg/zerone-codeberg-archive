@@ -19,6 +19,16 @@ message Pool {
   // Liquidity mining: cumulative reward per LP token (×1e18 precision, bigint string).
   // Monotonically increasing. Default "" treated as "0".
   string accumulated_reward_per_lp = 12;
+
+  // pool_max_swap_fraction_bps: per-pool override for the global MaxSwapFractionBps
+  // governance parameter (Market Microstructure Gap 4). When non-zero this value
+  // governs the maximum fraction of the pool's input-token reserve that a single
+  // swap may consume, expressed in BPS (1,000,000 = 100%).
+  //
+  // Precedence: pool-level (this field, if > 0) > global Params.MaxSwapFractionBps.
+  // A pool-level value of 0 means "use the global default" — backward compatible.
+  // Valid range: 1 – 1,000,000 (enforced at CreatePool).
+  uint64 pool_max_swap_fraction_bps = 13;
 }
 
 // LiquidityMiningPeriod defines a per-pool emission schedule for LP reward distribution.

@@ -67,6 +67,9 @@ message MsgCreatePool {
   string amount_a     = 4; // bigint string
   string amount_b     = 5; // bigint string
   uint64 swap_fee_bps = 6; // 0 = use default
+  // pool_max_swap_fraction_bps: optional per-pool swap-size cap. 0 = use global default.
+  // See Pool.pool_max_swap_fraction_bps for semantics.
+  uint64 pool_max_swap_fraction_bps = 7;
 }
 message MsgCreatePoolResponse {
   string pool_id = 1;

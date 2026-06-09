@@ -66,6 +66,12 @@ func (m msgServer) CreatePool(goCtx context.Context, msg *types.MsgCreatePool) (
 		feeBps = params.DefaultSwapFeeBps
 	}
 
+	// Validate per-pool swap fraction override (Market Microstructure Gap 4).
+	// 0 = use global default (allowed); 1–1_000_000 = valid override.
+	if msg.PoolMaxSwapFractionBps > 1_000_000 {
+		return nil, types.ErrInvalidPoolSwapFraction
+	}
+
 	// Transfer initial liquidity from creator to module
 	creatorAddr, _ := sdk.AccAddressFromBech32(msg.Creator)
 	coinsA := sdk.NewCoins(sdk.NewCoin(msg.DenomA, sdkmath.NewIntFromBigInt(amountA)))
@@ -88,16 +94,17 @@ func (m msgServer) CreatePool(goCtx context.Context, msg *types.MsgCreatePool) (
 	lpTokens := CalculateLPTokensForDeposit(amountA, amountB, amountA, amountB, new(big.Int))
 
 	pool := &types.Pool{
-		PoolId:         poolId,
-		DenomA:         msg.DenomA,
-		DenomB:         msg.DenomB,
-		ReserveA:       amountA.String(),
-		ReserveB:       amountB.String(),
-		SwapFeeBps:     feeBps,
-		LpTokenSupply:  lpTokens.String(),
-		LpDenom:        types.LPDenom(poolId),
-		Creator:        msg.Creator,
-		CreatedAtBlock: uint64(ctx.BlockHeight()),
+		PoolId:                  poolId,
+		DenomA:                  msg.DenomA,
+		DenomB:                  msg.DenomB,
+		ReserveA:                amountA.String(),
+		ReserveB:                amountB.String(),
+		SwapFeeBps:              feeBps,
+		LpTokenSupply:           lpTokens.String(),
+		LpDenom:                 types.LPDenom(poolId),
+		Creator:                 msg.Creator,
+		CreatedAtBlock:          uint64(ctx.BlockHeight()),
+		PoolMaxSwapFractionBps:  msg.PoolMaxSwapFractionBps,
 	}
 	m.Keeper.SetPool(ctx, pool)
 
@@ -179,10 +186,16 @@ func (m msgServer) Swap(goCtx context.Context, msg *types.MsgSwap) (*types.MsgSw
 		return nil, types.ErrDenomNotInPool
 	}
 
-	// Max swap fraction check (0 = disabled)
+	// Max swap fraction check — per-pool override takes precedence over global.
+	// Precedence: pool.PoolMaxSwapFractionBps (if > 0) > Params.MaxSwapFractionBps.
+	// Both 0 = check disabled (Market Microstructure Gap 4 + existing Gap 5).
 	params := m.Keeper.GetParams(ctx)
-	if params.MaxSwapFractionBps > 0 {
-		maxIn := new(big.Int).Mul(reserveIn, new(big.Int).SetUint64(params.MaxSwapFractionBps))
+	effectiveFractionBps := params.MaxSwapFractionBps
+	if pool.PoolMaxSwapFractionBps > 0 {
+		effectiveFractionBps = pool.PoolMaxSwapFractionBps
+	}
+	if effectiveFractionBps > 0 {
+		maxIn := new(big.Int).Mul(reserveIn, new(big.Int).SetUint64(effectiveFractionBps))
 		maxIn.Div(maxIn, big.NewInt(1_000_000))
 		if tokenIn.Cmp(maxIn) > 0 {
 			return nil, types.ErrSwapFractionExceeded

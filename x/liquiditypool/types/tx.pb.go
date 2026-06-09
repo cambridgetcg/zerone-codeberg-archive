@@ -267,15 +267,18 @@ func (x *MsgRevealSwapResponse) GetFeeAmount() string {
 }
 
 type MsgCreatePool struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Creator       string                 `protobuf:"bytes,1,opt,name=creator,proto3" json:"creator,omitempty"` // governance authority address
-	DenomA        string                 `protobuf:"bytes,2,opt,name=denom_a,json=denomA,proto3" json:"denom_a,omitempty"`
-	DenomB        string                 `protobuf:"bytes,3,opt,name=denom_b,json=denomB,proto3" json:"denom_b,omitempty"`
-	AmountA       string                 `protobuf:"bytes,4,opt,name=amount_a,json=amountA,proto3" json:"amount_a,omitempty"`             // bigint string
-	AmountB       string                 `protobuf:"bytes,5,opt,name=amount_b,json=amountB,proto3" json:"amount_b,omitempty"`             // bigint string
-	SwapFeeBps    uint64                 `protobuf:"varint,6,opt,name=swap_fee_bps,json=swapFeeBps,proto3" json:"swap_fee_bps,omitempty"` // 0 = use default
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Creator    string                 `protobuf:"bytes,1,opt,name=creator,proto3" json:"creator,omitempty"` // governance authority address
+	DenomA     string                 `protobuf:"bytes,2,opt,name=denom_a,json=denomA,proto3" json:"denom_a,omitempty"`
+	DenomB     string                 `protobuf:"bytes,3,opt,name=denom_b,json=denomB,proto3" json:"denom_b,omitempty"`
+	AmountA    string                 `protobuf:"bytes,4,opt,name=amount_a,json=amountA,proto3" json:"amount_a,omitempty"`             // bigint string
+	AmountB    string                 `protobuf:"bytes,5,opt,name=amount_b,json=amountB,proto3" json:"amount_b,omitempty"`             // bigint string
+	SwapFeeBps uint64                 `protobuf:"varint,6,opt,name=swap_fee_bps,json=swapFeeBps,proto3" json:"swap_fee_bps,omitempty"` // 0 = use default
+	// pool_max_swap_fraction_bps: optional per-pool swap-size cap. 0 = use global default.
+	// See Pool.pool_max_swap_fraction_bps for semantics.
+	PoolMaxSwapFractionBps uint64 `protobuf:"varint,7,opt,name=pool_max_swap_fraction_bps,json=poolMaxSwapFractionBps,proto3" json:"pool_max_swap_fraction_bps,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *MsgCreatePool) Reset() {
@@ -346,6 +349,13 @@ func (x *MsgCreatePool) GetAmountB() string {
 func (x *MsgCreatePool) GetSwapFeeBps() uint64 {
 	if x != nil {
 		return x.SwapFeeBps
+	}
+	return 0
+}
+
+func (x *MsgCreatePool) GetPoolMaxSwapFractionBps() uint64 {
+	if x != nil {
+		return x.PoolMaxSwapFractionBps
 	}
 	return 0
 }
@@ -1121,7 +1131,7 @@ const file_zerone_liquiditypool_v1_tx_proto_rawDesc = "" +
 	"\x15MsgRevealSwapResponse\x12(\n" +
 	"\x10token_out_amount\x18\x01 \x01(\tR\x0etokenOutAmount\x12\x1d\n" +
 	"\n" +
-	"fee_amount\x18\x02 \x01(\tR\tfeeAmount\"\xb3\x01\n" +
+	"fee_amount\x18\x02 \x01(\tR\tfeeAmount\"\xef\x01\n" +
 	"\rMsgCreatePool\x12\x18\n" +
 	"\acreator\x18\x01 \x01(\tR\acreator\x12\x17\n" +
 	"\adenom_a\x18\x02 \x01(\tR\x06denomA\x12\x17\n" +
@@ -1129,7 +1139,8 @@ const file_zerone_liquiditypool_v1_tx_proto_rawDesc = "" +
 	"\bamount_a\x18\x04 \x01(\tR\aamountA\x12\x19\n" +
 	"\bamount_b\x18\x05 \x01(\tR\aamountB\x12 \n" +
 	"\fswap_fee_bps\x18\x06 \x01(\x04R\n" +
-	"swapFeeBps\"0\n" +
+	"swapFeeBps\x12:\n" +
+	"\x1apool_max_swap_fraction_bps\x18\a \x01(\x04R\x16poolMaxSwapFractionBps\"0\n" +
 	"\x15MsgCreatePoolResponse\x12\x17\n" +
 	"\apool_id\x18\x01 \x01(\tR\x06poolId\"\xd3\x01\n" +
 	"\aMsgSwap\x12\x16\n" +

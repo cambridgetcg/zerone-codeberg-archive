@@ -38,6 +38,15 @@ type Pool struct {
 	// Liquidity mining: cumulative reward per LP token (×1e18 precision, bigint string).
 	// Monotonically increasing. Default "" treated as "0".
 	AccumulatedRewardPerLp string `protobuf:"bytes,12,opt,name=accumulated_reward_per_lp,json=accumulatedRewardPerLp,proto3" json:"accumulated_reward_per_lp,omitempty"`
+	// pool_max_swap_fraction_bps: per-pool override for the global MaxSwapFractionBps
+	// governance parameter (Market Microstructure Gap 4). When non-zero this value
+	// governs the maximum fraction of the pool's input-token reserve that a single
+	// swap may consume, expressed in BPS (1,000,000 = 100%).
+	//
+	// Precedence: pool-level (this field, if > 0) > global Params.MaxSwapFractionBps.
+	// A pool-level value of 0 means "use the global default" — backward compatible.
+	// Valid range: 1 – 1,000,000 (enforced at CreatePool).
+	PoolMaxSwapFractionBps uint64 `protobuf:"varint,13,opt,name=pool_max_swap_fraction_bps,json=poolMaxSwapFractionBps,proto3" json:"pool_max_swap_fraction_bps,omitempty"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -154,6 +163,13 @@ func (x *Pool) GetAccumulatedRewardPerLp() string {
 		return x.AccumulatedRewardPerLp
 	}
 	return ""
+}
+
+func (x *Pool) GetPoolMaxSwapFractionBps() uint64 {
+	if x != nil {
+		return x.PoolMaxSwapFractionBps
+	}
+	return 0
 }
 
 // LiquidityMiningPeriod defines a per-pool emission schedule for LP reward distribution.
@@ -550,7 +566,7 @@ var File_zerone_liquiditypool_v1_types_proto protoreflect.FileDescriptor
 
 const file_zerone_liquiditypool_v1_types_proto_rawDesc = "" +
 	"\n" +
-	"#zerone/liquiditypool/v1/types.proto\x12\x17zerone.liquiditypool.v1\"\x87\x03\n" +
+	"#zerone/liquiditypool/v1/types.proto\x12\x17zerone.liquiditypool.v1\"\xc3\x03\n" +
 	"\x04Pool\x12\x17\n" +
 	"\apool_id\x18\x01 \x01(\tR\x06poolId\x12\x17\n" +
 	"\adenom_a\x18\x02 \x01(\tR\x06denomA\x12\x17\n" +
@@ -565,7 +581,8 @@ const file_zerone_liquiditypool_v1_types_proto_rawDesc = "" +
 	"\x10created_at_block\x18\n" +
 	" \x01(\x04R\x0ecreatedAtBlock\x12\x16\n" +
 	"\x06locked\x18\v \x01(\bR\x06locked\x129\n" +
-	"\x19accumulated_reward_per_lp\x18\f \x01(\tR\x16accumulatedRewardPerLp\"\xfb\x01\n" +
+	"\x19accumulated_reward_per_lp\x18\f \x01(\tR\x16accumulatedRewardPerLp\x12:\n" +
+	"\x1apool_max_swap_fraction_bps\x18\r \x01(\x04R\x16poolMaxSwapFractionBps\"\xfb\x01\n" +
 	"\x15LiquidityMiningPeriod\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\apool_id\x18\x02 \x01(\tR\x06poolId\x12(\n" +

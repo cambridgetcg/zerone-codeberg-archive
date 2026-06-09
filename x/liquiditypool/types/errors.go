@@ -28,5 +28,6 @@ var (
 	ErrNoCommitFound         = errors.Register(ModuleName, 24, "no swap commitment found for this sender+pool")
 	ErrCommitmentMismatch    = errors.Register(ModuleName, 25, "reveal parameters do not match commitment hash")
 	ErrRevealTooEarly        = errors.Register(ModuleName, 26, "reveal submitted before commit-reveal delay has elapsed")
-	ErrInvalidCommitment     = errors.Register(ModuleName, 27, "commitment must be a 32-byte sha256 hash")
+	ErrInvalidCommitment        = errors.Register(ModuleName, 27, "commitment must be a 32-byte sha256 hash")
+	ErrInvalidPoolSwapFraction  = errors.Register(ModuleName, 28, "pool_max_swap_fraction_bps must be between 1 and 1000000")
 )
