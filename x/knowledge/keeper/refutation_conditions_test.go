@@ -38,7 +38,7 @@ func TestRefutationConditions_QueryClaim_ExposesConditions(t *testing.T) {
 	resp, err := ms.SubmitClaim(ctx, &types.MsgSubmitClaim{
 		Submitter:   makeValidBech32Addr("qrc-sub1"),
 		FactContent: "The orbital period of Earth around the Sun is approximately 365.25 days",
-		Domain:      "astronomy",
+		Domain:      "cosmology",
 		Category:    "empirical",
 		Stake:       "1000000",
 		RefutationConditions: []string{
@@ -62,36 +62,43 @@ func TestRefutationConditions_QueryClaim_ExposesConditions(t *testing.T) {
 // PendingClaims list query includes refutation conditions — challengers scanning
 // the pending queue can see declared falsifiability for each claim without a
 // per-claim lookup.
+//
+// Note: MsgSubmitClaim moves claims to IN_VERIFICATION immediately (a PoT round
+// is created at submission). PendingClaims returns CLAIM_STATUS_PENDING claims,
+// so we inject a PENDING claim directly via SetClaim — this is the valid test path
+// for the query endpoint itself (independent of the submit flow).
 func TestRefutationConditions_PendingClaimsQuery_ExposesConditions(t *testing.T) {
 	k, ctx := setupKnowledgeTest(t)
-	ms := keeper.NewMsgServerImpl(k)
 	qs := keeper.NewQueryServerImpl(k)
 
 	conditions := []string{
 		"if a direct measurement of c in vacuum deviates >0.001% from 299792458 m/s",
 	}
 
-	resp, err := ms.SubmitClaim(ctx, &types.MsgSubmitClaim{
-		Submitter:            makeValidBech32Addr("qrc-sub2"),
+	// Inject a PENDING claim directly — this is the status PendingClaims queries for.
+	claimID := "claim-qrc-pending-001"
+	claim := &types.Claim{
+		Id:                   claimID,
 		FactContent:          "The speed of light in vacuum is exactly 299792458 metres per second",
 		Domain:               "physics",
 		Category:             "constant",
-		Stake:                "1000000",
+		Submitter:            makeValidBech32Addr("qrc-sub2"),
+		Status:               types.ClaimStatus_CLAIM_STATUS_PENDING,
 		RefutationConditions: conditions,
-	})
-	require.NoError(t, err)
+	}
+	require.NoError(t, k.SetClaim(ctx, claim))
 
 	pendingResp, err := qs.PendingClaims(ctx, &types.QueryPendingClaimsRequest{})
 	require.NoError(t, err)
 
 	var target *types.Claim
 	for _, c := range pendingResp.Claims {
-		if c.Id == resp.ClaimId {
+		if c.Id == claimID {
 			target = c
 			break
 		}
 	}
-	require.NotNil(t, target, "submitted claim must appear in pending queue")
+	require.NotNil(t, target, "injected PENDING claim must appear in pending queue")
 	require.Equal(t, conditions, target.RefutationConditions,
 		"PendingClaims must carry conditions so challengers can scan without a per-claim lookup",
 	)
