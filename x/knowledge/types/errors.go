@@ -89,4 +89,9 @@ var (
 
 	// ─── Human-only panel gate (84) — P-13 ───────────────────────────────
 	ErrAgentNotAllowedOnHumanPanel = errors.Register(ModuleName, 84, "agent accounts may not verify human-only claims")
+
+	// ─── Pragmatic consequence instances (85–87) — Pragmatism Gap 1 ──────
+	ErrConsequenceInstanceWrongMethodology = errors.Register(ModuleName, 85, "consequence instances only valid on M-PRAGMATIC claims")
+	ErrConsequenceInstanceRejectedClaim    = errors.Register(ModuleName, 86, "cannot add consequence instance to a rejected claim")
+	ErrInsufficientConsequenceInstances    = errors.Register(ModuleName, 87, "M-PRAGMATIC claim has insufficient consequence instances for ACCEPT verdict")
 )

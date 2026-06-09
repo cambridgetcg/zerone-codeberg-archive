@@ -84,6 +84,18 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 		return fmt.Errorf("claim %s not found for round %s", round.ClaimId, round.Id)
 	}
 
+	// Pragmatism Gap 1: gate M-PRAGMATIC ACCEPT verdicts on track-record sufficiency.
+	// When min_pragmatic_consequence_instances > 0 and the claim is M-PRAGMATIC
+	// with too few logged consequence instances, override ACCEPT → INCONCLUSIVE.
+	// The panel's epistemic work is preserved (calibration still recorded below);
+	// only the final verdict is blocked until the pragmatic track record is built.
+	if result.Verdict == types.Verdict_VERDICT_ACCEPT {
+		pragmaticParams, _ := k.GetParams(ctx)
+		if gateErr := k.CheckPragmaticConsequenceGate(ctx, *claim, *pragmaticParams); gateErr != nil {
+			result.Verdict = types.Verdict_VERDICT_INCONCLUSIVE
+		}
+	}
+
 	round.Verdict = result.Verdict
 	round.VerdictBlock = height
 	round.VerdictBlockHash = sdkCtx.HeaderHash() // Settlement Finality Gap 1: anchors verdict to specific chain history

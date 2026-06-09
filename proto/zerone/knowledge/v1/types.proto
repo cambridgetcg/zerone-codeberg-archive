@@ -799,6 +799,33 @@ message Claim {
   // accepted facts. Only chain-verifiable proofs set this field; external proof
   // formats (LEAN4, HASH_ONLY) leave it false regardless of content.
   bool certificate_verified = 27;
+
+  // consequence_instances: for M-PRAGMATIC claims, records of validated practical
+  // consequence instances. Each instance documents one case where the claim's
+  // predicted consequence was tested against observed reality. The count is checked
+  // against Params.min_pragmatic_consequence_instances before a round can complete
+  // with ACCEPT verdict. An empty list is allowed when the param is 0 (disabled).
+  // Any address may append instances via MsgAddConsequenceInstance.
+  repeated ConsequenceInstance consequence_instances = 28;
+}
+
+// ConsequenceInstance records a single validated application of an M-PRAGMATIC claim.
+// Peirce's criterion: truth is what reliably guides successful action. Each instance
+// is one data point in the claim's pragmatic track record.
+message ConsequenceInstance {
+  // context_description: the situation in which the claim's prediction was applied.
+  string context_description = 1;
+  // predicted_outcome: what the claim predicted would happen in this context.
+  string predicted_outcome   = 2;
+  // observed_outcome: what actually happened — the ground truth.
+  string observed_outcome    = 3;
+  // evidence_hash: SHA-256 hex of off-chain evidence document. Allows evidence
+  // commitment without on-chain storage. Empty = no committed evidence.
+  string evidence_hash       = 4;
+  // submitted_at_block: chain block when this instance was logged.
+  uint64 submitted_at_block  = 5;
+  // submitted_by: address that submitted this consequence instance.
+  string submitted_by        = 6;
 }
 
 // VerificationRound tracks one commit-reveal verification cycle.

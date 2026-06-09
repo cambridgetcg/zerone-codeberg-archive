@@ -644,6 +644,30 @@ func (m *msgServer) VetoFactInjection(ctx context.Context, msg *types.MsgVetoFac
 	return &types.MsgVetoFactInjectionResponse{}, nil
 }
 
+// AddConsequenceInstance — Pragmatism Gap 1. Any address logs a pragmatic consequence
+// instance on an M-PRAGMATIC claim. Builds the track record measured by
+// Params.min_pragmatic_consequence_instances before an ACCEPT verdict is issued.
+func (m *msgServer) AddConsequenceInstance(
+	ctx context.Context,
+	msg *types.MsgAddConsequenceInstance,
+) (*types.MsgAddConsequenceInstanceResponse, error) {
+	if msg.ClaimId == "" {
+		return nil, fmt.Errorf("claim_id is required")
+	}
+	instance := &types.ConsequenceInstance{
+		ContextDescription: msg.ContextDescription,
+		PredictedOutcome:   msg.PredictedOutcome,
+		ObservedOutcome:    msg.ObservedOutcome,
+		EvidenceHash:       msg.EvidenceHash,
+		SubmittedBy:        msg.Submitter,
+	}
+	count, err := m.keeper.AddConsequenceInstance(ctx, msg.ClaimId, instance)
+	if err != nil {
+		return nil, err
+	}
+	return &types.MsgAddConsequenceInstanceResponse{InstanceCount: count}, nil
+}
+
 // ─── Param update handlers ──────────────────────────────────────────────────
 
 func (m *msgServer) UpdateParams(ctx context.Context, msg *types.MsgUpdateParams) (*types.MsgUpdateParamsResponse, error) {

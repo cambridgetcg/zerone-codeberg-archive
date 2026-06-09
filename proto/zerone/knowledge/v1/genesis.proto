@@ -440,6 +440,14 @@ message Params {
   // are left unchanged because they are not probability estimates.
   // Result is clamped by MaxConfidence and stratum ceilings as usual.
   uint64 aggregation_extremizing_alpha = 174; // default: 0 (disabled)
+
+  // min_pragmatic_consequence_instances: minimum number of ConsequenceInstance records
+  // required on an M-PRAGMATIC claim before the verification round can return an ACCEPT
+  // verdict. When the panel votes ACCEPT but the track record is insufficient, the
+  // verdict is overridden to VERDICT_INCONCLUSIVE. Default 0 = disabled (no gate).
+  // Operationalizes the "at least N instances" requirement from M-PRAGMATIC's
+  // ComplianceCriteria, closing the N-unspecified gap from the pragmatism brief.
+  uint64 min_pragmatic_consequence_instances = 175; // default: 0 (disabled)
 }
 
 // GenesisState is the genesis state of the knowledge module.

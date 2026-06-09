@@ -65,6 +65,8 @@ func RegisterCodec(cdc *codec.LegacyAmino) {
 	cdc.RegisterConcrete(&MsgCorrectManifestMerkleRoot{}, "zerone_knowledge/CorrectManifestMerkleRoot", nil)
 	// Route B Wave 16
 	cdc.RegisterConcrete(&MsgVetoFactInjection{}, "zerone_knowledge/VetoFactInjection", nil)
+	// Pragmatism Gap 1
+	cdc.RegisterConcrete(&MsgAddConsequenceInstance{}, "zerone_knowledge/AddConsequenceInstance", nil)
 }
 
 // RegisterInterfaces registers the knowledge module's interface implementations.
@@ -128,6 +130,8 @@ func RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
 		&MsgCorrectManifestMerkleRoot{},
 		// Route B Wave 16
 		&MsgVetoFactInjection{},
+		// Pragmatism Gap 1
+		&MsgAddConsequenceInstance{},
 	)
 }
 

@@ -416,8 +416,15 @@ type Params struct {
 	// are left unchanged because they are not probability estimates.
 	// Result is clamped by MaxConfidence and stratum ceilings as usual.
 	AggregationExtremizingAlpha uint64 `protobuf:"varint,174,opt,name=aggregation_extremizing_alpha,json=aggregationExtremizingAlpha,proto3" json:"aggregation_extremizing_alpha,omitempty"` // default: 0 (disabled)
-	unknownFields               protoimpl.UnknownFields
-	sizeCache                   protoimpl.SizeCache
+	// min_pragmatic_consequence_instances: minimum number of ConsequenceInstance records
+	// required on an M-PRAGMATIC claim before the verification round can return an ACCEPT
+	// verdict. When the panel votes ACCEPT but the track record is insufficient, the
+	// verdict is overridden to VERDICT_INCONCLUSIVE. Default 0 = disabled (no gate).
+	// Operationalizes the "at least N instances" requirement from M-PRAGMATIC's
+	// ComplianceCriteria, closing the N-unspecified gap from the pragmatism brief.
+	MinPragmaticConsequenceInstances uint64 `protobuf:"varint,175,opt,name=min_pragmatic_consequence_instances,json=minPragmaticConsequenceInstances,proto3" json:"min_pragmatic_consequence_instances,omitempty"` // default: 0 (disabled)
+	unknownFields                    protoimpl.UnknownFields
+	sizeCache                        protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -1668,6 +1675,13 @@ func (x *Params) GetAggregationExtremizingAlpha() uint64 {
 	return 0
 }
 
+func (x *Params) GetMinPragmaticConsequenceInstances() uint64 {
+	if x != nil {
+		return x.MinPragmaticConsequenceInstances
+	}
+	return 0
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -1905,7 +1919,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\x8cV\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xdcV\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2081,7 +2095,8 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\x17null_result_credit_uzrn\x18\xab\x01 \x01(\x04R\x14nullResultCreditUzrn\x12H\n" +
 	" proof_certificate_bypass_enabled\x18\xac\x01 \x01(\bR\x1dproofCertificateBypassEnabled\x12>\n" +
 	"\x1bproper_scoring_rule_enabled\x18\xad\x01 \x01(\bR\x18properScoringRuleEnabled\x12C\n" +
-	"\x1daggregation_extremizing_alpha\x18\xae\x01 \x01(\x04R\x1baggregationExtremizingAlpha\x1aN\n" +
+	"\x1daggregation_extremizing_alpha\x18\xae\x01 \x01(\x04R\x1baggregationExtremizingAlpha\x12N\n" +
+	"#min_pragmatic_consequence_instances\x18\xaf\x01 \x01(\x04R minPragmaticConsequenceInstances\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xe5\x0e\n" +

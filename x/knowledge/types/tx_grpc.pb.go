@@ -68,6 +68,7 @@ const (
 	Msg_UnpauseModule_FullMethodName                 = "/zerone.knowledge.v1.Msg/UnpauseModule"
 	Msg_CorrectManifestMerkleRoot_FullMethodName     = "/zerone.knowledge.v1.Msg/CorrectManifestMerkleRoot"
 	Msg_VetoFactInjection_FullMethodName             = "/zerone.knowledge.v1.Msg/VetoFactInjection"
+	Msg_AddConsequenceInstance_FullMethodName        = "/zerone.knowledge.v1.Msg/AddConsequenceInstance"
 )
 
 // MsgClient is the client API for Msg service.
@@ -217,6 +218,11 @@ type MsgClient interface {
 	// no longer relies on a single key being honest for actions that
 	// bypass the verifier panel.
 	VetoFactInjection(ctx context.Context, in *MsgVetoFactInjection, opts ...grpc.CallOption) (*MsgVetoFactInjectionResponse, error)
+	// AddConsequenceInstance — any address logs a pragmatic consequence instance
+	// on an M-PRAGMATIC claim. Builds the track record that Params.min_pragmatic_consequence_instances
+	// measures against before accepting the claim. Open submission because consequence
+	// verification is best effort — the panel evaluates quality, the param gates quantity.
+	AddConsequenceInstance(ctx context.Context, in *MsgAddConsequenceInstance, opts ...grpc.CallOption) (*MsgAddConsequenceInstanceResponse, error)
 }
 
 type msgClient struct {
@@ -717,6 +723,16 @@ func (c *msgClient) VetoFactInjection(ctx context.Context, in *MsgVetoFactInject
 	return out, nil
 }
 
+func (c *msgClient) AddConsequenceInstance(ctx context.Context, in *MsgAddConsequenceInstance, opts ...grpc.CallOption) (*MsgAddConsequenceInstanceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgAddConsequenceInstanceResponse)
+	err := c.cc.Invoke(ctx, Msg_AddConsequenceInstance_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MsgServer is the server API for Msg service.
 // All implementations must embed UnimplementedMsgServer
 // for forward compatibility.
@@ -864,6 +880,11 @@ type MsgServer interface {
 	// no longer relies on a single key being honest for actions that
 	// bypass the verifier panel.
 	VetoFactInjection(context.Context, *MsgVetoFactInjection) (*MsgVetoFactInjectionResponse, error)
+	// AddConsequenceInstance — any address logs a pragmatic consequence instance
+	// on an M-PRAGMATIC claim. Builds the track record that Params.min_pragmatic_consequence_instances
+	// measures against before accepting the claim. Open submission because consequence
+	// verification is best effort — the panel evaluates quality, the param gates quantity.
+	AddConsequenceInstance(context.Context, *MsgAddConsequenceInstance) (*MsgAddConsequenceInstanceResponse, error)
 	mustEmbedUnimplementedMsgServer()
 }
 
@@ -1020,6 +1041,9 @@ func (UnimplementedMsgServer) CorrectManifestMerkleRoot(context.Context, *MsgCor
 }
 func (UnimplementedMsgServer) VetoFactInjection(context.Context, *MsgVetoFactInjection) (*MsgVetoFactInjectionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method VetoFactInjection not implemented")
+}
+func (UnimplementedMsgServer) AddConsequenceInstance(context.Context, *MsgAddConsequenceInstance) (*MsgAddConsequenceInstanceResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddConsequenceInstance not implemented")
 }
 func (UnimplementedMsgServer) mustEmbedUnimplementedMsgServer() {}
 func (UnimplementedMsgServer) testEmbeddedByValue()             {}
@@ -1924,6 +1948,24 @@ func _Msg_VetoFactInjection_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Msg_AddConsequenceInstance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgAddConsequenceInstance)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).AddConsequenceInstance(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_AddConsequenceInstance_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).AddConsequenceInstance(ctx, req.(*MsgAddConsequenceInstance))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Msg_ServiceDesc is the grpc.ServiceDesc for Msg service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -2126,6 +2168,10 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "VetoFactInjection",
 			Handler:    _Msg_VetoFactInjection_Handler,
+		},
+		{
+			MethodName: "AddConsequenceInstance",
+			Handler:    _Msg_AddConsequenceInstance_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

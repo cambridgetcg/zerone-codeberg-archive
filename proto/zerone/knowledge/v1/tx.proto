@@ -201,6 +201,12 @@ service Msg {
   // no longer relies on a single key being honest for actions that
   // bypass the verifier panel.
   rpc VetoFactInjection(MsgVetoFactInjection) returns (MsgVetoFactInjectionResponse);
+
+  // AddConsequenceInstance — any address logs a pragmatic consequence instance
+  // on an M-PRAGMATIC claim. Builds the track record that Params.min_pragmatic_consequence_instances
+  // measures against before accepting the claim. Open submission because consequence
+  // verification is best effort — the panel evaluates quality, the param gates quantity.
+  rpc AddConsequenceInstance(MsgAddConsequenceInstance) returns (MsgAddConsequenceInstanceResponse);
 }
 
 // ─── PoT lifecycle messages ───────────────────────────────────────────────────
@@ -873,3 +879,22 @@ message MsgVetoFactInjection {
   string reason     = 3;  // free-form audit comment
 }
 message MsgVetoFactInjectionResponse {}
+
+// MsgAddConsequenceInstance — attaches a pragmatic consequence instance to an
+// M-PRAGMATIC claim. Any address may submit. The claim must exist and must not
+// be in CLAIM_STATUS_REJECTED status. The context_description, predicted_outcome,
+// and observed_outcome fields are required; evidence_hash is optional.
+// Operationalizes Peirce's track-record requirement for pragmatic truth.
+message MsgAddConsequenceInstance {
+  option (cosmos.msg.v1.signer) = "submitter";
+
+  string submitter           = 1;
+  string claim_id            = 2;
+  string context_description = 3;  // required: the situation tested
+  string predicted_outcome   = 4;  // required: what the claim predicted
+  string observed_outcome    = 5;  // required: what actually happened
+  string evidence_hash       = 6;  // optional: SHA-256 hex of off-chain evidence
+}
+message MsgAddConsequenceInstanceResponse {
+  uint64 instance_count = 1;  // total consequence instances after addition
+}
