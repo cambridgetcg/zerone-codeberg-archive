@@ -24,6 +24,9 @@ service Query {
   rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
     option (google.api.http).get = "/zerone/emergency/v1/params";
   }
+  rpc ProtocolHealth(QueryProtocolHealthRequest) returns (QueryProtocolHealthResponse) {
+    option (google.api.http).get = "/zerone/emergency/v1/health";
+  }
 }
 
 message QueryStatusRequest {}
@@ -60,4 +63,34 @@ message QueryAuditLogResponse {
 message QueryParamsRequest {}
 message QueryParamsResponse {
   Params params = 1;
+}
+
+// QueryProtocolHealthRequest has no parameters — returns live chain health snapshot.
+message QueryProtocolHealthRequest {}
+
+// QueryProtocolHealthResponse is a leading-indicator health snapshot for
+// monitoring dashboards and auto-halt condition evaluation (Circuit Breakers Gap 3).
+//
+// Fields sourced from emergency module state only — no cross-module queries.
+// Future: extend with active_rounds_ratio (knowledge) and slash_rate (staking).
+message QueryProtocolHealthResponse {
+  // emergency_status: current chain status (normal/halt_voting/halted/…)
+  string emergency_status = 1;
+  // oracle_freshness_blocks: blocks elapsed since last oracle/TWAP update.
+  // 0 means oracle has never been updated or tracking is disabled.
+  uint64 oracle_freshness_blocks = 2;
+  // oracle_staleness_threshold: circuit_oracle_staleness_blocks param (0 = disabled).
+  uint64 oracle_staleness_threshold = 3;
+  // is_oracle_stale: true iff oracle_freshness_blocks > oracle_staleness_threshold > 0.
+  bool is_oracle_stale = 4;
+  // halt_start_block: the block at which the current halt began (0 if not halted).
+  uint64 halt_start_block = 5;
+  // blocks_since_halt: blocks elapsed since the halt started (0 if not halted).
+  uint64 blocks_since_halt = 6;
+  // max_halt_duration_blocks: governance-configured halt cap (0 = no cap).
+  uint64 max_halt_duration_blocks = 7;
+  // circuit_breakers_enabled: whether automatic circuit breakers are active.
+  bool circuit_breakers_enabled = 8;
+  // snapshot_block_height: the block at which this snapshot was taken.
+  uint64 snapshot_block_height = 9;
 }

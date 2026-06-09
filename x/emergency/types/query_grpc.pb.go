@@ -24,6 +24,7 @@ const (
 	Query_CompletedCeremonies_FullMethodName = "/zerone.emergency.v1.Query/CompletedCeremonies"
 	Query_AuditLog_FullMethodName            = "/zerone.emergency.v1.Query/AuditLog"
 	Query_Params_FullMethodName              = "/zerone.emergency.v1.Query/Params"
+	Query_ProtocolHealth_FullMethodName      = "/zerone.emergency.v1.Query/ProtocolHealth"
 )
 
 // QueryClient is the client API for Query service.
@@ -37,6 +38,7 @@ type QueryClient interface {
 	CompletedCeremonies(ctx context.Context, in *QueryCompletedCeremoniesRequest, opts ...grpc.CallOption) (*QueryCompletedCeremoniesResponse, error)
 	AuditLog(ctx context.Context, in *QueryAuditLogRequest, opts ...grpc.CallOption) (*QueryAuditLogResponse, error)
 	Params(ctx context.Context, in *QueryParamsRequest, opts ...grpc.CallOption) (*QueryParamsResponse, error)
+	ProtocolHealth(ctx context.Context, in *QueryProtocolHealthRequest, opts ...grpc.CallOption) (*QueryProtocolHealthResponse, error)
 }
 
 type queryClient struct {
@@ -97,6 +99,16 @@ func (c *queryClient) Params(ctx context.Context, in *QueryParamsRequest, opts .
 	return out, nil
 }
 
+func (c *queryClient) ProtocolHealth(ctx context.Context, in *QueryProtocolHealthRequest, opts ...grpc.CallOption) (*QueryProtocolHealthResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(QueryProtocolHealthResponse)
+	err := c.cc.Invoke(ctx, Query_ProtocolHealth_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // QueryServer is the server API for Query service.
 // All implementations must embed UnimplementedQueryServer
 // for forward compatibility.
@@ -108,6 +120,7 @@ type QueryServer interface {
 	CompletedCeremonies(context.Context, *QueryCompletedCeremoniesRequest) (*QueryCompletedCeremoniesResponse, error)
 	AuditLog(context.Context, *QueryAuditLogRequest) (*QueryAuditLogResponse, error)
 	Params(context.Context, *QueryParamsRequest) (*QueryParamsResponse, error)
+	ProtocolHealth(context.Context, *QueryProtocolHealthRequest) (*QueryProtocolHealthResponse, error)
 	mustEmbedUnimplementedQueryServer()
 }
 
@@ -132,6 +145,9 @@ func (UnimplementedQueryServer) AuditLog(context.Context, *QueryAuditLogRequest)
 }
 func (UnimplementedQueryServer) Params(context.Context, *QueryParamsRequest) (*QueryParamsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Params not implemented")
+}
+func (UnimplementedQueryServer) ProtocolHealth(context.Context, *QueryProtocolHealthRequest) (*QueryProtocolHealthResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ProtocolHealth not implemented")
 }
 func (UnimplementedQueryServer) mustEmbedUnimplementedQueryServer() {}
 func (UnimplementedQueryServer) testEmbeddedByValue()               {}
@@ -244,6 +260,24 @@ func _Query_Params_Handler(srv interface{}, ctx context.Context, dec func(interf
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Query_ProtocolHealth_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryProtocolHealthRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).ProtocolHealth(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Query_ProtocolHealth_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).ProtocolHealth(ctx, req.(*QueryProtocolHealthRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Query_ServiceDesc is the grpc.ServiceDesc for Query service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -270,6 +304,10 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Params",
 			Handler:    _Query_Params_Handler,
+		},
+		{
+			MethodName: "ProtocolHealth",
+			Handler:    _Query_ProtocolHealth_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

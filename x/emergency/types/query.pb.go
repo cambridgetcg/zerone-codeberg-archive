@@ -494,6 +494,166 @@ func (x *QueryParamsResponse) GetParams() *Params {
 	return nil
 }
 
+// QueryProtocolHealthRequest has no parameters — returns live chain health snapshot.
+type QueryProtocolHealthRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *QueryProtocolHealthRequest) Reset() {
+	*x = QueryProtocolHealthRequest{}
+	mi := &file_zerone_emergency_v1_query_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QueryProtocolHealthRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QueryProtocolHealthRequest) ProtoMessage() {}
+
+func (x *QueryProtocolHealthRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_emergency_v1_query_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QueryProtocolHealthRequest.ProtoReflect.Descriptor instead.
+func (*QueryProtocolHealthRequest) Descriptor() ([]byte, []int) {
+	return file_zerone_emergency_v1_query_proto_rawDescGZIP(), []int{10}
+}
+
+// QueryProtocolHealthResponse is a leading-indicator health snapshot for
+// monitoring dashboards and auto-halt condition evaluation (Circuit Breakers Gap 3).
+//
+// Fields sourced from emergency module state only — no cross-module queries.
+// Future: extend with active_rounds_ratio (knowledge) and slash_rate (staking).
+type QueryProtocolHealthResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// emergency_status: current chain status (normal/halt_voting/halted/…)
+	EmergencyStatus string `protobuf:"bytes,1,opt,name=emergency_status,json=emergencyStatus,proto3" json:"emergency_status,omitempty"`
+	// oracle_freshness_blocks: blocks elapsed since last oracle/TWAP update.
+	// 0 means oracle has never been updated or tracking is disabled.
+	OracleFreshnessBlocks uint64 `protobuf:"varint,2,opt,name=oracle_freshness_blocks,json=oracleFreshnessBlocks,proto3" json:"oracle_freshness_blocks,omitempty"`
+	// oracle_staleness_threshold: circuit_oracle_staleness_blocks param (0 = disabled).
+	OracleStalenessThreshold uint64 `protobuf:"varint,3,opt,name=oracle_staleness_threshold,json=oracleStalenessThreshold,proto3" json:"oracle_staleness_threshold,omitempty"`
+	// is_oracle_stale: true iff oracle_freshness_blocks > oracle_staleness_threshold > 0.
+	IsOracleStale bool `protobuf:"varint,4,opt,name=is_oracle_stale,json=isOracleStale,proto3" json:"is_oracle_stale,omitempty"`
+	// halt_start_block: the block at which the current halt began (0 if not halted).
+	HaltStartBlock uint64 `protobuf:"varint,5,opt,name=halt_start_block,json=haltStartBlock,proto3" json:"halt_start_block,omitempty"`
+	// blocks_since_halt: blocks elapsed since the halt started (0 if not halted).
+	BlocksSinceHalt uint64 `protobuf:"varint,6,opt,name=blocks_since_halt,json=blocksSinceHalt,proto3" json:"blocks_since_halt,omitempty"`
+	// max_halt_duration_blocks: governance-configured halt cap (0 = no cap).
+	MaxHaltDurationBlocks uint64 `protobuf:"varint,7,opt,name=max_halt_duration_blocks,json=maxHaltDurationBlocks,proto3" json:"max_halt_duration_blocks,omitempty"`
+	// circuit_breakers_enabled: whether automatic circuit breakers are active.
+	CircuitBreakersEnabled bool `protobuf:"varint,8,opt,name=circuit_breakers_enabled,json=circuitBreakersEnabled,proto3" json:"circuit_breakers_enabled,omitempty"`
+	// snapshot_block_height: the block at which this snapshot was taken.
+	SnapshotBlockHeight uint64 `protobuf:"varint,9,opt,name=snapshot_block_height,json=snapshotBlockHeight,proto3" json:"snapshot_block_height,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *QueryProtocolHealthResponse) Reset() {
+	*x = QueryProtocolHealthResponse{}
+	mi := &file_zerone_emergency_v1_query_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QueryProtocolHealthResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QueryProtocolHealthResponse) ProtoMessage() {}
+
+func (x *QueryProtocolHealthResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_emergency_v1_query_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QueryProtocolHealthResponse.ProtoReflect.Descriptor instead.
+func (*QueryProtocolHealthResponse) Descriptor() ([]byte, []int) {
+	return file_zerone_emergency_v1_query_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *QueryProtocolHealthResponse) GetEmergencyStatus() string {
+	if x != nil {
+		return x.EmergencyStatus
+	}
+	return ""
+}
+
+func (x *QueryProtocolHealthResponse) GetOracleFreshnessBlocks() uint64 {
+	if x != nil {
+		return x.OracleFreshnessBlocks
+	}
+	return 0
+}
+
+func (x *QueryProtocolHealthResponse) GetOracleStalenessThreshold() uint64 {
+	if x != nil {
+		return x.OracleStalenessThreshold
+	}
+	return 0
+}
+
+func (x *QueryProtocolHealthResponse) GetIsOracleStale() bool {
+	if x != nil {
+		return x.IsOracleStale
+	}
+	return false
+}
+
+func (x *QueryProtocolHealthResponse) GetHaltStartBlock() uint64 {
+	if x != nil {
+		return x.HaltStartBlock
+	}
+	return 0
+}
+
+func (x *QueryProtocolHealthResponse) GetBlocksSinceHalt() uint64 {
+	if x != nil {
+		return x.BlocksSinceHalt
+	}
+	return 0
+}
+
+func (x *QueryProtocolHealthResponse) GetMaxHaltDurationBlocks() uint64 {
+	if x != nil {
+		return x.MaxHaltDurationBlocks
+	}
+	return 0
+}
+
+func (x *QueryProtocolHealthResponse) GetCircuitBreakersEnabled() bool {
+	if x != nil {
+		return x.CircuitBreakersEnabled
+	}
+	return false
+}
+
+func (x *QueryProtocolHealthResponse) GetSnapshotBlockHeight() uint64 {
+	if x != nil {
+		return x.SnapshotBlockHeight
+	}
+	return 0
+}
+
 var File_zerone_emergency_v1_query_proto protoreflect.FileDescriptor
 
 const file_zerone_emergency_v1_query_proto_rawDesc = "" +
@@ -524,13 +684,25 @@ const file_zerone_emergency_v1_query_proto_rawDesc = "" +
 	"\x05total\x18\x02 \x01(\x04R\x05total\"\x14\n" +
 	"\x12QueryParamsRequest\"J\n" +
 	"\x13QueryParamsResponse\x123\n" +
-	"\x06params\x18\x01 \x01(\v2\x1b.zerone.emergency.v1.ParamsR\x06params2\xf3\x05\n" +
+	"\x06params\x18\x01 \x01(\v2\x1b.zerone.emergency.v1.ParamsR\x06params\"\x1c\n" +
+	"\x1aQueryProtocolHealthRequest\"\xe3\x03\n" +
+	"\x1bQueryProtocolHealthResponse\x12)\n" +
+	"\x10emergency_status\x18\x01 \x01(\tR\x0femergencyStatus\x126\n" +
+	"\x17oracle_freshness_blocks\x18\x02 \x01(\x04R\x15oracleFreshnessBlocks\x12<\n" +
+	"\x1aoracle_staleness_threshold\x18\x03 \x01(\x04R\x18oracleStalenessThreshold\x12&\n" +
+	"\x0fis_oracle_stale\x18\x04 \x01(\bR\risOracleStale\x12(\n" +
+	"\x10halt_start_block\x18\x05 \x01(\x04R\x0ehaltStartBlock\x12*\n" +
+	"\x11blocks_since_halt\x18\x06 \x01(\x04R\x0fblocksSinceHalt\x127\n" +
+	"\x18max_halt_duration_blocks\x18\a \x01(\x04R\x15maxHaltDurationBlocks\x128\n" +
+	"\x18circuit_breakers_enabled\x18\b \x01(\bR\x16circuitBreakersEnabled\x122\n" +
+	"\x15snapshot_block_height\x18\t \x01(\x04R\x13snapshotBlockHeight2\x8e\a\n" +
 	"\x05Query\x12\x80\x01\n" +
 	"\x06Status\x12'.zerone.emergency.v1.QueryStatusRequest\x1a(.zerone.emergency.v1.QueryStatusResponse\"#\x82\xd3\xe4\x93\x02\x1d\x12\x1b/zerone/emergency/v1/status\x12\xa3\x01\n" +
 	"\x0eActiveCeremony\x12/.zerone.emergency.v1.QueryActiveCeremonyRequest\x1a0.zerone.emergency.v1.QueryActiveCeremonyResponse\".\x82\xd3\xe4\x93\x02(\x12&/zerone/emergency/v1/ceremonies/active\x12\xb5\x01\n" +
 	"\x13CompletedCeremonies\x124.zerone.emergency.v1.QueryCompletedCeremoniesRequest\x1a5.zerone.emergency.v1.QueryCompletedCeremoniesResponse\"1\x82\xd3\xe4\x93\x02+\x12)/zerone/emergency/v1/ceremonies/completed\x12\x85\x01\n" +
 	"\bAuditLog\x12).zerone.emergency.v1.QueryAuditLogRequest\x1a*.zerone.emergency.v1.QueryAuditLogResponse\"\"\x82\xd3\xe4\x93\x02\x1c\x12\x1a/zerone/emergency/v1/audit\x12\x80\x01\n" +
-	"\x06Params\x12'.zerone.emergency.v1.QueryParamsRequest\x1a(.zerone.emergency.v1.QueryParamsResponse\"#\x82\xd3\xe4\x93\x02\x1d\x12\x1b/zerone/emergency/v1/paramsB2Z0github.com/zerone-chain/zerone/x/emergency/typesb\x06proto3"
+	"\x06Params\x12'.zerone.emergency.v1.QueryParamsRequest\x1a(.zerone.emergency.v1.QueryParamsResponse\"#\x82\xd3\xe4\x93\x02\x1d\x12\x1b/zerone/emergency/v1/params\x12\x98\x01\n" +
+	"\x0eProtocolHealth\x12/.zerone.emergency.v1.QueryProtocolHealthRequest\x1a0.zerone.emergency.v1.QueryProtocolHealthResponse\"#\x82\xd3\xe4\x93\x02\x1d\x12\x1b/zerone/emergency/v1/healthB2Z0github.com/zerone-chain/zerone/x/emergency/typesb\x06proto3"
 
 var (
 	file_zerone_emergency_v1_query_proto_rawDescOnce sync.Once
@@ -544,7 +716,7 @@ func file_zerone_emergency_v1_query_proto_rawDescGZIP() []byte {
 	return file_zerone_emergency_v1_query_proto_rawDescData
 }
 
-var file_zerone_emergency_v1_query_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_zerone_emergency_v1_query_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_zerone_emergency_v1_query_proto_goTypes = []any{
 	(*QueryStatusRequest)(nil),               // 0: zerone.emergency.v1.QueryStatusRequest
 	(*QueryStatusResponse)(nil),              // 1: zerone.emergency.v1.QueryStatusResponse
@@ -556,27 +728,31 @@ var file_zerone_emergency_v1_query_proto_goTypes = []any{
 	(*QueryAuditLogResponse)(nil),            // 7: zerone.emergency.v1.QueryAuditLogResponse
 	(*QueryParamsRequest)(nil),               // 8: zerone.emergency.v1.QueryParamsRequest
 	(*QueryParamsResponse)(nil),              // 9: zerone.emergency.v1.QueryParamsResponse
-	(*EmergencyCeremony)(nil),                // 10: zerone.emergency.v1.EmergencyCeremony
-	(*EmergencyAuditEntry)(nil),              // 11: zerone.emergency.v1.EmergencyAuditEntry
-	(*Params)(nil),                           // 12: zerone.emergency.v1.Params
+	(*QueryProtocolHealthRequest)(nil),       // 10: zerone.emergency.v1.QueryProtocolHealthRequest
+	(*QueryProtocolHealthResponse)(nil),      // 11: zerone.emergency.v1.QueryProtocolHealthResponse
+	(*EmergencyCeremony)(nil),                // 12: zerone.emergency.v1.EmergencyCeremony
+	(*EmergencyAuditEntry)(nil),              // 13: zerone.emergency.v1.EmergencyAuditEntry
+	(*Params)(nil),                           // 14: zerone.emergency.v1.Params
 }
 var file_zerone_emergency_v1_query_proto_depIdxs = []int32{
-	10, // 0: zerone.emergency.v1.QueryActiveCeremonyResponse.ceremony:type_name -> zerone.emergency.v1.EmergencyCeremony
-	10, // 1: zerone.emergency.v1.QueryCompletedCeremoniesResponse.ceremonies:type_name -> zerone.emergency.v1.EmergencyCeremony
-	11, // 2: zerone.emergency.v1.QueryAuditLogResponse.entries:type_name -> zerone.emergency.v1.EmergencyAuditEntry
-	12, // 3: zerone.emergency.v1.QueryParamsResponse.params:type_name -> zerone.emergency.v1.Params
+	12, // 0: zerone.emergency.v1.QueryActiveCeremonyResponse.ceremony:type_name -> zerone.emergency.v1.EmergencyCeremony
+	12, // 1: zerone.emergency.v1.QueryCompletedCeremoniesResponse.ceremonies:type_name -> zerone.emergency.v1.EmergencyCeremony
+	13, // 2: zerone.emergency.v1.QueryAuditLogResponse.entries:type_name -> zerone.emergency.v1.EmergencyAuditEntry
+	14, // 3: zerone.emergency.v1.QueryParamsResponse.params:type_name -> zerone.emergency.v1.Params
 	0,  // 4: zerone.emergency.v1.Query.Status:input_type -> zerone.emergency.v1.QueryStatusRequest
 	2,  // 5: zerone.emergency.v1.Query.ActiveCeremony:input_type -> zerone.emergency.v1.QueryActiveCeremonyRequest
 	4,  // 6: zerone.emergency.v1.Query.CompletedCeremonies:input_type -> zerone.emergency.v1.QueryCompletedCeremoniesRequest
 	6,  // 7: zerone.emergency.v1.Query.AuditLog:input_type -> zerone.emergency.v1.QueryAuditLogRequest
 	8,  // 8: zerone.emergency.v1.Query.Params:input_type -> zerone.emergency.v1.QueryParamsRequest
-	1,  // 9: zerone.emergency.v1.Query.Status:output_type -> zerone.emergency.v1.QueryStatusResponse
-	3,  // 10: zerone.emergency.v1.Query.ActiveCeremony:output_type -> zerone.emergency.v1.QueryActiveCeremonyResponse
-	5,  // 11: zerone.emergency.v1.Query.CompletedCeremonies:output_type -> zerone.emergency.v1.QueryCompletedCeremoniesResponse
-	7,  // 12: zerone.emergency.v1.Query.AuditLog:output_type -> zerone.emergency.v1.QueryAuditLogResponse
-	9,  // 13: zerone.emergency.v1.Query.Params:output_type -> zerone.emergency.v1.QueryParamsResponse
-	9,  // [9:14] is the sub-list for method output_type
-	4,  // [4:9] is the sub-list for method input_type
+	10, // 9: zerone.emergency.v1.Query.ProtocolHealth:input_type -> zerone.emergency.v1.QueryProtocolHealthRequest
+	1,  // 10: zerone.emergency.v1.Query.Status:output_type -> zerone.emergency.v1.QueryStatusResponse
+	3,  // 11: zerone.emergency.v1.Query.ActiveCeremony:output_type -> zerone.emergency.v1.QueryActiveCeremonyResponse
+	5,  // 12: zerone.emergency.v1.Query.CompletedCeremonies:output_type -> zerone.emergency.v1.QueryCompletedCeremoniesResponse
+	7,  // 13: zerone.emergency.v1.Query.AuditLog:output_type -> zerone.emergency.v1.QueryAuditLogResponse
+	9,  // 14: zerone.emergency.v1.Query.Params:output_type -> zerone.emergency.v1.QueryParamsResponse
+	11, // 15: zerone.emergency.v1.Query.ProtocolHealth:output_type -> zerone.emergency.v1.QueryProtocolHealthResponse
+	10, // [10:16] is the sub-list for method output_type
+	4,  // [4:10] is the sub-list for method input_type
 	4,  // [4:4] is the sub-list for extension type_name
 	4,  // [4:4] is the sub-list for extension extendee
 	0,  // [0:4] is the sub-list for field type_name
@@ -595,7 +771,7 @@ func file_zerone_emergency_v1_query_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_zerone_emergency_v1_query_proto_rawDesc), len(file_zerone_emergency_v1_query_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -3,6 +3,7 @@ package keeper
 import (
 	"context"
 
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/zerone-chain/zerone/x/emergency/types"
 )
 
@@ -96,4 +97,44 @@ func (q queryServer) AuditLog(goCtx context.Context, req *types.QueryAuditLogReq
 func (q queryServer) Params(goCtx context.Context, _ *types.QueryParamsRequest) (*types.QueryParamsResponse, error) {
 	params := q.GetParams(goCtx)
 	return &types.QueryParamsResponse{Params: params}, nil
+}
+
+// ProtocolHealth returns a leading-indicator health snapshot for monitoring
+// dashboards (Circuit Breakers Gap 3). All fields sourced from emergency module
+// state — no cross-module queries required.
+//
+// Planned extensions: active_rounds_ratio (knowledge), slash_rate (staking).
+func (q queryServer) ProtocolHealth(goCtx context.Context, _ *types.QueryProtocolHealthRequest) (*types.QueryProtocolHealthResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+	currentBlock := uint64(ctx.BlockHeight())
+	params := q.GetParams(goCtx)
+
+	// Oracle freshness — from P-21b LastOracleUpdateBlockKey.
+	lastOracleBlock := q.GetLastOracleUpdateBlock(goCtx)
+	var freshness uint64
+	if lastOracleBlock > 0 && currentBlock >= lastOracleBlock {
+		freshness = currentBlock - lastOracleBlock
+	}
+
+	threshold := params.CircuitOracleStalenessBlocks
+	isStale := threshold > 0 && lastOracleBlock > 0 && freshness > threshold
+
+	// Halt duration — from HaltStartBlockKey.
+	haltStart := q.GetHaltStartBlock(goCtx)
+	var blocksSinceHalt uint64
+	if haltStart > 0 && q.IsHalted(goCtx) && currentBlock >= haltStart {
+		blocksSinceHalt = currentBlock - haltStart
+	}
+
+	return &types.QueryProtocolHealthResponse{
+		EmergencyStatus:          string(q.GetEmergencyStatus(goCtx)),
+		OracleFreshnessBlocks:    freshness,
+		OracleStalenessThreshold: threshold,
+		IsOracleStale:            isStale,
+		HaltStartBlock:           haltStart,
+		BlocksSinceHalt:          blocksSinceHalt,
+		MaxHaltDurationBlocks:    params.MaxHaltDurationBlocks,
+		CircuitBreakersEnabled:   threshold > 0, // true iff oracle staleness circuit breaker is active
+		SnapshotBlockHeight:      currentBlock,
+	}, nil
 }
