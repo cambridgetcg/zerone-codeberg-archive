@@ -84,15 +84,22 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 		return fmt.Errorf("claim %s not found for round %s", round.ClaimId, round.Id)
 	}
 
-	// Pragmatism Gap 1: gate M-PRAGMATIC ACCEPT verdicts on track-record sufficiency.
-	// When min_pragmatic_consequence_instances > 0 and the claim is M-PRAGMATIC
-	// with too few logged consequence instances, override ACCEPT → INCONCLUSIVE.
-	// The panel's epistemic work is preserved (calibration still recorded below);
-	// only the final verdict is blocked until the pragmatic track record is built.
+	// Methodology gates: intercept ACCEPT verdicts for claims whose methodologies
+	// impose additional compliance requirements beyond the panel vote itself.
+	// The panel's epistemic work (calibration, scoring) is preserved regardless —
+	// only the final verdict is blocked until requirements are met.
+	//
+	//   Pragmatism Gap 1:    M-PRAGMATIC needs min consequence instances
+	//   Contemplative Gap:   M-PHENOMENOLOGICAL needs minimum round duration
 	if result.Verdict == types.Verdict_VERDICT_ACCEPT {
-		pragmaticParams, _ := k.GetParams(ctx)
-		if gateErr := k.CheckPragmaticConsequenceGate(ctx, *claim, *pragmaticParams); gateErr != nil {
+		methodologyGateParams, _ := k.GetParams(ctx)
+		if gateErr := k.CheckPragmaticConsequenceGate(ctx, *claim, *methodologyGateParams); gateErr != nil {
 			result.Verdict = types.Verdict_VERDICT_INCONCLUSIVE
+		}
+		if result.Verdict == types.Verdict_VERDICT_ACCEPT {
+			if gateErr := k.CheckMethodologyTemporalGate(ctx, *claim, *round, *methodologyGateParams, height); gateErr != nil {
+				result.Verdict = types.Verdict_VERDICT_INCONCLUSIVE
+			}
 		}
 	}
 

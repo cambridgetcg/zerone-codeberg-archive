@@ -94,4 +94,7 @@ var (
 	ErrConsequenceInstanceWrongMethodology = errors.Register(ModuleName, 85, "consequence instances only valid on M-PRAGMATIC claims")
 	ErrConsequenceInstanceRejectedClaim    = errors.Register(ModuleName, 86, "cannot add consequence instance to a rejected claim")
 	ErrInsufficientConsequenceInstances    = errors.Register(ModuleName, 87, "M-PRAGMATIC claim has insufficient consequence instances for ACCEPT verdict")
+
+	// ─── Temporal verification window (88) — Contemplative Traditions Gap ─
+	ErrVerificationWindowTooShort = errors.Register(ModuleName, 88, "verification round has not run long enough for this methodology's temporal requirement")
 )

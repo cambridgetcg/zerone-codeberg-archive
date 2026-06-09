@@ -448,6 +448,18 @@ message Params {
   // Operationalizes the "at least N instances" requirement from M-PRAGMATIC's
   // ComplianceCriteria, closing the N-unspecified gap from the pragmatism brief.
   uint64 min_pragmatic_consequence_instances = 175; // default: 0 (disabled)
+
+  // min_phenomenological_window_blocks: minimum number of blocks a verification
+  // round must have been running before an M-PHENOMENOLOGICAL claim can receive
+  // an ACCEPT verdict. When the panel votes ACCEPT but the round elapsed
+  // (VerdictBlock - StartedAtBlock) is less than this threshold, the verdict is
+  // overridden to VERDICT_INCONCLUSIVE, and a new round with a longer observation
+  // window must be initiated. Default 0 = disabled (no minimum window).
+  // Operationalizes the contemplative-traditions brief's temporal verification
+  // requirement: claims about states requiring sustained observation (jhāna states,
+  // phenomenological realization, attentional training effects) cannot be validly
+  // assessed in a single-session flash panel.
+  uint64 min_phenomenological_window_blocks = 176; // default: 0 (disabled)
 }
 
 // GenesisState is the genesis state of the knowledge module.

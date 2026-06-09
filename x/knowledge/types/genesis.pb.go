@@ -423,8 +423,19 @@ type Params struct {
 	// Operationalizes the "at least N instances" requirement from M-PRAGMATIC's
 	// ComplianceCriteria, closing the N-unspecified gap from the pragmatism brief.
 	MinPragmaticConsequenceInstances uint64 `protobuf:"varint,175,opt,name=min_pragmatic_consequence_instances,json=minPragmaticConsequenceInstances,proto3" json:"min_pragmatic_consequence_instances,omitempty"` // default: 0 (disabled)
-	unknownFields                    protoimpl.UnknownFields
-	sizeCache                        protoimpl.SizeCache
+	// min_phenomenological_window_blocks: minimum number of blocks a verification
+	// round must have been running before an M-PHENOMENOLOGICAL claim can receive
+	// an ACCEPT verdict. When the panel votes ACCEPT but the round elapsed
+	// (VerdictBlock - StartedAtBlock) is less than this threshold, the verdict is
+	// overridden to VERDICT_INCONCLUSIVE, and a new round with a longer observation
+	// window must be initiated. Default 0 = disabled (no minimum window).
+	// Operationalizes the contemplative-traditions brief's temporal verification
+	// requirement: claims about states requiring sustained observation (jhāna states,
+	// phenomenological realization, attentional training effects) cannot be validly
+	// assessed in a single-session flash panel.
+	MinPhenomenologicalWindowBlocks uint64 `protobuf:"varint,176,opt,name=min_phenomenological_window_blocks,json=minPhenomenologicalWindowBlocks,proto3" json:"min_phenomenological_window_blocks,omitempty"` // default: 0 (disabled)
+	unknownFields                   protoimpl.UnknownFields
+	sizeCache                       protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -1682,6 +1693,13 @@ func (x *Params) GetMinPragmaticConsequenceInstances() uint64 {
 	return 0
 }
 
+func (x *Params) GetMinPhenomenologicalWindowBlocks() uint64 {
+	if x != nil {
+		return x.MinPhenomenologicalWindowBlocks
+	}
+	return 0
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -1919,7 +1937,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xdcV\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xaaW\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2096,7 +2114,8 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	" proof_certificate_bypass_enabled\x18\xac\x01 \x01(\bR\x1dproofCertificateBypassEnabled\x12>\n" +
 	"\x1bproper_scoring_rule_enabled\x18\xad\x01 \x01(\bR\x18properScoringRuleEnabled\x12C\n" +
 	"\x1daggregation_extremizing_alpha\x18\xae\x01 \x01(\x04R\x1baggregationExtremizingAlpha\x12N\n" +
-	"#min_pragmatic_consequence_instances\x18\xaf\x01 \x01(\x04R minPragmaticConsequenceInstances\x1aN\n" +
+	"#min_pragmatic_consequence_instances\x18\xaf\x01 \x01(\x04R minPragmaticConsequenceInstances\x12L\n" +
+	"\"min_phenomenological_window_blocks\x18\xb0\x01 \x01(\x04R\x1fminPhenomenologicalWindowBlocks\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xe5\x0e\n" +
