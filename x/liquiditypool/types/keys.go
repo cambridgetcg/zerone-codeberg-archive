@@ -17,7 +17,8 @@ var (
 	MiningPeriodKeyPrefix   = []byte{0x05} // LiquidityMiningPeriod by period id
 	PoolMiningIndexPrefix   = []byte{0x06} // index: pool_id -> active mining period id
 	LpMinerPositionPrefix   = []byte{0x07} // LpMinerPosition by pool_id+"/"+addr
-	SwapCommitmentKeyPrefix = []byte{0x08} // SwapCommitment by sender+"/"+pool_id
+	SwapCommitmentKeyPrefix  = []byte{0x08} // SwapCommitment by sender+"/"+pool_id
+	LPDepositBlockKeyPrefix  = []byte{0x09} // LP deposit block by pool_id+"/"+addr (anti-JIT cooldown)
 )
 
 func PoolKey(poolId string) []byte {
@@ -64,4 +65,9 @@ func LpMinerPositionPoolPrefix(poolId string) []byte {
 // SwapCommitmentKey returns the storage key for a SwapCommitment (sender + "/" + pool_id).
 func SwapCommitmentKey(sender, poolId string) []byte {
 	return append(SwapCommitmentKeyPrefix, []byte(sender+"/"+poolId)...)
+}
+
+// LPDepositBlockKey returns the storage key for an LP's last deposit block (pool_id + "/" + addr).
+func LPDepositBlockKey(poolId, addr string) []byte {
+	return append(LPDepositBlockKeyPrefix, []byte(poolId+"/"+addr)...)
 }

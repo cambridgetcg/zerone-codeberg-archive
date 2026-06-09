@@ -15,6 +15,7 @@ message Params {
   string min_reserve           = 6; // minimum reserve after swap (bigint string, default "1")
   uint64 max_swap_fraction_bps       = 7; // maximum fraction of pool reserve swappable in one tx (1M bps scale, 0 = disabled)
   uint64 commit_reveal_delay_blocks  = 8; // minimum blocks between CommitSwap and RevealSwap (0 = commit-reveal disabled)
+  uint64 min_liquidity_duration_blocks = 9; // minimum blocks LP must hold before withdrawing (0 = disabled, anti-JIT)
 }
 
 // GenesisState defines the liquiditypool module genesis state.

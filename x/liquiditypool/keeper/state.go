@@ -133,3 +133,34 @@ func (k Keeper) IterateTWAPAccumulators(ctx sdk.Context, cb func(*types.TWAPAccu
 		}
 	}
 }
+
+// --- LP Deposit Block (anti-JIT cooldown) ---
+
+// SetLPDepositBlock records the block at which addr last deposited into poolId.
+// Called by AddLiquidity to start the cooldown clock.
+func (k Keeper) SetLPDepositBlock(ctx sdk.Context, poolId, addr string, block uint64) {
+	store := k.storeService.OpenKVStore(ctx)
+	bz := make([]byte, 8)
+	bz[0] = byte(block >> 56)
+	bz[1] = byte(block >> 48)
+	bz[2] = byte(block >> 40)
+	bz[3] = byte(block >> 32)
+	bz[4] = byte(block >> 24)
+	bz[5] = byte(block >> 16)
+	bz[6] = byte(block >> 8)
+	bz[7] = byte(block)
+	_ = store.Set(types.LPDepositBlockKey(poolId, addr), bz)
+}
+
+// GetLPDepositBlock returns the last deposit block for addr in poolId.
+// Returns (0, false) when no deposit has been recorded (cooldown does not apply).
+func (k Keeper) GetLPDepositBlock(ctx sdk.Context, poolId, addr string) (uint64, bool) {
+	store := k.storeService.OpenKVStore(ctx)
+	bz, err := store.Get(types.LPDepositBlockKey(poolId, addr))
+	if err != nil || len(bz) < 8 {
+		return 0, false
+	}
+	block := uint64(bz[0])<<56 | uint64(bz[1])<<48 | uint64(bz[2])<<40 | uint64(bz[3])<<32 |
+		uint64(bz[4])<<24 | uint64(bz[5])<<16 | uint64(bz[6])<<8 | uint64(bz[7])
+	return block, true
+}

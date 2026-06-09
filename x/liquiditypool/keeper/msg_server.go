@@ -328,6 +328,10 @@ func (m msgServer) AddLiquidity(goCtx context.Context, msg *types.MsgAddLiquidit
 		m.Keeper.SettleMinerRewards(ctx, pool.PoolId, msg.Sender, currentLpBal.Amount.BigInt(), pool)
 	}
 
+	// Record deposit block for anti-JIT cooldown (Market Liquidity Gap 5).
+	// Updated on every AddLiquidity call — the clock resets to the latest deposit.
+	m.Keeper.SetLPDepositBlock(ctx, pool.PoolId, msg.Sender, uint64(ctx.BlockHeight()))
+
 	// Transfer tokens
 	if m.Keeper.bankKeeper != nil {
 		if actualA.Sign() > 0 {
@@ -394,6 +398,22 @@ func (m msgServer) RemoveLiquidity(goCtx context.Context, msg *types.MsgRemoveLi
 	lpTokens := new(big.Int)
 	if _, ok := lpTokens.SetString(msg.LpTokens, 10); !ok || lpTokens.Sign() <= 0 {
 		return nil, types.ErrZeroAmount
+	}
+
+	// Anti-JIT cooldown check (Liquidity Gap 5).
+	// If MinLiquidityDurationBlocks > 0, the sender must have waited at least that
+	// many blocks since their last AddLiquidity before they can remove liquidity.
+	// Missing deposit record (depositBlock == 0) means position pre-dates the param
+	// — cooldown does not apply (backward compatible).
+	params := m.Keeper.GetParams(ctx)
+	if params.MinLiquidityDurationBlocks > 0 {
+		depositBlock, recorded := m.Keeper.GetLPDepositBlock(ctx, pool.PoolId, msg.Sender)
+		if recorded {
+			elapsed := uint64(ctx.BlockHeight()) - depositBlock
+			if elapsed < params.MinLiquidityDurationBlocks {
+				return nil, types.ErrWithdrawalTooEarly
+			}
+		}
 	}
 
 	totalSupply := new(big.Int)
