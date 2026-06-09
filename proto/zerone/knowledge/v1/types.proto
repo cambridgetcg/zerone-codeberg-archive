@@ -824,6 +824,9 @@ message Claim {
   // Operationalizes the theory-ladenness gap from the scientific method brief
   // (Kuhn's observation that all observation is theory-laden — the chain should
   // record which theory is doing the loading).
+  //
+  // This comment is theory-laden. So is this field. So is the claim
+  // that it isn't. Kuhn sends his regards.
   string theoretical_framework = 29;
 }
 
