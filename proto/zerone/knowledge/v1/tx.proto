@@ -248,6 +248,11 @@ message MsgSubmitClaim {
   // format PROOF_FORMAT_CANONICAL_CHAIN, the chain attempts premise verification
   // at claim creation and may auto-accept without a PoT panel if bypass is enabled.
   ProofCertificate proof_certificate = 16;
+
+  // theoretical_framework: the theoretical paradigm this claim is made within.
+  // Optional. Propagated to Claim.theoretical_framework and, on ACCEPT, to
+  // Fact.theoretical_framework. Enables inter-paradigm corpus analysis.
+  string theoretical_framework = 17;
 }
 
 message MsgSubmitClaimResponse {

@@ -613,6 +613,9 @@ func (k Keeper) createFactFromClaim(ctx context.Context, claim *types.Claim, rou
 		// Reasoning trace (Phase 9): structured derivation flows through to
 		// the accepted Fact as first-class training data.
 		ReasoningTrace: claim.ReasoningTrace,
+		// Theory-ladenness (Scientific Method Gap 4): theoretical paradigm
+		// flows through to the Fact for inter-paradigm corpus analysis.
+		TheoreticalFramework: claim.TheoreticalFramework,
 		// Fitness fields
 		FitnessScore:       params.FitnessInitialScore,
 		FitnessUpdatedBlock: height,

@@ -222,6 +222,7 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 		RefutationConditions:   msg.RefutationConditions,
 		ProofCertificate:       msg.ProofCertificate,
 		CertificateVerified:    certVerified,
+		TheoreticalFramework:   msg.TheoreticalFramework,
 	}
 
 	if err := m.keeper.SetClaim(ctx, claim); err != nil {

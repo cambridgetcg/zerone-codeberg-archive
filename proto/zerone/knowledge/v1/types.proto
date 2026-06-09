@@ -335,6 +335,12 @@ message Fact {
   // confidence, or already recently challenged). An invitation expires
   // when the fact's status/confidence changes or the heartbeat re-invites.
   uint64 probe_invited_at_block = 74;
+
+  // theoretical_framework: the theoretical framework or paradigm within which this
+  // fact was established. Copied from the claim's theoretical_framework field on
+  // ACCEPT verdict. Enables inter-paradigm consistency queries across the fact corpus.
+  // Empty = no framework declared (fact is paradigm-neutral or framework unknown).
+  string theoretical_framework = 75;
 }
 
 // CurriculumTier orders training examples by difficulty and foundational depth.
@@ -807,6 +813,18 @@ message Claim {
   // with ACCEPT verdict. An empty list is allowed when the param is 0 (disabled).
   // Any address may append instances via MsgAddConsequenceInstance.
   repeated ConsequenceInstance consequence_instances = 28;
+
+  // theoretical_framework: the theoretical framework or paradigm within which this
+  // claim is made. Optional free-form field. Examples: "Keynesian macroeconomics",
+  // "quantum chromodynamics", "Buddhist phenomenology", "evolutionary biology".
+  // Enables inter-paradigm consistency checking: claims within the same framework
+  // should be mutually consistent; claims from competing frameworks on the same
+  // subject are candidates for MsgSubmitContradiction.
+  // Propagated to the accepted Fact on ACCEPT verdict for corpus-level analysis.
+  // Operationalizes the theory-ladenness gap from the scientific method brief
+  // (Kuhn's observation that all observation is theory-laden — the chain should
+  // record which theory is doing the loading).
+  string theoretical_framework = 29;
 }
 
 // ConsequenceInstance records a single validated application of an M-PRAGMATIC claim.

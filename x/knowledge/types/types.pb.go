@@ -2143,8 +2143,13 @@ type Fact struct {
 	// confidence, or already recently challenged). An invitation expires
 	// when the fact's status/confidence changes or the heartbeat re-invites.
 	ProbeInvitedAtBlock uint64 `protobuf:"varint,74,opt,name=probe_invited_at_block,json=probeInvitedAtBlock,proto3" json:"probe_invited_at_block,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// theoretical_framework: the theoretical framework or paradigm within which this
+	// fact was established. Copied from the claim's theoretical_framework field on
+	// ACCEPT verdict. Enables inter-paradigm consistency queries across the fact corpus.
+	// Empty = no framework declared (fact is paradigm-neutral or framework unknown).
+	TheoreticalFramework string `protobuf:"bytes,75,opt,name=theoretical_framework,json=theoreticalFramework,proto3" json:"theoretical_framework,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *Fact) Reset() {
@@ -2623,6 +2628,13 @@ func (x *Fact) GetProbeInvitedAtBlock() uint64 {
 		return x.ProbeInvitedAtBlock
 	}
 	return 0
+}
+
+func (x *Fact) GetTheoreticalFramework() string {
+	if x != nil {
+		return x.TheoreticalFramework
+	}
+	return ""
 }
 
 // TokenizerSpec is the governance-ratified contract that names the special
@@ -4612,6 +4624,17 @@ type Claim struct {
 	// with ACCEPT verdict. An empty list is allowed when the param is 0 (disabled).
 	// Any address may append instances via MsgAddConsequenceInstance.
 	ConsequenceInstances []*ConsequenceInstance `protobuf:"bytes,28,rep,name=consequence_instances,json=consequenceInstances,proto3" json:"consequence_instances,omitempty"`
+	// theoretical_framework: the theoretical framework or paradigm within which this
+	// claim is made. Optional free-form field. Examples: "Keynesian macroeconomics",
+	// "quantum chromodynamics", "Buddhist phenomenology", "evolutionary biology".
+	// Enables inter-paradigm consistency checking: claims within the same framework
+	// should be mutually consistent; claims from competing frameworks on the same
+	// subject are candidates for MsgSubmitContradiction.
+	// Propagated to the accepted Fact on ACCEPT verdict for corpus-level analysis.
+	// Operationalizes the theory-ladenness gap from the scientific method brief
+	// (Kuhn's observation that all observation is theory-laden — the chain should
+	// record which theory is doing the loading).
+	TheoreticalFramework string `protobuf:"bytes,29,opt,name=theoretical_framework,json=theoreticalFramework,proto3" json:"theoretical_framework,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -4840,6 +4863,13 @@ func (x *Claim) GetConsequenceInstances() []*ConsequenceInstance {
 		return x.ConsequenceInstances
 	}
 	return nil
+}
+
+func (x *Claim) GetTheoreticalFramework() string {
+	if x != nil {
+		return x.TheoreticalFramework
+	}
+	return ""
 }
 
 // ConsequenceInstance records a single validated application of an M-PRAGMATIC claim.
@@ -8758,7 +8788,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x05scope\x18\x04 \x01(\tR\x05scope\x12%\n" +
 	"\x0etemporal_scope\x18\x05 \x01(\tR\rtemporalScope\x12\x1c\n" +
 	"\tnegatable\x18\x06 \x01(\bR\tnegatable\x12\x12\n" +
-	"\x04tags\x18\a \x03(\tR\x04tags\"\xe2\x15\n" +
+	"\x04tags\x18\a \x03(\tR\x04tags\"\x97\x16\n" +
 	"\x04Fact\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12\x16\n" +
@@ -8834,7 +8864,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x17training_revenue_earned\x18G \x01(\tR\x15trainingRevenueEarned\x12C\n" +
 	"\x1etraining_revenue_earned_recent\x18H \x01(\tR\x1btrainingRevenueEarnedRecent\x124\n" +
 	"\x16revenue_clawback_block\x18I \x01(\x04R\x14revenueClawbackBlock\x123\n" +
-	"\x16probe_invited_at_block\x18J \x01(\x04R\x13probeInvitedAtBlock\"\xe0\x05\n" +
+	"\x16probe_invited_at_block\x18J \x01(\x04R\x13probeInvitedAtBlock\x123\n" +
+	"\x15theoretical_framework\x18K \x01(\tR\x14theoreticalFramework\"\xe0\x05\n" +
 	"\rTokenizerSpec\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x04R\aversion\x12*\n" +
 	"\x11ratified_at_block\x18\x02 \x01(\x04R\x0fratifiedAtBlock\x12.\n" +
@@ -9029,7 +9060,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x06format\x18\x01 \x01(\x0e2 .zerone.knowledge.v1.ProofFormatR\x06format\x12+\n" +
 	"\x11certificate_bytes\x18\x02 \x01(\fR\x10certificateBytes\x12#\n" +
 	"\rformal_system\x18\x03 \x01(\tR\fformalSystem\x12(\n" +
-	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\x81\n" +
+	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\xb6\n" +
 	"\n" +
 	"\x05Claim\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
@@ -9063,7 +9094,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x15refutation_conditions\x18\x19 \x03(\tR\x14refutationConditions\x12R\n" +
 	"\x11proof_certificate\x18\x1a \x01(\v2%.zerone.knowledge.v1.ProofCertificateR\x10proofCertificate\x121\n" +
 	"\x14certificate_verified\x18\x1b \x01(\bR\x13certificateVerified\x12]\n" +
-	"\x15consequence_instances\x18\x1c \x03(\v2(.zerone.knowledge.v1.ConsequenceInstanceR\x14consequenceInstances\"\x94\x02\n" +
+	"\x15consequence_instances\x18\x1c \x03(\v2(.zerone.knowledge.v1.ConsequenceInstanceR\x14consequenceInstances\x123\n" +
+	"\x15theoretical_framework\x18\x1d \x01(\tR\x14theoreticalFramework\"\x94\x02\n" +
 	"\x13ConsequenceInstance\x12/\n" +
 	"\x13context_description\x18\x01 \x01(\tR\x12contextDescription\x12+\n" +
 	"\x11predicted_outcome\x18\x02 \x01(\tR\x10predictedOutcome\x12)\n" +
