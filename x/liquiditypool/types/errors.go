@@ -31,4 +31,5 @@ var (
 	ErrInvalidCommitment        = errors.Register(ModuleName, 27, "commitment must be a 32-byte sha256 hash")
 	ErrInvalidPoolSwapFraction  = errors.Register(ModuleName, 28, "pool_max_swap_fraction_bps must be between 1 and 1000000")
 	ErrWithdrawalTooEarly       = errors.Register(ModuleName, 29, "LP withdrawal blocked: min_liquidity_duration_blocks not elapsed since last deposit")
+	ErrTWAPDeviationExceeded    = errors.Register(ModuleName, 30, "swap blocked: spot/TWAP price deviation exceeds max_twap_deviation_bps threshold")
 )

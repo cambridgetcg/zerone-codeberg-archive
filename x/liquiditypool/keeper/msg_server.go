@@ -202,6 +202,32 @@ func (m msgServer) Swap(goCtx context.Context, msg *types.MsgSwap) (*types.MsgSw
 		}
 	}
 
+	// TWAP deviation circuit breaker (Oracle Resilience Gap 5).
+	// Blocks swaps when spot price has diverged significantly from the TWAP,
+	// bounding TWAP manipulation cost. If the TWAP has no history yet the check
+	// is skipped (fail-open — pool must be usable before TWAP history accumulates).
+	// Gate: disabled when max_twap_deviation_bps == 0 (default).
+	if params.MaxTwapDeviationBps > 0 {
+		twap, _, twapErr := m.Keeper.GetTWAP(ctx, pool.PoolId, pool.DenomA, 0)
+		if twapErr == nil && twap != nil && twap.Sign() > 0 {
+			// Spot price of DenomA in DenomB terms, same 1e6 scale as GetTWAP output.
+			spotScaled := new(big.Int).Mul(reserveB, big.NewInt(1_000_000))
+			spotScaled.Div(spotScaled, reserveA)
+
+			// deviation = |spot - twap| * 1_000_000 / twap  (result in 1M-BPS units)
+			diff := new(big.Int).Sub(spotScaled, twap)
+			if diff.Sign() < 0 {
+				diff.Neg(diff)
+			}
+			deviationBps := new(big.Int).Mul(diff, big.NewInt(1_000_000))
+			deviationBps.Div(deviationBps, twap)
+
+			if deviationBps.Uint64() > params.MaxTwapDeviationBps {
+				return nil, types.ErrTWAPDeviationExceeded
+			}
+		}
+	}
+
 	// Lock pool for this transaction
 	pool.Locked = true
 	m.Keeper.SetPool(ctx, pool)
