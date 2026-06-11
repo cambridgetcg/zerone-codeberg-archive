@@ -1404,6 +1404,13 @@ Clears `suspended_at_block` and `suspension_reason`. (Bohm Dialogue Gap 1.)
 - `claim_id` -- the resumed claim ID
 - `authority` -- governance authority address that performed the resumption
 
+### zerone.knowledge.dung_label_assigned
+*Keeper (rounds.go — CompleteRound).* Not a standalone event; the Dung label is
+set silently as part of the CompleteRound state update. The label is readable via
+`QueryClaim` as `Claim.dung_label`. No separate event is emitted — the verdict
+events (above) carry the same information. (Structured Deliberation Gap 3.)
+See: `zerone.knowledge.claim_accepted`, `zerone.knowledge.claim_rejected`, etc.
+
 ### zerone.knowledge.claim_in_aporia
 *Keeper (rounds.go / phases.go).* Emitted when a claim's `inconclusive_count`
 reaches `Params.aporia_threshold` for the first time. Encodes Socratic aporia —

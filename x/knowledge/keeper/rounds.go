@@ -252,6 +252,13 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 		k.reverseContradictionsFromClaim(ctx, claim)
 	}
 
+	// Structured Deliberation Gap 3: Dung labelling — grounded semantics.
+	// Assign the one-step label that seeds the argumentation graph: ACCEPT → IN,
+	// REJECT/MALFORMED → OUT, INCONCLUSIVE → UNDECIDED. The label is immutable;
+	// full extension semantics (preferred, stable) are computed offline by walking
+	// the attack graph (ClaimRelation.relation == ATTACKS + FactRelation.attack_target).
+	claim.DungLabel = dungLabelForVerdict(result.Verdict)
+
 	if err := k.SetClaim(ctx, claim); err != nil {
 		return err
 	}

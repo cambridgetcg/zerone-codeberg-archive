@@ -53,6 +53,32 @@ enum ClaimStatus {
   CLAIM_STATUS_SUSPENDED          = 13;
 }
 
+// DungLabel is the Dung argumentation-framework label for a claim.
+// Encodes the outcome of structured dialectical evaluation as one of the
+// three Dung labels: IN (acceptable), OUT (defeated), UNDECIDED (unresolved).
+//
+// Phan Minh Dung (1995): "On the acceptability of arguments and its fundamental
+// role in nonmonotonic reasoning." An argument is IN when every argument that
+// attacks it is OUT. It is OUT when some argument that attacks it is IN.
+// Otherwise it is UNDECIDED.
+//
+// Zerone's on-chain approximation: the verification verdict is the ground label:
+//   ACCEPT / MALFORMED+OUT      → DUNG_LABEL_IN  (community accepted the argument)
+//   REJECT / MALFORMED          → DUNG_LABEL_OUT (argument was defeated)
+//   INCONCLUSIVE / INSUFFICIENT → DUNG_LABEL_UNDECIDED (inquiry did not resolve it)
+//
+// This is the grounded-semantics seed: one-step Dung labelling computed at
+// verdict time. Full extension semantics (grounded, preferred, stable) can
+// be computed offline by traversing Claim.relations + FactRelation.attack_target.
+//
+// Structured Deliberation Gap 3.
+enum DungLabel {
+  DUNG_LABEL_UNSPECIFIED = 0; // verdict not yet reached
+  DUNG_LABEL_IN         = 1; // argument is acceptable — ACCEPT verdict
+  DUNG_LABEL_OUT        = 2; // argument is defeated  — REJECT or MALFORMED verdict
+  DUNG_LABEL_UNDECIDED  = 3; // inquiry unresolved   — INCONCLUSIVE or INSUFFICIENT
+}
+
 // VerificationPhase tracks progress of a commit-reveal verification round.
 enum VerificationPhase {
   VERIFICATION_PHASE_UNSPECIFIED  = 0;
@@ -1200,6 +1226,24 @@ message Claim {
   // aporia_reached_at_block: block height when in_aporia was first set.
   // Zero when in_aporia is false.
   uint64 aporia_reached_at_block = 48;
+
+  // ── Structured Deliberation Gap 3: Dung Label ────────────────────────────
+  //
+  // dung_label: the Dung argumentation-framework label assigned at verdict time.
+  // Encodes the one-step grounded semantics: ACCEPT → IN, REJECT/MALFORMED → OUT,
+  // INCONCLUSIVE/INSUFFICIENT → UNDECIDED. UNSPECIFIED (zero-value) means the
+  // claim has not yet received a verdict.
+  //
+  // The label is the machine-readable output of the PoT verification round viewed
+  // as a Dung argument evaluation: the community of inquiry is the attack-defense
+  // arbiter, and the label captures whether the argument survived (IN), was
+  // defeated (OUT), or remains unresolved (UNDECIDED). Full grounded/preferred/
+  // stable extension semantics can be computed offline by walking the attack
+  // graph (Claim.relations with ATTACKS/CONTRADICTS + FactRelation.attack_target).
+  //
+  // Set in CompleteRound. Never changed once assigned (subsequent re-submissions
+  // are new claim IDs; the original claim's verdict is immutable).
+  DungLabel dung_label = 49;
 }
 
 // PreRegistration records a submitter's declared intent to submit a claim
