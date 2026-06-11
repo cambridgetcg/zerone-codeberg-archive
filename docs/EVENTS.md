@@ -1901,6 +1901,21 @@ An authority-gated handler wrote an entry to the privileged-action audit log (Ro
 - `target` -- module_name, manifest_id, incident_id, or schema@version
 - `incident_id` -- audit binding when applicable (empty otherwise)
 
+### zerone.knowledge.proof_certificate_accepted
+An M-FORMAL claim with a verified proof certificate was auto-accepted at Tier 0 without a PoT round. Fired by `MaybeAutoAcceptCertifiedClaim` when `claim.CertificateVerified=true` and `claim.MethodId="M-FORMAL"`. No verification round is created.
+- `claim_id` -- claim that was auto-accepted
+- `fact_id` -- resulting fact ID registered in the knowledge graph
+- `submitter` -- address of the claim submitter
+- `premise_count` -- number of premises in the proof certificate
+- `confidence_bps` -- accepted confidence level in basis points
+
+### zerone.knowledge.null_result_credit_awarded
+A null-result credit was paid to a submitter whose claim was rejected but had declared falsification conditions (Formal Logic Gap 2). Fired when `params.NullResultCreditUzrn > 0` and the rejected claim has `refutation_conditions` set.
+- `submitter` -- address receiving the credit
+- `amount_uzrn` -- credit amount in uzrn
+- `claim_id` -- rejected claim that triggered the credit
+- `refutation_conditions_count` -- number of declared falsification conditions on the claim
+
 
 ## liquiditypool
 
@@ -2535,6 +2550,12 @@ Validator slashed.
 - `slash_type` -- slash type string
 - `slashed` -- actual amount slashed (after escalation, in uzrn)
 - `evidence_hash` -- hash of the evidence artefact
+
+### zerone.staking.insurance_fund_contributed
+A validator operator deposited uzrn into their per-validator insurance fund (Slashing Gap 4). The fund absorbs slash overflow before delegated stake is touched.
+- `operator` -- validator operator address
+- `amount` -- amount deposited in uzrn
+- `new_balance` -- total insurance fund balance after deposit
 
 ---
 
