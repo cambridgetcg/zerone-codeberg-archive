@@ -207,6 +207,17 @@ service Msg {
   // measures against before accepting the claim. Open submission because consequence
   // verification is best effort — the panel evaluates quality, the param gates quantity.
   rpc AddConsequenceInstance(MsgAddConsequenceInstance) returns (MsgAddConsequenceInstanceResponse);
+
+  // ─── Scientific Method Gap 2: Methodology Governance ─────────────────────
+  // UpdateMethodology amends an existing methodology definition via governance
+  // proposal. Provides Kuhn's "revolutionary science" path: the on-chain
+  // methodology registry is not static — governance can update compliance
+  // criteria, falsification paths, cross-method discounts, minimum qualification
+  // weights, and required account types as the epistemic community's understanding
+  // evolves. The methodology must already exist (creation is genesis-only);
+  // version is auto-incremented so every amendment is auditable.
+  // Authority-gated — requires the module's governance authority address.
+  rpc UpdateMethodology(MsgUpdateMethodology) returns (MsgUpdateMethodologyResponse);
 }
 
 // ─── PoT lifecycle messages ───────────────────────────────────────────────────
@@ -902,4 +913,29 @@ message MsgAddConsequenceInstance {
 }
 message MsgAddConsequenceInstanceResponse {
   uint64 instance_count = 1;  // total consequence instances after addition
+}
+
+// ─── Scientific Method Gap 2: Methodology Governance ─────────────────────────
+//
+// MsgUpdateMethodology amends an existing methodology definition. The caller
+// supplies the COMPLETE desired methodology state; the handler auto-manages
+// version (current+1) and ratified_at_block (current chain height). The
+// methodology.id must match an existing registry entry — this message cannot
+// create new methodologies (creation is genesis-only). is_transitional may
+// be set to retire a methodology under the M-LEGACY sunset path.
+//
+// Authority-gated: requires the module's governance authority address.
+message MsgUpdateMethodology {
+  option (cosmos.msg.v1.signer) = "authority";
+
+  string authority             = 1;  // governance authority address
+  Methodology methodology      = 2;  // complete new state; version + ratified_at_block auto-assigned
+  string rationale             = 3;  // required human-readable reason; stored in the privileged-action log
+}
+
+// MsgUpdateMethodologyResponse returns the auto-assigned version and the id,
+// so the governance proposal execution result is self-documenting.
+message MsgUpdateMethodologyResponse {
+  string methodology_id = 1;
+  uint64 new_version    = 2;
 }

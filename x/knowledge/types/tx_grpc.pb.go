@@ -69,6 +69,7 @@ const (
 	Msg_CorrectManifestMerkleRoot_FullMethodName     = "/zerone.knowledge.v1.Msg/CorrectManifestMerkleRoot"
 	Msg_VetoFactInjection_FullMethodName             = "/zerone.knowledge.v1.Msg/VetoFactInjection"
 	Msg_AddConsequenceInstance_FullMethodName        = "/zerone.knowledge.v1.Msg/AddConsequenceInstance"
+	Msg_UpdateMethodology_FullMethodName             = "/zerone.knowledge.v1.Msg/UpdateMethodology"
 )
 
 // MsgClient is the client API for Msg service.
@@ -223,6 +224,16 @@ type MsgClient interface {
 	// measures against before accepting the claim. Open submission because consequence
 	// verification is best effort — the panel evaluates quality, the param gates quantity.
 	AddConsequenceInstance(ctx context.Context, in *MsgAddConsequenceInstance, opts ...grpc.CallOption) (*MsgAddConsequenceInstanceResponse, error)
+	// ─── Scientific Method Gap 2: Methodology Governance ─────────────────────
+	// UpdateMethodology amends an existing methodology definition via governance
+	// proposal. Provides Kuhn's "revolutionary science" path: the on-chain
+	// methodology registry is not static — governance can update compliance
+	// criteria, falsification paths, cross-method discounts, minimum qualification
+	// weights, and required account types as the epistemic community's understanding
+	// evolves. The methodology must already exist (creation is genesis-only);
+	// version is auto-incremented so every amendment is auditable.
+	// Authority-gated — requires the module's governance authority address.
+	UpdateMethodology(ctx context.Context, in *MsgUpdateMethodology, opts ...grpc.CallOption) (*MsgUpdateMethodologyResponse, error)
 }
 
 type msgClient struct {
@@ -733,6 +744,16 @@ func (c *msgClient) AddConsequenceInstance(ctx context.Context, in *MsgAddConseq
 	return out, nil
 }
 
+func (c *msgClient) UpdateMethodology(ctx context.Context, in *MsgUpdateMethodology, opts ...grpc.CallOption) (*MsgUpdateMethodologyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgUpdateMethodologyResponse)
+	err := c.cc.Invoke(ctx, Msg_UpdateMethodology_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MsgServer is the server API for Msg service.
 // All implementations must embed UnimplementedMsgServer
 // for forward compatibility.
@@ -885,6 +906,16 @@ type MsgServer interface {
 	// measures against before accepting the claim. Open submission because consequence
 	// verification is best effort — the panel evaluates quality, the param gates quantity.
 	AddConsequenceInstance(context.Context, *MsgAddConsequenceInstance) (*MsgAddConsequenceInstanceResponse, error)
+	// ─── Scientific Method Gap 2: Methodology Governance ─────────────────────
+	// UpdateMethodology amends an existing methodology definition via governance
+	// proposal. Provides Kuhn's "revolutionary science" path: the on-chain
+	// methodology registry is not static — governance can update compliance
+	// criteria, falsification paths, cross-method discounts, minimum qualification
+	// weights, and required account types as the epistemic community's understanding
+	// evolves. The methodology must already exist (creation is genesis-only);
+	// version is auto-incremented so every amendment is auditable.
+	// Authority-gated — requires the module's governance authority address.
+	UpdateMethodology(context.Context, *MsgUpdateMethodology) (*MsgUpdateMethodologyResponse, error)
 	mustEmbedUnimplementedMsgServer()
 }
 
@@ -1044,6 +1075,9 @@ func (UnimplementedMsgServer) VetoFactInjection(context.Context, *MsgVetoFactInj
 }
 func (UnimplementedMsgServer) AddConsequenceInstance(context.Context, *MsgAddConsequenceInstance) (*MsgAddConsequenceInstanceResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AddConsequenceInstance not implemented")
+}
+func (UnimplementedMsgServer) UpdateMethodology(context.Context, *MsgUpdateMethodology) (*MsgUpdateMethodologyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateMethodology not implemented")
 }
 func (UnimplementedMsgServer) mustEmbedUnimplementedMsgServer() {}
 func (UnimplementedMsgServer) testEmbeddedByValue()             {}
@@ -1966,6 +2000,24 @@ func _Msg_AddConsequenceInstance_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Msg_UpdateMethodology_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgUpdateMethodology)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).UpdateMethodology(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_UpdateMethodology_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).UpdateMethodology(ctx, req.(*MsgUpdateMethodology))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Msg_ServiceDesc is the grpc.ServiceDesc for Msg service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -2172,6 +2224,10 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddConsequenceInstance",
 			Handler:    _Msg_AddConsequenceInstance_Handler,
+		},
+		{
+			MethodName: "UpdateMethodology",
+			Handler:    _Msg_UpdateMethodology_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

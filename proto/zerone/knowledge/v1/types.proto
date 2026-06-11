@@ -1660,6 +1660,7 @@ enum PrivilegedActionType {
   PRIVILEGED_ACTION_TYPE_SCHEMA_AMEND_TOKENIZER = 7;
   PRIVILEGED_ACTION_TYPE_SCHEMA_AMEND_TRACE     = 8;
   PRIVILEGED_ACTION_TYPE_FACT_AUTHORITY_INJECT  = 9;  // authority-gated MsgAddFact bypasses the verification round
+  PRIVILEGED_ACTION_TYPE_METHODOLOGY_AMEND      = 10; // governance-gated amendment of a methodology definition
 }
 
 message PrivilegedAction {

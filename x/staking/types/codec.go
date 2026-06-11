@@ -16,6 +16,8 @@ func RegisterCodec(cdc *codec.LegacyAmino) {
 	cdc.RegisterConcrete(&MsgUpdateParams{}, "zerone/staking/MsgUpdateParams", nil)
 	cdc.RegisterConcrete(&MsgSubmitSlashEvidence{}, "zerone/staking/MsgSubmitSlashEvidence", nil)
 	cdc.RegisterConcrete(&MsgContributeToInsuranceFund{}, "zerone/staking/MsgContributeToInsuranceFund", nil)
+	// Slashing Gap 1: Tombstoning
+	cdc.RegisterConcrete(&MsgUntombstoneValidator{}, "zerone/staking/MsgUntombstoneValidator", nil)
 }
 
 // RegisterInterfaces registers module types with the interface registry.
@@ -29,5 +31,7 @@ func RegisterInterfaces(registry codectypes.InterfaceRegistry) {
 		&MsgUpdateParams{},
 		&MsgSubmitSlashEvidence{},
 		&MsgContributeToInsuranceFund{},
+		// Slashing Gap 1: Tombstoning
+		&MsgUntombstoneValidator{},
 	)
 }

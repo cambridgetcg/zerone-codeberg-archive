@@ -67,6 +67,8 @@ func RegisterCodec(cdc *codec.LegacyAmino) {
 	cdc.RegisterConcrete(&MsgVetoFactInjection{}, "zerone_knowledge/VetoFactInjection", nil)
 	// Pragmatism Gap 1
 	cdc.RegisterConcrete(&MsgAddConsequenceInstance{}, "zerone_knowledge/AddConsequenceInstance", nil)
+	// Scientific Method Gap 2: Methodology Governance
+	cdc.RegisterConcrete(&MsgUpdateMethodology{}, "zerone_knowledge/UpdateMethodology", nil)
 }
 
 // RegisterInterfaces registers the knowledge module's interface implementations.
@@ -132,6 +134,8 @@ func RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
 		&MsgVetoFactInjection{},
 		// Pragmatism Gap 1
 		&MsgAddConsequenceInstance{},
+		// Scientific Method Gap 2: Methodology Governance
+		&MsgUpdateMethodology{},
 	)
 }
 
