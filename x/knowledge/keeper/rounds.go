@@ -191,6 +191,15 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 	case types.Verdict_VERDICT_INCONCLUSIVE:
 		// Review fee is non-refundable — verifiers still did work even if inconclusive.
 		claim.Status = types.ClaimStatus_CLAIM_STATUS_INSUFFICIENT
+		// Pragmatism Gap 2: INCONCLUSIVE as epistemic difficulty signal.
+		// Track how many times this claim has resisted a verdict. Claims with
+		// high inconclusive_count name exactly what the community of inquiry
+		// cannot resolve — evidence sparse, claim framing unobservable, or
+		// diversity gates preventing acceptance. INCONCLUSIVE is data, not failure.
+		claim.InconclusiveCount++
+		if claim.FirstInconclusiveAtBlock == 0 {
+			claim.FirstInconclusiveAtBlock = uint64(sdkCtx.BlockHeight())
+		}
 		k.reverseContradictionsFromClaim(ctx, claim)
 	}
 

@@ -4681,8 +4681,33 @@ type Claim struct {
 	// that anchored this claim was created. Copied from PreRegistration at
 	// MsgSubmitClaim time for denormalized auditability.
 	PreRegisteredAtBlock uint64 `protobuf:"varint,31,opt,name=pre_registered_at_block,json=preRegisteredAtBlock,proto3" json:"pre_registered_at_block,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// inconclusive_count: number of INCONCLUSIVE verdicts accumulated for this
+	// claim across all verification rounds. Zero means no INCONCLUSIVE has been
+	// received yet. A non-zero count signals epistemic difficulty: either the
+	// evidence is genuinely sparse, the claim is framed in a way that makes
+	// consequences unobservable, or panel diversity requirements prevented
+	// acceptance on multiple attempts.
+	//
+	// Operationalizes Peirce's insight from the pragmatism brief: "the inquiry
+	// process is itself a truth-tracking mechanism." VERDICT_INCONCLUSIVE is
+	// not failure — it is data. Claims accumulating multiple INCONCLUSIVEs are
+	// the chain's most epistemically interesting: they name exactly what the
+	// community of inquiry cannot yet resolve. LOGIC-077 applies here as much
+	// as anywhere: the chain's incompleteness is visible in these counts.
+	//
+	// Incremented in two paths: (1) CompleteRound's VERDICT_INCONCLUSIVE case
+	// (rounds.go) for panel-level inconclusiveness, and (2) the insufficient-
+	// reveals expiry path (phases.go) for procedural inconclusiveness.
+	// Both signal the same thing at different layers: the claim resists verdict.
+	InconclusiveCount uint64 `protobuf:"varint,32,opt,name=inconclusive_count,json=inconclusiveCount,proto3" json:"inconclusive_count,omitempty"`
+	// first_inconclusive_at_block: block height of the first INCONCLUSIVE
+	// verdict received. Zero if no INCONCLUSIVE verdict yet. Combined with
+	// inconclusive_count, distinguishes claims that are persistently unresolvable
+	// (many INCONCLUSIVEs over a long span) from claims that are newly
+	// problematic (single recent INCONCLUSIVE). Set once and never overwritten.
+	FirstInconclusiveAtBlock uint64 `protobuf:"varint,33,opt,name=first_inconclusive_at_block,json=firstInconclusiveAtBlock,proto3" json:"first_inconclusive_at_block,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *Claim) Reset() {
@@ -4928,6 +4953,20 @@ func (x *Claim) GetPreRegistrationId() string {
 func (x *Claim) GetPreRegisteredAtBlock() uint64 {
 	if x != nil {
 		return x.PreRegisteredAtBlock
+	}
+	return 0
+}
+
+func (x *Claim) GetInconclusiveCount() uint64 {
+	if x != nil {
+		return x.InconclusiveCount
+	}
+	return 0
+}
+
+func (x *Claim) GetFirstInconclusiveAtBlock() uint64 {
+	if x != nil {
+		return x.FirstInconclusiveAtBlock
 	}
 	return 0
 }
@@ -9285,7 +9324,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x06format\x18\x01 \x01(\x0e2 .zerone.knowledge.v1.ProofFormatR\x06format\x12+\n" +
 	"\x11certificate_bytes\x18\x02 \x01(\fR\x10certificateBytes\x12#\n" +
 	"\rformal_system\x18\x03 \x01(\tR\fformalSystem\x12(\n" +
-	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\x9d\v\n" +
+	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\x8b\f\n" +
 	"\x05Claim\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\ffact_content\x18\x02 \x01(\tR\vfactContent\x12\x16\n" +
@@ -9321,7 +9360,9 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x15consequence_instances\x18\x1c \x03(\v2(.zerone.knowledge.v1.ConsequenceInstanceR\x14consequenceInstances\x123\n" +
 	"\x15theoretical_framework\x18\x1d \x01(\tR\x14theoreticalFramework\x12.\n" +
 	"\x13pre_registration_id\x18\x1e \x01(\tR\x11preRegistrationId\x125\n" +
-	"\x17pre_registered_at_block\x18\x1f \x01(\x04R\x14preRegisteredAtBlock\"\xf5\x02\n" +
+	"\x17pre_registered_at_block\x18\x1f \x01(\x04R\x14preRegisteredAtBlock\x12-\n" +
+	"\x12inconclusive_count\x18  \x01(\x04R\x11inconclusiveCount\x12=\n" +
+	"\x1bfirst_inconclusive_at_block\x18! \x01(\x04R\x18firstInconclusiveAtBlock\"\xf5\x02\n" +
 	"\x0fPreRegistration\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
 	"\tsubmitter\x18\x02 \x01(\tR\tsubmitter\x12!\n" +

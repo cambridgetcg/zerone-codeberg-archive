@@ -857,6 +857,33 @@ message Claim {
   // that anchored this claim was created. Copied from PreRegistration at
   // MsgSubmitClaim time for denormalized auditability.
   uint64 pre_registered_at_block = 31;
+
+  // inconclusive_count: number of INCONCLUSIVE verdicts accumulated for this
+  // claim across all verification rounds. Zero means no INCONCLUSIVE has been
+  // received yet. A non-zero count signals epistemic difficulty: either the
+  // evidence is genuinely sparse, the claim is framed in a way that makes
+  // consequences unobservable, or panel diversity requirements prevented
+  // acceptance on multiple attempts.
+  //
+  // Operationalizes Peirce's insight from the pragmatism brief: "the inquiry
+  // process is itself a truth-tracking mechanism." VERDICT_INCONCLUSIVE is
+  // not failure — it is data. Claims accumulating multiple INCONCLUSIVEs are
+  // the chain's most epistemically interesting: they name exactly what the
+  // community of inquiry cannot yet resolve. LOGIC-077 applies here as much
+  // as anywhere: the chain's incompleteness is visible in these counts.
+  //
+  // Incremented in two paths: (1) CompleteRound's VERDICT_INCONCLUSIVE case
+  // (rounds.go) for panel-level inconclusiveness, and (2) the insufficient-
+  // reveals expiry path (phases.go) for procedural inconclusiveness.
+  // Both signal the same thing at different layers: the claim resists verdict.
+  uint64 inconclusive_count = 32;
+
+  // first_inconclusive_at_block: block height of the first INCONCLUSIVE
+  // verdict received. Zero if no INCONCLUSIVE verdict yet. Combined with
+  // inconclusive_count, distinguishes claims that are persistently unresolvable
+  // (many INCONCLUSIVEs over a long span) from claims that are newly
+  // problematic (single recent INCONCLUSIVE). Set once and never overwritten.
+  uint64 first_inconclusive_at_block = 33;
 }
 
 // PreRegistration records a submitter's declared intent to submit a claim

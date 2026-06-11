@@ -188,6 +188,14 @@ func (k Keeper) AdvanceRoundPhases(ctx context.Context) error {
 				claim, found := k.GetClaim(ctx, round.ClaimId)
 				if found {
 					claim.Status = types.ClaimStatus_CLAIM_STATUS_INSUFFICIENT
+					// Pragmatism Gap 2: INCONCLUSIVE as epistemic difficulty signal.
+					// Procedural inconclusiveness (insufficient reveals) signals the
+					// same thing as panel-level inconclusiveness: this claim resists
+					// resolution. Track it alongside CompleteRound's INCONCLUSIVE path.
+					claim.InconclusiveCount++
+					if claim.FirstInconclusiveAtBlock == 0 {
+						claim.FirstInconclusiveAtBlock = uint64(sdkCtx.BlockHeight())
+					}
 					_ = k.SetClaim(ctx, claim)
 				}
 
