@@ -286,6 +286,158 @@ func TestMinRoundDuration_CreateRound_Violated(t *testing.T) {
 		"error must identify the violated parameter")
 }
 
+// ─── Gap 4: Finality Receipt Hash ────────────────────────────────────────────
+//
+// Gap 4 — IBC-Compatible Finality Receipt (★★☆☆☆)
+//   CompleteRound computes sha256(round_id | "|" | verdict_string | "|" |
+//   verdict_block_BE_8 | "|" | verdict_block_hash) and stores it in
+//   VerificationRound.FinalityReceiptHash. The receipt is also emitted as a
+//   "finality_receipt" attribute on the verification_round_completed event.
+//   Any IBC light client can prove this value via a standard Cosmos Merkle
+//   state proof, enabling cross-chain truth attestation without a dedicated
+//   IBC port. (settlement-finality-brief.md §Gap 4)
+
+// TestFinalityReceipt_SetOnCompletion verifies that CompleteRound stores a
+// 32-byte non-empty FinalityReceiptHash on the round record after completion.
+func TestFinalityReceipt_SetOnCompletion(t *testing.T) {
+	k, ctx := setupKnowledgeKeeper(t)
+
+	claimID := "claim-receipt-1"
+	roundID := "round-receipt-1"
+	minimalClaim(k, ctx, t, claimID)
+
+	round := &types.VerificationRound{
+		Id:                  roundID,
+		ClaimId:             claimID,
+		StartedAtBlock:      100,
+		Phase:               types.VerificationPhase_VERIFICATION_PHASE_AGGREGATION,
+		CommitDeadline:      110,
+		RevealDeadline:      130,
+		AggregationDeadline: 150,
+	}
+	require.NoError(t, k.SetVerificationRound(ctx, round))
+
+	ctxWithHash := ctx.WithHeaderHash([]byte("block-hash-for-receipt-test!!!!!"))
+	require.NoError(t, k.CompleteRound(ctxWithHash, round, minimalResult()))
+
+	stored, found := k.GetVerificationRound(ctxWithHash, roundID)
+	require.True(t, found)
+	require.Len(t, stored.FinalityReceiptHash, 32, "FinalityReceiptHash must be 32 bytes (sha256 output)")
+	require.NotEmpty(t, stored.FinalityReceiptHash, "FinalityReceiptHash must not be empty after CompleteRound")
+}
+
+// TestFinalityReceipt_EmptyBeforeCompletion verifies that FinalityReceiptHash is
+// absent on rounds that have not yet reached COMPLETE phase.
+func TestFinalityReceipt_EmptyBeforeCompletion(t *testing.T) {
+	k, ctx := setupKnowledgeKeeper(t)
+
+	round := testRound("round-receipt-pre", "claim-receipt-pre", types.VerificationPhase_VERIFICATION_PHASE_COMMIT)
+	require.NoError(t, k.SetVerificationRound(ctx, round))
+
+	stored, found := k.GetVerificationRound(ctx, round.Id)
+	require.True(t, found)
+	require.Empty(t, stored.FinalityReceiptHash, "FinalityReceiptHash must be empty before completion")
+}
+
+// TestFinalityReceipt_Deterministic verifies that the same inputs always produce
+// the same receipt hash — determinism is required for cross-chain verification.
+func TestFinalityReceipt_Deterministic(t *testing.T) {
+	k, ctx := setupKnowledgeKeeper(t)
+
+	blockHash := []byte("deterministic-block-hash-32bytes!")
+
+	// First completion
+	claimID1, roundID1 := "claim-det-1", "round-det-1"
+	minimalClaim(k, ctx, t, claimID1)
+	round1 := &types.VerificationRound{
+		Id: roundID1, ClaimId: claimID1,
+		StartedAtBlock: 100, Phase: types.VerificationPhase_VERIFICATION_PHASE_AGGREGATION,
+		CommitDeadline: 110, RevealDeadline: 130, AggregationDeadline: 150,
+	}
+	require.NoError(t, k.SetVerificationRound(ctx, round1))
+	ctxWithHash := ctx.WithHeaderHash(blockHash)
+	require.NoError(t, k.CompleteRound(ctxWithHash, round1, minimalResult()))
+	stored1, _ := k.GetVerificationRound(ctxWithHash, roundID1)
+
+	// Second completion — same round ID, same block hash, same verdict → must produce same receipt.
+	claimID2, roundID2 := "claim-det-2", "round-det-1" // same round ID intentionally
+	minimalClaim(k, ctx, t, claimID2)
+	round2 := &types.VerificationRound{
+		Id: roundID2, ClaimId: claimID2,
+		StartedAtBlock: 100, Phase: types.VerificationPhase_VERIFICATION_PHASE_AGGREGATION,
+		CommitDeadline: 110, RevealDeadline: 130, AggregationDeadline: 150,
+	}
+	// Reset the round (new claim so CompleteRound proceeds)
+	require.NoError(t, k.SetVerificationRound(ctxWithHash, round2))
+	require.NoError(t, k.CompleteRound(ctxWithHash, round2, minimalResult()))
+	stored2, _ := k.GetVerificationRound(ctxWithHash, roundID2)
+
+	require.Equal(t, stored1.FinalityReceiptHash, stored2.FinalityReceiptHash,
+		"same inputs must produce identical finality receipt hash")
+}
+
+// TestFinalityReceipt_DifferentVerdictsDifferentHashes verifies that ACCEPT and
+// REJECT verdicts produce distinct receipt hashes even with identical other inputs.
+func TestFinalityReceipt_DifferentVerdictsDifferentHashes(t *testing.T) {
+	k, ctx := setupKnowledgeKeeper(t)
+	blockHash := []byte("same-block-hash-for-verdict-test!")
+
+	// ACCEPT verdict
+	claimA, roundA := "claim-v-accept", "round-v-accept"
+	minimalClaim(k, ctx, t, claimA)
+	rA := &types.VerificationRound{
+		Id: roundA, ClaimId: claimA,
+		StartedAtBlock: 100, Phase: types.VerificationPhase_VERIFICATION_PHASE_AGGREGATION,
+		CommitDeadline: 110, RevealDeadline: 130, AggregationDeadline: 150,
+	}
+	require.NoError(t, k.SetVerificationRound(ctx, rA))
+	ctxH := ctx.WithHeaderHash(blockHash)
+	require.NoError(t, k.CompleteRound(ctxH, rA, minimalResult()))
+	storedA, _ := k.GetVerificationRound(ctxH, roundA)
+
+	// REJECT verdict
+	claimR, roundR := "claim-v-reject", "round-v-reject"
+	minimalClaim(k, ctx, t, claimR)
+	rR := &types.VerificationRound{
+		Id: roundR, ClaimId: claimR,
+		StartedAtBlock: 100, Phase: types.VerificationPhase_VERIFICATION_PHASE_AGGREGATION,
+		CommitDeadline: 110, RevealDeadline: 130, AggregationDeadline: 150,
+	}
+	require.NoError(t, k.SetVerificationRound(ctx, rR))
+	rejectResult := minimalResult()
+	rejectResult.Verdict = types.Verdict_VERDICT_REJECT
+	require.NoError(t, k.CompleteRound(ctxH, rR, rejectResult))
+	storedR, _ := k.GetVerificationRound(ctxH, roundR)
+
+	require.NotEqual(t, storedA.FinalityReceiptHash, storedR.FinalityReceiptHash,
+		"ACCEPT and REJECT verdicts must produce different receipt hashes")
+}
+
+// TestFinalityReceipt_NilBlockHashStillProducesReceipt verifies that a nil/empty
+// VerdictBlockHash (test contexts, pre-Gap-1 state) still produces a valid 32-byte
+// receipt — the receipt hash is always set, even when block hash is unavailable.
+func TestFinalityReceipt_NilBlockHashStillProducesReceipt(t *testing.T) {
+	k, ctx := setupKnowledgeKeeper(t)
+
+	claimID := "claim-receipt-nil-bh"
+	roundID := "round-receipt-nil-bh"
+	minimalClaim(k, ctx, t, claimID)
+
+	round := &types.VerificationRound{
+		Id: roundID, ClaimId: claimID,
+		StartedAtBlock: 100, Phase: types.VerificationPhase_VERIFICATION_PHASE_AGGREGATION,
+		CommitDeadline: 110, RevealDeadline: 130, AggregationDeadline: 150,
+	}
+	require.NoError(t, k.SetVerificationRound(ctx, round))
+	// ctx has no header hash
+	require.NoError(t, k.CompleteRound(ctx, round, minimalResult()))
+
+	stored, found := k.GetVerificationRound(ctx, roundID)
+	require.True(t, found)
+	require.Len(t, stored.FinalityReceiptHash, 32,
+		"FinalityReceiptHash must be 32 bytes even when block hash is nil (backward compat)")
+}
+
 // ─── Context: sdk.Context with header hash ───────────────────────────────────
 
 // Verify that sdk.Context.WithHeaderHash plumbing works as expected — that

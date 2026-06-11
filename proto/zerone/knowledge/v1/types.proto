@@ -1032,6 +1032,19 @@ message VerificationRound {
   // Verifiers without a declared organization_id are each counted as a unique singleton.
   // Stored for auditability; governance can query low-diversity verdicts. Scientific Method Gap 1.
   uint64 panel_diversity_score_bps = 15;
+
+  // finality_receipt_hash is a cryptographic commitment to the verdict, computed
+  // by CompleteRound as sha256(round_id | "|" | verdict_string | "|" | verdict_block_BE_bytes | "|" | verdict_block_hash).
+  // Set at COMPLETE phase. Empty until then.
+  //
+  // Purpose: IBC-compatible finality receipt. Any IBC light client on a remote chain
+  // can request a Merkle proof of this value and verify that zerone's validator set
+  // produced a specific verdict at a specific block. Enables cross-chain truth attestation
+  // without requiring a dedicated IBC port — the receipt is Merkle-provable via the
+  // standard Cosmos state Merkle tree the moment it is stored.
+  //
+  // Settlement Finality Gap 4 (settlement-finality-brief.md).
+  bytes finality_receipt_hash = 16;
 }
 
 // CommitEntry records a validator's blinded commitment (SHA-256(vote || salt)).

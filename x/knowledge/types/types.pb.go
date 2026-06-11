@@ -5327,8 +5327,20 @@ type VerificationRound struct {
 	// Verifiers without a declared organization_id are each counted as a unique singleton.
 	// Stored for auditability; governance can query low-diversity verdicts. Scientific Method Gap 1.
 	PanelDiversityScoreBps uint64 `protobuf:"varint,15,opt,name=panel_diversity_score_bps,json=panelDiversityScoreBps,proto3" json:"panel_diversity_score_bps,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// finality_receipt_hash is a cryptographic commitment to the verdict, computed
+	// by CompleteRound as sha256(round_id | "|" | verdict_string | "|" | verdict_block_BE_bytes | "|" | verdict_block_hash).
+	// Set at COMPLETE phase. Empty until then.
+	//
+	// Purpose: IBC-compatible finality receipt. Any IBC light client on a remote chain
+	// can request a Merkle proof of this value and verify that zerone's validator set
+	// produced a specific verdict at a specific block. Enables cross-chain truth attestation
+	// without requiring a dedicated IBC port — the receipt is Merkle-provable via the
+	// standard Cosmos state Merkle tree the moment it is stored.
+	//
+	// Settlement Finality Gap 4 (settlement-finality-brief.md).
+	FinalityReceiptHash []byte `protobuf:"bytes,16,opt,name=finality_receipt_hash,json=finalityReceiptHash,proto3" json:"finality_receipt_hash,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *VerificationRound) Reset() {
@@ -5464,6 +5476,13 @@ func (x *VerificationRound) GetPanelDiversityScoreBps() uint64 {
 		return x.PanelDiversityScoreBps
 	}
 	return 0
+}
+
+func (x *VerificationRound) GetFinalityReceiptHash() []byte {
+	if x != nil {
+		return x.FinalityReceiptHash
+	}
+	return nil
 }
 
 // CommitEntry records a validator's blinded commitment (SHA-256(vote || salt)).
@@ -9563,7 +9582,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x10observed_outcome\x18\x03 \x01(\tR\x0fobservedOutcome\x12#\n" +
 	"\revidence_hash\x18\x04 \x01(\tR\fevidenceHash\x12,\n" +
 	"\x12submitted_at_block\x18\x05 \x01(\x04R\x10submittedAtBlock\x12!\n" +
-	"\fsubmitted_by\x18\x06 \x01(\tR\vsubmittedBy\"\xc2\x05\n" +
+	"\fsubmitted_by\x18\x06 \x01(\tR\vsubmittedBy\"\xf6\x05\n" +
 	"\x11VerificationRound\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\bclaim_id\x18\x02 \x01(\tR\aclaimId\x12(\n" +
@@ -9580,7 +9599,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x14aggregation_deadline\x18\f \x01(\x04R\x13aggregationDeadline\x12(\n" +
 	"\x10priority_tip_bps\x18\r \x01(\x04R\x0epriorityTipBps\x12,\n" +
 	"\x12verdict_block_hash\x18\x0e \x01(\fR\x10verdictBlockHash\x129\n" +
-	"\x19panel_diversity_score_bps\x18\x0f \x01(\x04R\x16panelDiversityScoreBps\"x\n" +
+	"\x19panel_diversity_score_bps\x18\x0f \x01(\x04R\x16panelDiversityScoreBps\x122\n" +
+	"\x15finality_receipt_hash\x18\x10 \x01(\fR\x13finalityReceiptHash\"x\n" +
 	"\vCommitEntry\x12\x1a\n" +
 	"\bverifier\x18\x01 \x01(\tR\bverifier\x12\x1f\n" +
 	"\vcommit_hash\x18\x02 \x01(\fR\n" +

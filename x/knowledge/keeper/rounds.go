@@ -2,6 +2,9 @@ package keeper
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 
@@ -129,6 +132,12 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 	round.VerdictBlock = height
 	round.VerdictBlockHash = sdkCtx.HeaderHash() // Settlement Finality Gap 1: anchors verdict to specific chain history
 	round.Phase = types.VerificationPhase_VERIFICATION_PHASE_COMPLETE
+
+	// Settlement Finality Gap 4: compute finality receipt hash.
+	// receipt = sha256(round_id | "|" | verdict_string | "|" | verdict_block_BE | "|" | verdict_block_hash)
+	// This deterministic commitment allows any IBC light client on a remote chain to
+	// prove a specific zerone verdict via a standard Cosmos Merkle state proof.
+	round.FinalityReceiptHash = computeFinalityReceiptHash(round.Id, round.Verdict.String(), height, round.VerdictBlockHash)
 
 	// Wave 15b: pay the invitation bonus BEFORE any verdict-specific side
 	// effects consume the invitation state. handleChallengeSurvival will
@@ -355,9 +364,31 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 		sdk.NewAttribute("round_id", round.Id),
 		sdk.NewAttribute("claim_id", round.ClaimId),
 		sdk.NewAttribute("verdict", round.Verdict.String()),
+		// Settlement Finality Gap 4: include finality receipt for IBC light client proofs.
+		sdk.NewAttribute("finality_receipt", hex.EncodeToString(round.FinalityReceiptHash)),
 	))
 
 	return nil
+}
+
+// computeFinalityReceiptHash computes the sha256 finality receipt for a completed round.
+// Format: sha256(roundId || "|" || verdictStr || "|" || verdictBlock_BE_8 || "|" || verdictBlockHash)
+//
+// The "|" separators prevent ambiguous concatenation. verdictBlock is encoded as 8-byte
+// big-endian to make the hash independent of decimal string representation.
+// This is the canonical Settlement Finality Gap 4 receipt format.
+func computeFinalityReceiptHash(roundId, verdictStr string, verdictBlock uint64, verdictBlockHash []byte) []byte {
+	h := sha256.New()
+	h.Write([]byte(roundId))
+	h.Write([]byte("|"))
+	h.Write([]byte(verdictStr))
+	h.Write([]byte("|"))
+	var blockBE [8]byte
+	binary.BigEndian.PutUint64(blockBE[:], verdictBlock)
+	h.Write(blockBE[:])
+	h.Write([]byte("|"))
+	h.Write(verdictBlockHash)
+	return h.Sum(nil)
 }
 
 // distributeVerifierRewardsFromPool distributes the verifier pool among correct verifiers.
