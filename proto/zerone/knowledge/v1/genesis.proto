@@ -547,6 +547,19 @@ message Params {
   // "is-part-of"]. Empty list disables transitivity derivation entirely.
   // Formal Logic Brief Gap 4 (★★★☆☆).
   repeated string transitive_relation_verbs = 184;
+
+  // constraint_check_enabled: when true, MsgSubmitClaim detects assert/negate
+  // canonical form contradictions against existing verified facts.
+  //
+  // On contradiction: Claim.conflicting_fact_id is set to the opposing fact ID
+  // and event zerone.knowledge.constraint_violation_detected is emitted.
+  // The claim still proceeds to PoT verification — detection is informational,
+  // not blocking. Only exact canonical form inversions are detected (assert↔negate
+  // with identical domain, subject, predicate, scope); semantic violations
+  // (e.g. constraint facts vs related assertions) require off-chain oracle reasoning.
+  //
+  // Formal Logic Brief Gap 3 (★★★☆☆). Default: false.
+  bool constraint_check_enabled = 185;
 }
 
 // GenesisState is the genesis state of the knowledge module.

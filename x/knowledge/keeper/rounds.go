@@ -193,7 +193,8 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 		// Operationalizes Peirce's self-correcting community (Scientific Method Gap 5).
 		k.maybeAwardNullResultCredit(ctx, claim)
 		// If this was a challenge claim, the original fact survived — energy boost
-		k.handleChallengeSurvival(ctx, claim)
+		// + Falsificationism Gap 1: pass rejection confidence so severity score accumulates.
+		k.handleChallengeSurvival(ctx, claim, result.Confidence)
 		// Challenge lost: record on the challenger's side of the ledger (Phase 5).
 		if claim.ProvisionalFactId != "" {
 			k.RecordChallengeOutcome(ctx, claim.Submitter, false)
@@ -688,6 +689,11 @@ func (k Keeper) createFactFromClaim(ctx context.Context, claim *types.Claim, rou
 		Warrant:      claim.Warrant,
 		Backing:      claim.Backing,
 		QualifierBps: claim.QualifierBps,
+		// Falsificationism Gap 1: initial corroboration severity = acceptance
+		// panel confidence. A 95%-confident ACCEPT is a severer test than a
+		// 55%-confident one; the severity score captures this asymmetry from
+		// the moment of creation.
+		CorroborationSeverityScoreBps: confidence,
 		// Fitness fields
 		FitnessScore:       params.FitnessInitialScore,
 		FitnessUpdatedBlock: height,
@@ -1070,7 +1076,9 @@ func (k Keeper) computeProvenance(ctx context.Context, claim *types.Claim) (uint
 
 // handleChallengeSurvival restores a challenged fact and grants survival energy
 // when a challenge claim is rejected (the original fact survived).
-func (k Keeper) handleChallengeSurvival(ctx context.Context, challengeClaim *types.Claim) {
+// rejectionConfidenceBps is the panel's confidence in the REJECT verdict —
+// higher confidence = severer test survived (Falsificationism Gap 1).
+func (k Keeper) handleChallengeSurvival(ctx context.Context, challengeClaim *types.Claim, rejectionConfidenceBps uint64) {
 	if challengeClaim.ProvisionalFactId == "" {
 		return
 	}
@@ -1107,6 +1115,13 @@ func (k Keeper) handleChallengeSurvival(ctx context.Context, challengeClaim *typ
 		// Phase 5: credit submitter only when the counter moves.
 		k.RecordCorroborationForSubmitter(ctx, originalFact.Submitter, originalFact.MethodId)
 	}
+	// Falsificationism Gap 1: accumulate severity UNCONDITIONALLY (no cooldown).
+	// Each challenge carries its own severity signal regardless of timing.
+	// The severity score is the sum of rejection confidences — a series of
+	// 90%-confident REJECTs is epistemically stronger than a series of 55%
+	// ones. Farm-attackers cannot inflate this easily: calibrated verifiers
+	// hedge on planted challenges, keeping rejection confidence low.
+	originalFact.CorroborationSeverityScoreBps += rejectionConfidenceBps
 
 	// Restore from challenged status regardless of cooldown — the fact
 	// survived the probe either way.
@@ -1123,6 +1138,8 @@ func (k Keeper) handleChallengeSurvival(ctx context.Context, challengeClaim *typ
 		sdk.NewAttribute("fact_id", originalFact.Id),
 		sdk.NewAttribute("challenge_claim_id", challengeClaim.Id),
 		sdk.NewAttribute("new_count", fmt.Sprintf("%d", originalFact.CorroborationCount)),
+		sdk.NewAttribute("severity_score_bps", fmt.Sprintf("%d", originalFact.CorroborationSeverityScoreBps)),
+		sdk.NewAttribute("rejection_confidence_bps", fmt.Sprintf("%d", rejectionConfidenceBps)),
 		sdk.NewAttribute("block_height", fmt.Sprintf("%d", height)),
 		sdk.NewAttribute("counter_incremented", fmt.Sprintf("%t", eligible)),
 		sdk.NewAttribute("creed_commitment", "3"),

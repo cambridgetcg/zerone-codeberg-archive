@@ -513,8 +513,20 @@ type Params struct {
 	// "is-part-of"]. Empty list disables transitivity derivation entirely.
 	// Formal Logic Brief Gap 4 (★★★☆☆).
 	TransitiveRelationVerbs []string `protobuf:"bytes,184,rep,name=transitive_relation_verbs,json=transitiveRelationVerbs,proto3" json:"transitive_relation_verbs,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// constraint_check_enabled: when true, MsgSubmitClaim detects assert/negate
+	// canonical form contradictions against existing verified facts.
+	//
+	// On contradiction: Claim.conflicting_fact_id is set to the opposing fact ID
+	// and event zerone.knowledge.constraint_violation_detected is emitted.
+	// The claim still proceeds to PoT verification — detection is informational,
+	// not blocking. Only exact canonical form inversions are detected (assert↔negate
+	// with identical domain, subject, predicate, scope); semantic violations
+	// (e.g. constraint facts vs related assertions) require off-chain oracle reasoning.
+	//
+	// Formal Logic Brief Gap 3 (★★★☆☆). Default: false.
+	ConstraintCheckEnabled bool `protobuf:"varint,185,opt,name=constraint_check_enabled,json=constraintCheckEnabled,proto3" json:"constraint_check_enabled,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -1835,6 +1847,13 @@ func (x *Params) GetTransitiveRelationVerbs() []string {
 	return nil
 }
 
+func (x *Params) GetConstraintCheckEnabled() bool {
+	if x != nil {
+		return x.ConstraintCheckEnabled
+	}
+	return false
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -2082,7 +2101,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xe1[\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\x9c\\\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2268,7 +2287,8 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"#min_phenomenological_practice_hours\x18\xb5\x01 \x01(\x04R minPhenomenologicalPracticeHours\x12b\n" +
 	"-phenomenological_corroboration_confidence_bps\x18\xb6\x01 \x01(\x04R*phenomenologicalCorroborationConfidenceBps\x12D\n" +
 	"\x1eoracle_freshness_window_blocks\x18\xb7\x01 \x01(\x04R\x1boracleFreshnessWindowBlocks\x12;\n" +
-	"\x19transitive_relation_verbs\x18\xb8\x01 \x03(\tR\x17transitiveRelationVerbs\x1aN\n" +
+	"\x19transitive_relation_verbs\x18\xb8\x01 \x03(\tR\x17transitiveRelationVerbs\x129\n" +
+	"\x18constraint_check_enabled\x18\xb9\x01 \x01(\bR\x16constraintCheckEnabled\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xb8\x0f\n" +

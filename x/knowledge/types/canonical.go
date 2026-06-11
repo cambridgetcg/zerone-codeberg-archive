@@ -114,6 +114,47 @@ func HashCanonicalForm(form string) string {
 	return hex.EncodeToString(h[:])
 }
 
+// ComputeOpposingCanonicalForm returns the logically opposing canonical form.
+//
+// The only direct logical contradiction in the canonical form language is:
+//
+//	assert(D, S, P[, scope]) ↔ negate(D, S, P[, scope])
+//
+// Both carry the same domain, subject, predicate, and optional scope — one
+// asserts the predicate holds, the other asserts it does not. If a verified
+// fact exists with the opposing form, the new claim contradicts established
+// chain knowledge.
+//
+// For all other canonical forms (relate, define, constrain, observe) the
+// function returns "" — no direct mechanical inverse exists in this language.
+// Constraint violations against constrain() facts require semantic reasoning
+// beyond what string-level form inversion can provide (off-chain oracle
+// territory, not on-chain detection).
+//
+// The returned opposing form is already normalized — suitable for direct
+// comparison or hashing via HashCanonicalForm.
+func ComputeOpposingCanonicalForm(canonicalForm string) string {
+	normalized := NormalizeCanonicalForm(canonicalForm)
+	if strings.HasPrefix(normalized, "assert(") {
+		return "negate(" + normalized[len("assert("):]
+	}
+	if strings.HasPrefix(normalized, "negate(") {
+		return "assert(" + normalized[len("negate("):]
+	}
+	return ""
+}
+
+// ComputeOpposingCanonicalHash returns the SHA-256 hex digest of the opposing
+// canonical form, or "" if no opposing form exists.
+// Convenience wrapper: ComputeOpposingCanonicalForm + HashCanonicalForm.
+func ComputeOpposingCanonicalHash(canonicalForm string) string {
+	opposing := ComputeOpposingCanonicalForm(canonicalForm)
+	if opposing == "" {
+		return ""
+	}
+	return HashCanonicalForm(opposing)
+}
+
 // quoteArg wraps a canonical form argument in double quotes.
 func quoteArg(s string) string {
 	s = strings.TrimSpace(s)

@@ -377,6 +377,33 @@ message Fact {
   // probability. Copied from the originating Claim on ACCEPT. Distinct from
   // verifier ConfidenceBps — this is the submitter's own declared strength.
   uint64 qualifier_bps = 79;
+
+  // ── Popperian Corroboration Severity (Falsificationism Gap 1) ─────────────
+  //
+  // corroboration_severity_score_bps: severity-weighted measure of how
+  // rigorously this fact has been tested. Popper's insight: corroboration
+  // value comes from *severity* of surviving tests, not mere count.
+  //
+  // Computation:
+  //   1. On initial ACCEPT: score = acceptance_confidence_bps (severity of
+  //      the original PoT panel — unanimous 95% panel is a severer test than
+  //      a narrow 55% panel).
+  //   2. On each challenge REJECTED: score += rejection_confidence_bps
+  //      (how confident the panel was that the challenger failed; a 90%-
+  //      confident "REJECT" means the challenge was decisively defeated —
+  //      that is a severe test the fact passed).
+  //
+  // The cooldown that rate-limits corroboration_count does NOT apply here —
+  // each challenge carries its own severity signal regardless of timing.
+  // However, a single farm-attacker generating a thousand low-quality
+  // challenges cannot inflate this score much because their panels would
+  // achieve low confidence (diverse, properly-calibrated verifiers will
+  // hedge on planted challenges).
+  //
+  // Distinct from corroboration_count (which is the raw count of survived
+  // challenges). This field encodes HOW CONVINCINGLY each challenge was
+  // defeated, not just how many were.
+  uint64 corroboration_severity_score_bps = 80;
 }
 
 // CurriculumTier orders training examples by difficulty and foundational depth.
@@ -983,6 +1010,24 @@ message Claim {
   // 1_000_000 = logical necessity. Distinct from panel ConfidenceBps
   // (verifier aggregate). Propagated to Fact on ACCEPT verdict.
   uint64 qualifier_bps = 37;
+
+  // conflicting_fact_id: set at claim creation when Params.constraint_check_enabled
+  // is true and a verified fact with the logically opposing canonical form is found.
+  //
+  // Opposing canonical forms (Formal Logic Gap 3):
+  //   assert(D, S, P[, scope]) ↔ negate(D, S, P[, scope])
+  //
+  // When non-empty, the claim directly contradicts an established on-chain fact.
+  // The claim is NOT blocked — it proceeds to PoT verification where the
+  // contradiction becomes evidence for rejection. Verifiers can see the conflict
+  // explicitly rather than discovering it through domain knowledge.
+  //
+  // This is surface-level detection only. Semantic contradictions (e.g. a constraint
+  // fact about energy conservation vs an assertion that a device violates it) require
+  // off-chain oracle reasoning; only exact canonical form inversions are detected here.
+  //
+  // Empty means no opposing verified fact was found (or constraint_check_enabled=false).
+  string conflicting_fact_id = 38;
 }
 
 // PreRegistration records a submitter's declared intent to submit a claim

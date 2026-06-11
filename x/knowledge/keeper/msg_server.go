@@ -242,6 +242,31 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 		certVerified = m.keeper.VerifyProofCertificate(ctx, msg.ProofCertificate)
 	}
 
+	// Formal Logic Gap 3 — constraint satisfaction check (assert ↔ negate conflict detection).
+	// When params.ConstraintCheckEnabled and the new claim has an assert() or negate()
+	// canonical form, check if a verified fact with the opposing canonical form already
+	// exists on-chain. If so, set conflictingFactID and emit a violation event.
+	// Detection is informational only — the claim proceeds to PoT regardless.
+	var conflictingFactID string
+	if params.ConstraintCheckEnabled && canonicalHash != "" {
+		if opposingHash := types.ComputeOpposingCanonicalHash(canonicalForm); opposingHash != "" {
+			if existingID, exists := m.keeper.GetClaimByCanonicalHash(ctx, opposingHash); exists {
+				// The canonical hash index stores fact IDs once a claim is accepted.
+				// Only flag a conflict if the opposing ID is a verified Fact.
+				if _, factFound := m.keeper.GetFact(ctx, existingID); factFound {
+					conflictingFactID = existingID
+					sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
+						"zerone.knowledge.constraint_violation_detected",
+						sdk.NewAttribute("conflicting_fact_id", existingID),
+						sdk.NewAttribute("opposing_canonical_form", types.ComputeOpposingCanonicalForm(canonicalForm)),
+						sdk.NewAttribute("submitter", msg.Submitter),
+						sdk.NewAttribute("domain", msg.Domain),
+					))
+				}
+			}
+		}
+	}
+
 	claim := &types.Claim{
 		Id:                     claimID,
 		FactContent:            msg.FactContent,
@@ -272,6 +297,8 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 		Warrant:      msg.Warrant,
 		Backing:      msg.Backing,
 		QualifierBps: msg.QualifierBps,
+		// Formal Logic Gap 3: assert ↔ negate conflict detection
+		ConflictingFactId: conflictingFactID,
 	}
 
 	if err := m.keeper.SetClaim(ctx, claim); err != nil {

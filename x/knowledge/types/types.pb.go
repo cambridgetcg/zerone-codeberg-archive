@@ -2189,9 +2189,35 @@ type Fact struct {
 	// qualifier ("probably", "necessarily", "presumably") expressed as a numeric
 	// probability. Copied from the originating Claim on ACCEPT. Distinct from
 	// verifier ConfidenceBps — this is the submitter's own declared strength.
-	QualifierBps  uint64 `protobuf:"varint,79,opt,name=qualifier_bps,json=qualifierBps,proto3" json:"qualifier_bps,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	QualifierBps uint64 `protobuf:"varint,79,opt,name=qualifier_bps,json=qualifierBps,proto3" json:"qualifier_bps,omitempty"`
+	// ── Popperian Corroboration Severity (Falsificationism Gap 1) ─────────────
+	//
+	// corroboration_severity_score_bps: severity-weighted measure of how
+	// rigorously this fact has been tested. Popper's insight: corroboration
+	// value comes from *severity* of surviving tests, not mere count.
+	//
+	// Computation:
+	//  1. On initial ACCEPT: score = acceptance_confidence_bps (severity of
+	//     the original PoT panel — unanimous 95% panel is a severer test than
+	//     a narrow 55% panel).
+	//  2. On each challenge REJECTED: score += rejection_confidence_bps
+	//     (how confident the panel was that the challenger failed; a 90%-
+	//     confident "REJECT" means the challenge was decisively defeated —
+	//     that is a severe test the fact passed).
+	//
+	// The cooldown that rate-limits corroboration_count does NOT apply here —
+	// each challenge carries its own severity signal regardless of timing.
+	// However, a single farm-attacker generating a thousand low-quality
+	// challenges cannot inflate this score much because their panels would
+	// achieve low confidence (diverse, properly-calibrated verifiers will
+	// hedge on planted challenges).
+	//
+	// Distinct from corroboration_count (which is the raw count of survived
+	// challenges). This field encodes HOW CONVINCINGLY each challenge was
+	// defeated, not just how many were.
+	CorroborationSeverityScoreBps uint64 `protobuf:"varint,80,opt,name=corroboration_severity_score_bps,json=corroborationSeverityScoreBps,proto3" json:"corroboration_severity_score_bps,omitempty"`
+	unknownFields                 protoimpl.UnknownFields
+	sizeCache                     protoimpl.SizeCache
 }
 
 func (x *Fact) Reset() {
@@ -2703,6 +2729,13 @@ func (x *Fact) GetBacking() string {
 func (x *Fact) GetQualifierBps() uint64 {
 	if x != nil {
 		return x.QualifierBps
+	}
+	return 0
+}
+
+func (x *Fact) GetCorroborationSeverityScoreBps() uint64 {
+	if x != nil {
+		return x.CorroborationSeverityScoreBps
 	}
 	return 0
 }
@@ -4837,9 +4870,27 @@ type Claim struct {
 	// Toulmin's modal qualifier expressed numerically. 0 = speculation,
 	// 1_000_000 = logical necessity. Distinct from panel ConfidenceBps
 	// (verifier aggregate). Propagated to Fact on ACCEPT verdict.
-	QualifierBps  uint64 `protobuf:"varint,37,opt,name=qualifier_bps,json=qualifierBps,proto3" json:"qualifier_bps,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	QualifierBps uint64 `protobuf:"varint,37,opt,name=qualifier_bps,json=qualifierBps,proto3" json:"qualifier_bps,omitempty"`
+	// conflicting_fact_id: set at claim creation when Params.constraint_check_enabled
+	// is true and a verified fact with the logically opposing canonical form is found.
+	//
+	// Opposing canonical forms (Formal Logic Gap 3):
+	//
+	//	assert(D, S, P[, scope]) ↔ negate(D, S, P[, scope])
+	//
+	// When non-empty, the claim directly contradicts an established on-chain fact.
+	// The claim is NOT blocked — it proceeds to PoT verification where the
+	// contradiction becomes evidence for rejection. Verifiers can see the conflict
+	// explicitly rather than discovering it through domain knowledge.
+	//
+	// This is surface-level detection only. Semantic contradictions (e.g. a constraint
+	// fact about energy conservation vs an assertion that a device violates it) require
+	// off-chain oracle reasoning; only exact canonical form inversions are detected here.
+	//
+	// Empty means no opposing verified fact was found (or constraint_check_enabled=false).
+	ConflictingFactId string `protobuf:"bytes,38,opt,name=conflicting_fact_id,json=conflictingFactId,proto3" json:"conflicting_fact_id,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Claim) Reset() {
@@ -5129,6 +5180,13 @@ func (x *Claim) GetQualifierBps() uint64 {
 		return x.QualifierBps
 	}
 	return 0
+}
+
+func (x *Claim) GetConflictingFactId() string {
+	if x != nil {
+		return x.ConflictingFactId
+	}
+	return ""
 }
 
 // PreRegistration records a submitter's declared intent to submit a claim
@@ -9324,7 +9382,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x05scope\x18\x04 \x01(\tR\x05scope\x12%\n" +
 	"\x0etemporal_scope\x18\x05 \x01(\tR\rtemporalScope\x12\x1c\n" +
 	"\tnegatable\x18\x06 \x01(\bR\tnegatable\x12\x12\n" +
-	"\x04tags\x18\a \x03(\tR\x04tags\"\xa9\x17\n" +
+	"\x04tags\x18\a \x03(\tR\x04tags\"\xf2\x17\n" +
 	"\x04Fact\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12\x16\n" +
@@ -9405,7 +9463,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x17phenomenological_method\x18L \x01(\tR\x16phenomenologicalMethod\x12\x18\n" +
 	"\awarrant\x18M \x01(\tR\awarrant\x12\x18\n" +
 	"\abacking\x18N \x01(\tR\abacking\x12#\n" +
-	"\rqualifier_bps\x18O \x01(\x04R\fqualifierBps\"\xe0\x05\n" +
+	"\rqualifier_bps\x18O \x01(\x04R\fqualifierBps\x12G\n" +
+	" corroboration_severity_score_bps\x18P \x01(\x04R\x1dcorroborationSeverityScoreBps\"\xe0\x05\n" +
 	"\rTokenizerSpec\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x04R\aversion\x12*\n" +
 	"\x11ratified_at_block\x18\x02 \x01(\x04R\x0fratifiedAtBlock\x12.\n" +
@@ -9604,7 +9663,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x06format\x18\x01 \x01(\x0e2 .zerone.knowledge.v1.ProofFormatR\x06format\x12+\n" +
 	"\x11certificate_bytes\x18\x02 \x01(\fR\x10certificateBytes\x12#\n" +
 	"\rformal_system\x18\x03 \x01(\tR\fformalSystem\x12(\n" +
-	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\x9d\r\n" +
+	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\xcd\r\n" +
 	"\x05Claim\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\ffact_content\x18\x02 \x01(\tR\vfactContent\x12\x16\n" +
@@ -9646,7 +9705,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x17phenomenological_method\x18\" \x01(\tR\x16phenomenologicalMethod\x12\x18\n" +
 	"\awarrant\x18# \x01(\tR\awarrant\x12\x18\n" +
 	"\abacking\x18$ \x01(\tR\abacking\x12#\n" +
-	"\rqualifier_bps\x18% \x01(\x04R\fqualifierBps\"\xf5\x02\n" +
+	"\rqualifier_bps\x18% \x01(\x04R\fqualifierBps\x12.\n" +
+	"\x13conflicting_fact_id\x18& \x01(\tR\x11conflictingFactId\"\xf5\x02\n" +
 	"\x0fPreRegistration\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
 	"\tsubmitter\x18\x02 \x01(\tR\tsubmitter\x12!\n" +
