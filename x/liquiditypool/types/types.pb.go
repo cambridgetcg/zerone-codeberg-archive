@@ -574,6 +574,116 @@ func (x *SwapCommitment) GetCommitBlock() uint64 {
 	return 0
 }
 
+// PendingSwapReveal queues a validated swap reveal for fair sequencing.
+// When Params.fair_sequencing_enabled is true, RevealSwap stores the swap
+// parameters here instead of executing immediately.  EndBlocker processes
+// all pending reveals in CommitBlock-ascending order (FIFO), removing the
+// validator's ability to profit by reordering AMM transactions within a block.
+//
+// Key: PendingSwapRevealKeyPrefix + big-endian(commit_block, 8 bytes)
+//   - sender + "/" + pool_id
+//
+// The big-endian commit_block prefix gives lexicographic == chronological order.
+type PendingSwapReveal struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Sender          string                 `protobuf:"bytes,1,opt,name=sender,proto3" json:"sender,omitempty"`
+	PoolId          string                 `protobuf:"bytes,2,opt,name=pool_id,json=poolId,proto3" json:"pool_id,omitempty"`
+	TokenInDenom    string                 `protobuf:"bytes,3,opt,name=token_in_denom,json=tokenInDenom,proto3" json:"token_in_denom,omitempty"`
+	TokenInAmount   string                 `protobuf:"bytes,4,opt,name=token_in_amount,json=tokenInAmount,proto3" json:"token_in_amount,omitempty"`       // bigint string
+	MinTokenOut     string                 `protobuf:"bytes,5,opt,name=min_token_out,json=minTokenOut,proto3" json:"min_token_out,omitempty"`             // bigint string, "" or "0" = no minimum
+	DeadlineBlock   uint64                 `protobuf:"varint,6,opt,name=deadline_block,json=deadlineBlock,proto3" json:"deadline_block,omitempty"`        // 0 = no deadline
+	CommitBlock     uint64                 `protobuf:"varint,7,opt,name=commit_block,json=commitBlock,proto3" json:"commit_block,omitempty"`              // sort key — earlier commits execute first
+	PriorityTipUzrn string                 `protobuf:"bytes,8,opt,name=priority_tip_uzrn,json=priorityTipUzrn,proto3" json:"priority_tip_uzrn,omitempty"` // MEV priority tip (Gap 3), "" or "0" = none
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *PendingSwapReveal) Reset() {
+	*x = PendingSwapReveal{}
+	mi := &file_zerone_liquiditypool_v1_types_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PendingSwapReveal) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PendingSwapReveal) ProtoMessage() {}
+
+func (x *PendingSwapReveal) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_liquiditypool_v1_types_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PendingSwapReveal.ProtoReflect.Descriptor instead.
+func (*PendingSwapReveal) Descriptor() ([]byte, []int) {
+	return file_zerone_liquiditypool_v1_types_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *PendingSwapReveal) GetSender() string {
+	if x != nil {
+		return x.Sender
+	}
+	return ""
+}
+
+func (x *PendingSwapReveal) GetPoolId() string {
+	if x != nil {
+		return x.PoolId
+	}
+	return ""
+}
+
+func (x *PendingSwapReveal) GetTokenInDenom() string {
+	if x != nil {
+		return x.TokenInDenom
+	}
+	return ""
+}
+
+func (x *PendingSwapReveal) GetTokenInAmount() string {
+	if x != nil {
+		return x.TokenInAmount
+	}
+	return ""
+}
+
+func (x *PendingSwapReveal) GetMinTokenOut() string {
+	if x != nil {
+		return x.MinTokenOut
+	}
+	return ""
+}
+
+func (x *PendingSwapReveal) GetDeadlineBlock() uint64 {
+	if x != nil {
+		return x.DeadlineBlock
+	}
+	return 0
+}
+
+func (x *PendingSwapReveal) GetCommitBlock() uint64 {
+	if x != nil {
+		return x.CommitBlock
+	}
+	return 0
+}
+
+func (x *PendingSwapReveal) GetPriorityTipUzrn() string {
+	if x != nil {
+		return x.PriorityTipUzrn
+	}
+	return ""
+}
+
 var File_zerone_liquiditypool_v1_types_proto protoreflect.FileDescriptor
 
 const file_zerone_liquiditypool_v1_types_proto_rawDesc = "" +
@@ -633,7 +743,16 @@ const file_zerone_liquiditypool_v1_types_proto_rawDesc = "" +
 	"\n" +
 	"commitment\x18\x03 \x01(\fR\n" +
 	"commitment\x12!\n" +
-	"\fcommit_block\x18\x04 \x01(\x04R\vcommitBlockB6Z4github.com/zerone-chain/zerone/x/liquiditypool/typesb\x06proto3"
+	"\fcommit_block\x18\x04 \x01(\x04R\vcommitBlock\"\xac\x02\n" +
+	"\x11PendingSwapReveal\x12\x16\n" +
+	"\x06sender\x18\x01 \x01(\tR\x06sender\x12\x17\n" +
+	"\apool_id\x18\x02 \x01(\tR\x06poolId\x12$\n" +
+	"\x0etoken_in_denom\x18\x03 \x01(\tR\ftokenInDenom\x12&\n" +
+	"\x0ftoken_in_amount\x18\x04 \x01(\tR\rtokenInAmount\x12\"\n" +
+	"\rmin_token_out\x18\x05 \x01(\tR\vminTokenOut\x12%\n" +
+	"\x0edeadline_block\x18\x06 \x01(\x04R\rdeadlineBlock\x12!\n" +
+	"\fcommit_block\x18\a \x01(\x04R\vcommitBlock\x12*\n" +
+	"\x11priority_tip_uzrn\x18\b \x01(\tR\x0fpriorityTipUzrnB6Z4github.com/zerone-chain/zerone/x/liquiditypool/typesb\x06proto3"
 
 var (
 	file_zerone_liquiditypool_v1_types_proto_rawDescOnce sync.Once
@@ -647,7 +766,7 @@ func file_zerone_liquiditypool_v1_types_proto_rawDescGZIP() []byte {
 	return file_zerone_liquiditypool_v1_types_proto_rawDescData
 }
 
-var file_zerone_liquiditypool_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_zerone_liquiditypool_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_zerone_liquiditypool_v1_types_proto_goTypes = []any{
 	(*Pool)(nil),                  // 0: zerone.liquiditypool.v1.Pool
 	(*LiquidityMiningPeriod)(nil), // 1: zerone.liquiditypool.v1.LiquidityMiningPeriod
@@ -655,6 +774,7 @@ var file_zerone_liquiditypool_v1_types_proto_goTypes = []any{
 	(*TWAPAccumulator)(nil),       // 3: zerone.liquiditypool.v1.TWAPAccumulator
 	(*SwapResult)(nil),            // 4: zerone.liquiditypool.v1.SwapResult
 	(*SwapCommitment)(nil),        // 5: zerone.liquiditypool.v1.SwapCommitment
+	(*PendingSwapReveal)(nil),     // 6: zerone.liquiditypool.v1.PendingSwapReveal
 }
 var file_zerone_liquiditypool_v1_types_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -675,7 +795,7 @@ func file_zerone_liquiditypool_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_zerone_liquiditypool_v1_types_proto_rawDesc), len(file_zerone_liquiditypool_v1_types_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -39,8 +39,15 @@ type Params struct {
 	// 1,000,000 = all tips become LP revenue. Valid range: 0 – 1,000,000.
 	// Market Microstructure Gap 3.
 	MevFeeShareBps uint64 `protobuf:"varint,11,opt,name=mev_fee_share_bps,json=mevFeeShareBps,proto3" json:"mev_fee_share_bps,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// fair_sequencing_enabled: when true, RevealSwap queues the validated swap
+	// for EndBlocker processing instead of executing immediately.  All queued
+	// reveals in a block are processed in CommitBlock-ascending order (FIFO),
+	// removing the validator's ability to profit by reordering swaps.
+	// Default: false (RevealSwap executes immediately — no behaviour change).
+	// Market Microstructure Gap 5.
+	FairSequencingEnabled bool `protobuf:"varint,12,opt,name=fair_sequencing_enabled,json=fairSequencingEnabled,proto3" json:"fair_sequencing_enabled,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -150,17 +157,25 @@ func (x *Params) GetMevFeeShareBps() uint64 {
 	return 0
 }
 
+func (x *Params) GetFairSequencingEnabled() bool {
+	if x != nil {
+		return x.FairSequencingEnabled
+	}
+	return false
+}
+
 // GenesisState defines the liquiditypool module genesis state.
 type GenesisState struct {
-	state            protoimpl.MessageState   `protogen:"open.v1"`
-	Params           *Params                  `protobuf:"bytes,1,opt,name=params,proto3" json:"params,omitempty"`
-	Pools            []*Pool                  `protobuf:"bytes,2,rep,name=pools,proto3" json:"pools,omitempty"`
-	TwapAccumulators []*TWAPAccumulator       `protobuf:"bytes,3,rep,name=twap_accumulators,json=twapAccumulators,proto3" json:"twap_accumulators,omitempty"`
-	MiningPeriods    []*LiquidityMiningPeriod `protobuf:"bytes,4,rep,name=mining_periods,json=miningPeriods,proto3" json:"mining_periods,omitempty"`
-	MinerPositions   []*LpMinerPosition       `protobuf:"bytes,5,rep,name=miner_positions,json=minerPositions,proto3" json:"miner_positions,omitempty"`
-	SwapCommitments  []*SwapCommitment        `protobuf:"bytes,6,rep,name=swap_commitments,json=swapCommitments,proto3" json:"swap_commitments,omitempty"` // pending commit-reveal commitments
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state              protoimpl.MessageState   `protogen:"open.v1"`
+	Params             *Params                  `protobuf:"bytes,1,opt,name=params,proto3" json:"params,omitempty"`
+	Pools              []*Pool                  `protobuf:"bytes,2,rep,name=pools,proto3" json:"pools,omitempty"`
+	TwapAccumulators   []*TWAPAccumulator       `protobuf:"bytes,3,rep,name=twap_accumulators,json=twapAccumulators,proto3" json:"twap_accumulators,omitempty"`
+	MiningPeriods      []*LiquidityMiningPeriod `protobuf:"bytes,4,rep,name=mining_periods,json=miningPeriods,proto3" json:"mining_periods,omitempty"`
+	MinerPositions     []*LpMinerPosition       `protobuf:"bytes,5,rep,name=miner_positions,json=minerPositions,proto3" json:"miner_positions,omitempty"`
+	SwapCommitments    []*SwapCommitment        `protobuf:"bytes,6,rep,name=swap_commitments,json=swapCommitments,proto3" json:"swap_commitments,omitempty"`            // pending commit-reveal commitments
+	PendingSwapReveals []*PendingSwapReveal     `protobuf:"bytes,7,rep,name=pending_swap_reveals,json=pendingSwapReveals,proto3" json:"pending_swap_reveals,omitempty"` // queued for fair-sequencing EndBlocker
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *GenesisState) Reset() {
@@ -235,11 +250,18 @@ func (x *GenesisState) GetSwapCommitments() []*SwapCommitment {
 	return nil
 }
 
+func (x *GenesisState) GetPendingSwapReveals() []*PendingSwapReveal {
+	if x != nil {
+		return x.PendingSwapReveals
+	}
+	return nil
+}
+
 var File_zerone_liquiditypool_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_liquiditypool_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"%zerone/liquiditypool/v1/genesis.proto\x12\x17zerone.liquiditypool.v1\x1a#zerone/liquiditypool/v1/types.proto\"\x96\x04\n" +
+	"%zerone/liquiditypool/v1/genesis.proto\x12\x17zerone.liquiditypool.v1\x1a#zerone/liquiditypool/v1/types.proto\"\xce\x04\n" +
 	"\x06Params\x12/\n" +
 	"\x14default_swap_fee_bps\x18\x01 \x01(\x04R\x11defaultSwapFeeBps\x12\x1b\n" +
 	"\tmax_pools\x18\x02 \x01(\x04R\bmaxPools\x122\n" +
@@ -253,14 +275,16 @@ const file_zerone_liquiditypool_v1_genesis_proto_rawDesc = "" +
 	"\x1dmin_liquidity_duration_blocks\x18\t \x01(\x04R\x1aminLiquidityDurationBlocks\x123\n" +
 	"\x16max_twap_deviation_bps\x18\n" +
 	" \x01(\x04R\x13maxTwapDeviationBps\x12)\n" +
-	"\x11mev_fee_share_bps\x18\v \x01(\x04R\x0emevFeeShareBps\"\xd1\x03\n" +
+	"\x11mev_fee_share_bps\x18\v \x01(\x04R\x0emevFeeShareBps\x126\n" +
+	"\x17fair_sequencing_enabled\x18\f \x01(\bR\x15fairSequencingEnabled\"\xaf\x04\n" +
 	"\fGenesisState\x127\n" +
 	"\x06params\x18\x01 \x01(\v2\x1f.zerone.liquiditypool.v1.ParamsR\x06params\x123\n" +
 	"\x05pools\x18\x02 \x03(\v2\x1d.zerone.liquiditypool.v1.PoolR\x05pools\x12U\n" +
 	"\x11twap_accumulators\x18\x03 \x03(\v2(.zerone.liquiditypool.v1.TWAPAccumulatorR\x10twapAccumulators\x12U\n" +
 	"\x0emining_periods\x18\x04 \x03(\v2..zerone.liquiditypool.v1.LiquidityMiningPeriodR\rminingPeriods\x12Q\n" +
 	"\x0fminer_positions\x18\x05 \x03(\v2(.zerone.liquiditypool.v1.LpMinerPositionR\x0eminerPositions\x12R\n" +
-	"\x10swap_commitments\x18\x06 \x03(\v2'.zerone.liquiditypool.v1.SwapCommitmentR\x0fswapCommitmentsB6Z4github.com/zerone-chain/zerone/x/liquiditypool/typesb\x06proto3"
+	"\x10swap_commitments\x18\x06 \x03(\v2'.zerone.liquiditypool.v1.SwapCommitmentR\x0fswapCommitments\x12\\\n" +
+	"\x14pending_swap_reveals\x18\a \x03(\v2*.zerone.liquiditypool.v1.PendingSwapRevealR\x12pendingSwapRevealsB6Z4github.com/zerone-chain/zerone/x/liquiditypool/typesb\x06proto3"
 
 var (
 	file_zerone_liquiditypool_v1_genesis_proto_rawDescOnce sync.Once
@@ -283,6 +307,7 @@ var file_zerone_liquiditypool_v1_genesis_proto_goTypes = []any{
 	(*LiquidityMiningPeriod)(nil), // 4: zerone.liquiditypool.v1.LiquidityMiningPeriod
 	(*LpMinerPosition)(nil),       // 5: zerone.liquiditypool.v1.LpMinerPosition
 	(*SwapCommitment)(nil),        // 6: zerone.liquiditypool.v1.SwapCommitment
+	(*PendingSwapReveal)(nil),     // 7: zerone.liquiditypool.v1.PendingSwapReveal
 }
 var file_zerone_liquiditypool_v1_genesis_proto_depIdxs = []int32{
 	0, // 0: zerone.liquiditypool.v1.GenesisState.params:type_name -> zerone.liquiditypool.v1.Params
@@ -291,11 +316,12 @@ var file_zerone_liquiditypool_v1_genesis_proto_depIdxs = []int32{
 	4, // 3: zerone.liquiditypool.v1.GenesisState.mining_periods:type_name -> zerone.liquiditypool.v1.LiquidityMiningPeriod
 	5, // 4: zerone.liquiditypool.v1.GenesisState.miner_positions:type_name -> zerone.liquiditypool.v1.LpMinerPosition
 	6, // 5: zerone.liquiditypool.v1.GenesisState.swap_commitments:type_name -> zerone.liquiditypool.v1.SwapCommitment
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	7, // 6: zerone.liquiditypool.v1.GenesisState.pending_swap_reveals:type_name -> zerone.liquiditypool.v1.PendingSwapReveal
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_zerone_liquiditypool_v1_genesis_proto_init() }

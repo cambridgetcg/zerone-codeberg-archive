@@ -91,3 +91,23 @@ message SwapCommitment {
   bytes  commitment   = 3;
   uint64 commit_block = 4; // block height at which commit was recorded
 }
+
+// PendingSwapReveal queues a validated swap reveal for fair sequencing.
+// When Params.fair_sequencing_enabled is true, RevealSwap stores the swap
+// parameters here instead of executing immediately.  EndBlocker processes
+// all pending reveals in CommitBlock-ascending order (FIFO), removing the
+// validator's ability to profit by reordering AMM transactions within a block.
+//
+// Key: PendingSwapRevealKeyPrefix + big-endian(commit_block, 8 bytes)
+//      + sender + "/" + pool_id
+// The big-endian commit_block prefix gives lexicographic == chronological order.
+message PendingSwapReveal {
+  string sender            = 1;
+  string pool_id           = 2;
+  string token_in_denom    = 3;
+  string token_in_amount   = 4; // bigint string
+  string min_token_out     = 5; // bigint string, "" or "0" = no minimum
+  uint64 deadline_block    = 6; // 0 = no deadline
+  uint64 commit_block      = 7; // sort key — earlier commits execute first
+  string priority_tip_uzrn = 8; // MEV priority tip (Gap 3), "" or "0" = none
+}

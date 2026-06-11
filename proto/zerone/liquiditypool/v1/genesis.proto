@@ -23,6 +23,14 @@ message Params {
   // 1,000,000 = all tips become LP revenue. Valid range: 0 – 1,000,000.
   // Market Microstructure Gap 3.
   uint64 mev_fee_share_bps = 11;
+
+  // fair_sequencing_enabled: when true, RevealSwap queues the validated swap
+  // for EndBlocker processing instead of executing immediately.  All queued
+  // reveals in a block are processed in CommitBlock-ascending order (FIFO),
+  // removing the validator's ability to profit by reordering swaps.
+  // Default: false (RevealSwap executes immediately — no behaviour change).
+  // Market Microstructure Gap 5.
+  bool fair_sequencing_enabled = 12;
 }
 
 // GenesisState defines the liquiditypool module genesis state.
@@ -33,4 +41,5 @@ message GenesisState {
   repeated LiquidityMiningPeriod mining_periods      = 4;
   repeated LpMinerPosition miner_positions           = 5;
   repeated SwapCommitment swap_commitments           = 6; // pending commit-reveal commitments
+  repeated PendingSwapReveal pending_swap_reveals    = 7; // queued for fair-sequencing EndBlocker
 }
