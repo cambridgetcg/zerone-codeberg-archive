@@ -96,9 +96,15 @@ type MsgSubmitClaim struct {
 	// qualifier_bps: submitter's declared degree of certainty, 0–1_000_000.
 	// 0 = pure speculation (still valid to submit), 1_000_000 = logical necessity.
 	// Propagated to Claim.qualifier_bps → Fact.qualifier_bps on ACCEPT.
-	QualifierBps  uint64 `protobuf:"varint,23,opt,name=qualifier_bps,json=qualifierBps,proto3" json:"qualifier_bps,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	QualifierBps uint64 `protobuf:"varint,23,opt,name=qualifier_bps,json=qualifierBps,proto3" json:"qualifier_bps,omitempty"`
+	// rescues_claim_id: if set, declares that this claim is an improved
+	// successor to a previously REJECTED claim. The chain checks whether the
+	// new claim genuinely expands falsifiability (Popper's criterion for
+	// legitimate vs. ad-hoc theory modification). Propagated to Claim on creation.
+	// See Claim.rescues_claim_id and Claim.is_potentially_ad_hoc.
+	RescuesClaimId string `protobuf:"bytes,24,opt,name=rescues_claim_id,json=rescuesClaimId,proto3" json:"rescues_claim_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *MsgSubmitClaim) Reset() {
@@ -290,6 +296,13 @@ func (x *MsgSubmitClaim) GetQualifierBps() uint64 {
 		return x.QualifierBps
 	}
 	return 0
+}
+
+func (x *MsgSubmitClaim) GetRescuesClaimId() string {
+	if x != nil {
+		return x.RescuesClaimId
+	}
+	return ""
 }
 
 type MsgSubmitClaimResponse struct {
@@ -6517,7 +6530,7 @@ var File_zerone_knowledge_v1_tx_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_tx_proto_rawDesc = "" +
 	"\n" +
-	"\x1czerone/knowledge/v1/tx.proto\x12\x13zerone.knowledge.v1\x1a\x17cosmos/msg/v1/msg.proto\x1a\x1fzerone/knowledge/v1/types.proto\x1a!zerone/knowledge/v1/genesis.proto\"\xfc\a\n" +
+	"\x1czerone/knowledge/v1/tx.proto\x12\x13zerone.knowledge.v1\x1a\x17cosmos/msg/v1/msg.proto\x1a\x1fzerone/knowledge/v1/types.proto\x1a!zerone/knowledge/v1/genesis.proto\"\xa6\b\n" +
 	"\x0eMsgSubmitClaim\x12\x1c\n" +
 	"\tsubmitter\x18\x01 \x01(\tR\tsubmitter\x12!\n" +
 	"\ffact_content\x18\x02 \x01(\tR\vfactContent\x12\x16\n" +
@@ -6545,7 +6558,8 @@ const file_zerone_knowledge_v1_tx_proto_rawDesc = "" +
 	"\tmethod_id\x18\x14 \x01(\tR\bmethodId\x12\x18\n" +
 	"\awarrant\x18\x15 \x01(\tR\awarrant\x12\x18\n" +
 	"\abacking\x18\x16 \x01(\tR\abacking\x12#\n" +
-	"\rqualifier_bps\x18\x17 \x01(\x04R\fqualifierBps:\x0e\x82\xe7\xb0*\tsubmitter\"3\n" +
+	"\rqualifier_bps\x18\x17 \x01(\x04R\fqualifierBps\x12(\n" +
+	"\x10rescues_claim_id\x18\x18 \x01(\tR\x0erescuesClaimId:\x0e\x82\xe7\xb0*\tsubmitter\"3\n" +
 	"\x16MsgSubmitClaimResponse\x12\x19\n" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\"|\n" +
 	"\x13MsgSubmitCommitment\x12\x1a\n" +

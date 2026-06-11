@@ -299,6 +299,26 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 		QualifierBps: msg.QualifierBps,
 		// Formal Logic Gap 3: assert ↔ negate conflict detection
 		ConflictingFactId: conflictingFactID,
+		// Falsificationism Gap 2: Popperian ad-hoc rescue detection
+		RescuesClaimId: msg.RescuesClaimId,
+	}
+
+	// Falsificationism Gap 2: if rescues_claim_id is set, check whether
+	// this rescue is ad-hoc (merely patches the specific failure) or
+	// legitimate (genuinely expands falsifiability by adding new
+	// RefutationConditions). Non-blocking — the claim proceeds regardless.
+	if msg.RescuesClaimId != "" {
+		claim.IsPotentiallyAdHoc = m.keeper.CheckAdHocRescue(ctx, msg.RescuesClaimId, msg.RefutationConditions)
+		if claim.IsPotentiallyAdHoc {
+			sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
+				"zerone.knowledge.ad_hoc_rescue_detected",
+				sdk.NewAttribute("claim_id", claimID),
+				sdk.NewAttribute("rescues_claim_id", msg.RescuesClaimId),
+				sdk.NewAttribute("submitter", msg.Submitter),
+				sdk.NewAttribute("new_refutation_conditions", fmt.Sprintf("%d", len(msg.RefutationConditions))),
+				sdk.NewAttribute("popper_criterion", "new RefutationConditions must be proper superset of rescued claim's"),
+			))
+		}
 	}
 
 	if err := m.keeper.SetClaim(ctx, claim); err != nil {

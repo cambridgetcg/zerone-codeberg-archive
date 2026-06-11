@@ -4889,8 +4889,32 @@ type Claim struct {
 	//
 	// Empty means no opposing verified fact was found (or constraint_check_enabled=false).
 	ConflictingFactId string `protobuf:"bytes,38,opt,name=conflicting_fact_id,json=conflictingFactId,proto3" json:"conflicting_fact_id,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// ── Popperian Ad-Hoc Rescue Detection (Falsificationism Gap 2) ────────────
+	//
+	// rescues_claim_id: the ID of a REJECTED claim that this claim explicitly
+	// rescues or refines. Submitters voluntarily declare this when they believe
+	// their new claim is an improved successor to a previous failure. The chain
+	// uses this declaration to evaluate whether the improvement is genuine
+	// (increases falsifiability) or ad-hoc (merely patches the specific failure).
+	//
+	// Popper's criterion: a modification is legitimate if it generates new,
+	// independently testable predictions (new RefutationConditions beyond those
+	// on the original). An ad-hoc rescue is one that exists *solely* to save
+	// the theory from the specific falsification, without increasing testability.
+	//
+	// The detection is informational and non-blocking — the claim proceeds to PoT
+	// regardless. Verifiers see the signal and can weight it accordingly.
+	RescuesClaimId string `protobuf:"bytes,39,opt,name=rescues_claim_id,json=rescuesClaimId,proto3" json:"rescues_claim_id,omitempty"`
+	// is_potentially_ad_hoc: set to true at creation if rescues_claim_id is set,
+	// the target claim was REJECTED, and the new claim's RefutationConditions
+	// are not a proper superset of the original's. (I.e., the submitter patched
+	// the failure without committing to new falsifiability conditions.)
+	//
+	// false (the default) means either: no rescue declared, rescue target was not
+	// rejected, or the new claim genuinely expands falsifiability.
+	IsPotentiallyAdHoc bool `protobuf:"varint,40,opt,name=is_potentially_ad_hoc,json=isPotentiallyAdHoc,proto3" json:"is_potentially_ad_hoc,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *Claim) Reset() {
@@ -5187,6 +5211,20 @@ func (x *Claim) GetConflictingFactId() string {
 		return x.ConflictingFactId
 	}
 	return ""
+}
+
+func (x *Claim) GetRescuesClaimId() string {
+	if x != nil {
+		return x.RescuesClaimId
+	}
+	return ""
+}
+
+func (x *Claim) GetIsPotentiallyAdHoc() bool {
+	if x != nil {
+		return x.IsPotentiallyAdHoc
+	}
+	return false
 }
 
 // PreRegistration records a submitter's declared intent to submit a claim
@@ -9663,7 +9701,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x06format\x18\x01 \x01(\x0e2 .zerone.knowledge.v1.ProofFormatR\x06format\x12+\n" +
 	"\x11certificate_bytes\x18\x02 \x01(\fR\x10certificateBytes\x12#\n" +
 	"\rformal_system\x18\x03 \x01(\tR\fformalSystem\x12(\n" +
-	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\xcd\r\n" +
+	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\xaa\x0e\n" +
 	"\x05Claim\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\ffact_content\x18\x02 \x01(\tR\vfactContent\x12\x16\n" +
@@ -9706,7 +9744,9 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\awarrant\x18# \x01(\tR\awarrant\x12\x18\n" +
 	"\abacking\x18$ \x01(\tR\abacking\x12#\n" +
 	"\rqualifier_bps\x18% \x01(\x04R\fqualifierBps\x12.\n" +
-	"\x13conflicting_fact_id\x18& \x01(\tR\x11conflictingFactId\"\xf5\x02\n" +
+	"\x13conflicting_fact_id\x18& \x01(\tR\x11conflictingFactId\x12(\n" +
+	"\x10rescues_claim_id\x18' \x01(\tR\x0erescuesClaimId\x121\n" +
+	"\x15is_potentially_ad_hoc\x18( \x01(\bR\x12isPotentiallyAdHoc\"\xf5\x02\n" +
 	"\x0fPreRegistration\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
 	"\tsubmitter\x18\x02 \x01(\tR\tsubmitter\x12!\n" +

@@ -331,6 +331,13 @@ message MsgSubmitClaim {
   // 0 = pure speculation (still valid to submit), 1_000_000 = logical necessity.
   // Propagated to Claim.qualifier_bps → Fact.qualifier_bps on ACCEPT.
   uint64 qualifier_bps = 23;
+
+  // rescues_claim_id: if set, declares that this claim is an improved
+  // successor to a previously REJECTED claim. The chain checks whether the
+  // new claim genuinely expands falsifiability (Popper's criterion for
+  // legitimate vs. ad-hoc theory modification). Propagated to Claim on creation.
+  // See Claim.rescues_claim_id and Claim.is_potentially_ad_hoc.
+  string rescues_claim_id = 24;
 }
 
 message MsgSubmitClaimResponse {

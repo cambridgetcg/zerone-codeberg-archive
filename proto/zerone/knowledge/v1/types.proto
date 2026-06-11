@@ -1028,6 +1028,32 @@ message Claim {
   //
   // Empty means no opposing verified fact was found (or constraint_check_enabled=false).
   string conflicting_fact_id = 38;
+
+  // ── Popperian Ad-Hoc Rescue Detection (Falsificationism Gap 2) ────────────
+  //
+  // rescues_claim_id: the ID of a REJECTED claim that this claim explicitly
+  // rescues or refines. Submitters voluntarily declare this when they believe
+  // their new claim is an improved successor to a previous failure. The chain
+  // uses this declaration to evaluate whether the improvement is genuine
+  // (increases falsifiability) or ad-hoc (merely patches the specific failure).
+  //
+  // Popper's criterion: a modification is legitimate if it generates new,
+  // independently testable predictions (new RefutationConditions beyond those
+  // on the original). An ad-hoc rescue is one that exists *solely* to save
+  // the theory from the specific falsification, without increasing testability.
+  //
+  // The detection is informational and non-blocking — the claim proceeds to PoT
+  // regardless. Verifiers see the signal and can weight it accordingly.
+  string rescues_claim_id = 39;
+
+  // is_potentially_ad_hoc: set to true at creation if rescues_claim_id is set,
+  // the target claim was REJECTED, and the new claim's RefutationConditions
+  // are not a proper superset of the original's. (I.e., the submitter patched
+  // the failure without committing to new falsifiability conditions.)
+  //
+  // false (the default) means either: no rescue declared, rescue target was not
+  // rejected, or the new claim genuinely expands falsifiability.
+  bool is_potentially_ad_hoc = 40;
 }
 
 // PreRegistration records a submitter's declared intent to submit a claim
