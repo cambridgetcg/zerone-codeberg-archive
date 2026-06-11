@@ -89,8 +89,14 @@ func (k Keeper) AggregateVerificationResult(ctx context.Context, round *types.Ve
 
 	result := &VerificationResult{}
 
-	// Check quorum: total reveals must be >= minVerifiers
-	if uint64(len(round.Reveals)) < params.MinVerifiers {
+	// Check quorum: total reveals must meet the effective quorum requirement.
+	// Skepticism Gap 3: extraordinary claims use round.ExtraordinaryMinVerifiers
+	// (set at round creation) when it exceeds the global min_verifiers.
+	effectiveMinVerifiers := params.MinVerifiers
+	if round.ExtraordinaryMinVerifiers > effectiveMinVerifiers {
+		effectiveMinVerifiers = round.ExtraordinaryMinVerifiers
+	}
+	if uint64(len(round.Reveals)) < effectiveMinVerifiers {
 		result.Verdict = types.Verdict_VERDICT_INCONCLUSIVE
 		result.Confidence = 0
 		return result, nil

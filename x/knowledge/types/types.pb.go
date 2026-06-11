@@ -6085,8 +6085,20 @@ type VerificationRound struct {
 	// score < threshold, ACCEPT → INCONCLUSIVE.
 	// Contemplative Traditions Brief Gap 4 (★★☆☆☆).
 	CrossTraditionScoreBps uint64 `protobuf:"varint,18,opt,name=cross_tradition_score_bps,json=crossTraditionScoreBps,proto3" json:"cross_tradition_score_bps,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// extraordinary_min_verifiers: per-round override for the quorum requirement.
+	// Set at round creation when the claim's CONTRADICTS relations count ≥
+	// Params.extraordinary_claim_min_contradictions. Computed as:
+	//
+	//	params.MinVerifiers × extraordinary_claim_verifier_multiplier_bps / 1_000_000
+	//
+	// 0 = standard quorum (params.MinVerifiers applies).
+	//
+	// Skepticism Gap 3: Sagan's maxim — "extraordinary claims require
+	// extraordinary evidence" — operationalized as a higher panel requirement
+	// for claims that contradict many established facts.
+	ExtraordinaryMinVerifiers uint64 `protobuf:"varint,19,opt,name=extraordinary_min_verifiers,json=extraordinaryMinVerifiers,proto3" json:"extraordinary_min_verifiers,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *VerificationRound) Reset() {
@@ -6241,6 +6253,13 @@ func (x *VerificationRound) GetDeterminateNegationType() DeterminateNegationType
 func (x *VerificationRound) GetCrossTraditionScoreBps() uint64 {
 	if x != nil {
 		return x.CrossTraditionScoreBps
+	}
+	return 0
+}
+
+func (x *VerificationRound) GetExtraordinaryMinVerifiers() uint64 {
+	if x != nil {
+		return x.ExtraordinaryMinVerifiers
 	}
 	return 0
 }
@@ -10381,7 +10400,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x10observed_outcome\x18\x03 \x01(\tR\x0fobservedOutcome\x12#\n" +
 	"\revidence_hash\x18\x04 \x01(\tR\fevidenceHash\x12,\n" +
 	"\x12submitted_at_block\x18\x05 \x01(\x04R\x10submittedAtBlock\x12!\n" +
-	"\fsubmitted_by\x18\x06 \x01(\tR\vsubmittedBy\"\x9b\a\n" +
+	"\fsubmitted_by\x18\x06 \x01(\tR\vsubmittedBy\"\xdb\a\n" +
 	"\x11VerificationRound\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\bclaim_id\x18\x02 \x01(\tR\aclaimId\x12(\n" +
@@ -10401,7 +10420,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x19panel_diversity_score_bps\x18\x0f \x01(\x04R\x16panelDiversityScoreBps\x122\n" +
 	"\x15finality_receipt_hash\x18\x10 \x01(\fR\x13finalityReceiptHash\x12h\n" +
 	"\x19determinate_negation_type\x18\x11 \x01(\x0e2,.zerone.knowledge.v1.DeterminateNegationTypeR\x17determinateNegationType\x129\n" +
-	"\x19cross_tradition_score_bps\x18\x12 \x01(\x04R\x16crossTraditionScoreBps\"x\n" +
+	"\x19cross_tradition_score_bps\x18\x12 \x01(\x04R\x16crossTraditionScoreBps\x12>\n" +
+	"\x1bextraordinary_min_verifiers\x18\x13 \x01(\x04R\x19extraordinaryMinVerifiers\"x\n" +
 	"\vCommitEntry\x12\x1a\n" +
 	"\bverifier\x18\x01 \x01(\tR\bverifier\x12\x1f\n" +
 	"\vcommit_hash\x18\x02 \x01(\fR\n" +

@@ -1338,6 +1338,7 @@ Research fund proposal executed.
 - `round_id` -- round identifier
 - `claim_id` -- claim being verified
 - `phase` -- initial phase (`COMMIT`)
+- `extraordinary_min_verifiers` -- scaled quorum requirement for extraordinary claims (Skepticism Gap 3); `"0"` when gate is disabled or claim does not meet the contradictions threshold
 
 ### zerone.knowledge.verification_round_completed
 *BeginBlock.* Verification round completed with verdict.

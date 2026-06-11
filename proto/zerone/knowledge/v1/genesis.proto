@@ -613,6 +613,24 @@ message Params {
   // contemplative domain. Contemplative Traditions Brief Gap 4 (★★☆☆☆).
   // Default: 0 (disabled).
   uint64 min_cross_tradition_diversity_bps = 189;
+
+  // extraordinary_claim_min_contradictions: minimum number of CONTRADICTS
+  // relations in a claim's submission before it is treated as "extraordinary"
+  // per Sagan's maxim. 0 = disabled (all claims use global min_verifiers).
+  //
+  // When a claim contradicts ≥ this many established facts, the verification
+  // round's extraordinary_min_verifiers is set to:
+  //   min_verifiers × extraordinary_claim_verifier_multiplier_bps / 1_000_000
+  //
+  // Skepticism Gap 3 (★★★★☆). Default: 0 (disabled).
+  uint64 extraordinary_claim_min_contradictions = 190;
+
+  // extraordinary_claim_verifier_multiplier_bps: the factor by which
+  // min_verifiers is scaled for extraordinary claims, in 1M-BPS.
+  // 2_000_000 = 2× (panel requirement doubles for high-contradiction claims).
+  // Only meaningful when extraordinary_claim_min_contradictions > 0.
+  // Default: 2_000_000 (2×).
+  uint64 extraordinary_claim_verifier_multiplier_bps = 191;
 }
 
 // GenesisState is the genesis state of the knowledge module.

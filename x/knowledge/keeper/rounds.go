@@ -52,15 +52,39 @@ func (k Keeper) CreateVerificationRound(ctx context.Context, claim *types.Claim,
 
 	roundID := GenerateRoundID(claim.Id, height)
 
+	// Skepticism Gap 3 (Sagan's maxim): extraordinary claims require extraordinary evidence.
+	// Count CONTRADICTS relations. If count ≥ threshold (and threshold > 0), scale up
+	// the round's quorum requirement by the governance-configured multiplier.
+	var extraordinaryMinVerifiers uint64
+	if params.ExtraordinaryClaimMinContradictions > 0 {
+		var contradictCount uint64
+		for _, rel := range claim.Relations {
+			if rel.Relation == types.RelationType_RELATION_TYPE_CONTRADICTS {
+				contradictCount++
+			}
+		}
+		if contradictCount >= params.ExtraordinaryClaimMinContradictions {
+			mult := params.ExtraordinaryClaimVerifierMultiplierBps
+			if mult == 0 {
+				mult = 2_000_000 // default 2× if somehow unset
+			}
+			extraordinaryMinVerifiers = params.MinVerifiers * mult / 1_000_000
+			if extraordinaryMinVerifiers < params.MinVerifiers {
+				extraordinaryMinVerifiers = params.MinVerifiers // floor at global min
+			}
+		}
+	}
+
 	round := &types.VerificationRound{
-		Id:                  roundID,
-		ClaimId:             claim.Id,
-		StartedAtBlock:      height,
-		Phase:               types.VerificationPhase_VERIFICATION_PHASE_COMMIT,
-		CommitDeadline:      height + params.CommitPhaseBlocks,
-		RevealDeadline:      height + params.CommitPhaseBlocks + params.RevealPhaseBlocks,
-		AggregationDeadline: height + params.CommitPhaseBlocks + params.RevealPhaseBlocks + params.AggregationPhaseBlocks,
-		PriorityTipBps:      priorityTipBps,
+		Id:                        roundID,
+		ClaimId:                   claim.Id,
+		StartedAtBlock:            height,
+		Phase:                     types.VerificationPhase_VERIFICATION_PHASE_COMMIT,
+		CommitDeadline:            height + params.CommitPhaseBlocks,
+		RevealDeadline:            height + params.CommitPhaseBlocks + params.RevealPhaseBlocks,
+		AggregationDeadline:       height + params.CommitPhaseBlocks + params.RevealPhaseBlocks + params.AggregationPhaseBlocks,
+		PriorityTipBps:            priorityTipBps,
+		ExtraordinaryMinVerifiers: extraordinaryMinVerifiers,
 	}
 
 	if err := k.SetVerificationRound(ctx, round); err != nil {

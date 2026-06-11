@@ -391,6 +391,12 @@ func DefaultParams() Params {
 		// Default set covers the most universally transitive relation types.
 		// Empty list disables transitivity derivation entirely.
 		TransitiveRelationVerbs: []string{"is-a", "implies", "causes", "is-part-of"},
+
+		// Skepticism Gap 3: extraordinary claims gate (Sagan's maxim).
+		// 0 = disabled (default); governance activates by setting threshold > 0.
+		// Multiplier default: 2× (extraordinary claims require twice the panel).
+		ExtraordinaryClaimMinContradictions:     0,
+		ExtraordinaryClaimVerifierMultiplierBps: 2_000_000,
 	}
 }
 

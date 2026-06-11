@@ -1474,6 +1474,17 @@ message VerificationRound {
   // score < threshold, ACCEPT → INCONCLUSIVE.
   // Contemplative Traditions Brief Gap 4 (★★☆☆☆).
   uint64 cross_tradition_score_bps = 18;
+
+  // extraordinary_min_verifiers: per-round override for the quorum requirement.
+  // Set at round creation when the claim's CONTRADICTS relations count ≥
+  // Params.extraordinary_claim_min_contradictions. Computed as:
+  //   params.MinVerifiers × extraordinary_claim_verifier_multiplier_bps / 1_000_000
+  // 0 = standard quorum (params.MinVerifiers applies).
+  //
+  // Skepticism Gap 3: Sagan's maxim — "extraordinary claims require
+  // extraordinary evidence" — operationalized as a higher panel requirement
+  // for claims that contradict many established facts.
+  uint64 extraordinary_min_verifiers = 19;
 }
 
 // CommitEntry records a validator's blinded commitment (SHA-256(vote || salt)).
