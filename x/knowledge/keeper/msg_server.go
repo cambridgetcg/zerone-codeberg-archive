@@ -41,6 +41,14 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 		return nil, fmt.Errorf("claim text too long: %d > %d", textLen, params.MaxClaimTextLength)
 	}
 
+	// Bayesian Gap 1: validate stated prior. 0 = not stated (allowed); any other
+	// value must be in the open probability interval (0, 1) → [1, 999_999] in BPS.
+	// Prior of 0% or 100% is philosophically degenerate (no evidence can update it).
+	if msg.PriorProbabilityBps != 0 && msg.PriorProbabilityBps >= 1_000_000 {
+		return nil, types.ErrInvalidPriorProbability.Wrapf(
+			"got %d (must be in [1, 999_999])", msg.PriorProbabilityBps)
+	}
+
 	// Validate domain exists
 	if msg.Domain != "" {
 		if _, found := m.keeper.GetDomain(ctx, msg.Domain); !found {
@@ -301,6 +309,8 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 		ConflictingFactId: conflictingFactID,
 		// Falsificationism Gap 2: Popperian ad-hoc rescue detection
 		RescuesClaimId: msg.RescuesClaimId,
+		// Bayesian Gap 1: stated prior probability (0 = not stated)
+		PriorProbabilityBps: msg.PriorProbabilityBps,
 	}
 
 	// Falsificationism Gap 2: if rescues_claim_id is set, check whether

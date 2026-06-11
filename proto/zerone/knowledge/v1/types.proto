@@ -545,6 +545,15 @@ message Fact {
   // available at disproval time.
   // Set in handleChallengeDisproven (vindication.go).
   string superseded_by_fact_id = 84;
+
+  // stated_prior_bps: the submitter's declared prior probability, copied from
+  // Claim.prior_probability_bps on ACCEPT verdict. 0 = no prior was stated.
+  //
+  // Enables post-hoc Bayesian analysis: compare stated_prior_bps to the
+  // fact's confidence_bps to compute the update magnitude — how much the
+  // verification panel moved belief from the submitter's prior.
+  // |confidence_bps − stated_prior_bps| = Bayesian update magnitude.
+  uint64 stated_prior_bps = 85;
 }
 
 // CurriculumTier orders training examples by difficulty and foundational depth.
@@ -1308,6 +1317,18 @@ message Claim {
   // Set in CompleteRound. Never changed once assigned (subsequent re-submissions
   // are new claim IDs; the original claim's verdict is immutable).
   DungLabel dung_label = 49;
+
+  // prior_probability_bps: the submitter's stated prior probability for this
+  // claim, in 1M-BPS scale (0 = not stated; valid range [1, 999_999]).
+  //
+  // Bayesian Gap 1: anchors the Bayesian update primitive. A claim that enters
+  // the verification system with an explicit prior can have its update magnitude
+  // computed: |ConfidenceBps − PriorBps|. High update magnitude = strong
+  // evidence. Low update magnitude = evidence matched prior = less informative.
+  //
+  // Declared at submission. Not changed post-submission. Propagates to Fact as
+  // Fact.stated_prior_bps on ACCEPT verdict.
+  uint64 prior_probability_bps = 50;
 }
 
 // PreRegistration records a submitter's declared intent to submit a claim

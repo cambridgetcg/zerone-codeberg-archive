@@ -751,6 +751,10 @@ func (k Keeper) createFactFromClaim(ctx context.Context, claim *types.Claim, rou
 		// Popper-weighted TVW: calibration snapshot frozen here. Any future
 		// calibration drift has no retroactive effect on this fact's TVW.
 		SubmitterCalibrationSnapshotBps: calibrationSnapshot,
+		// Bayesian Gap 1: stated prior flows through from claim. Enables
+		// post-hoc update magnitude analysis: |ConfidenceBps − StatedPriorBps|.
+		// Zero when no prior was declared at submission.
+		StatedPriorBps: claim.PriorProbabilityBps,
 	}
 
 	// Apply domain carrying capacity birth pressure (R29-1)
@@ -981,6 +985,7 @@ func (k Keeper) createFactFromClaim(ctx context.Context, claim *types.Claim, rou
 		sdk.NewAttribute("claim_id", claim.Id),
 		sdk.NewAttribute("domain", claim.Domain),
 		sdk.NewAttribute("confidence", fmt.Sprintf("%d", fact.Confidence)),
+		sdk.NewAttribute("stated_prior_bps", fmt.Sprintf("%d", fact.StatedPriorBps)),
 	))
 
 	return factID, nil

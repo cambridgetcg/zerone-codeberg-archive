@@ -354,6 +354,11 @@ message MsgSubmitClaim {
   // legitimate vs. ad-hoc theory modification). Propagated to Claim on creation.
   // See Claim.rescues_claim_id and Claim.is_potentially_ad_hoc.
   string rescues_claim_id = 24;
+
+  // prior_probability_bps: the submitter's stated prior probability for this
+  // claim, in 1M-BPS scale. Optional; 0 = no prior stated. Valid range [1, 999_999].
+  // Bayesian Gap 1.
+  uint64 prior_probability_bps = 25;
 }
 
 message MsgSubmitClaimResponse {

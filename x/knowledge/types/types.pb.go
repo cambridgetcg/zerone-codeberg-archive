@@ -2537,8 +2537,16 @@ type Fact struct {
 	// available at disproval time.
 	// Set in handleChallengeDisproven (vindication.go).
 	SupersededByFactId string `protobuf:"bytes,84,opt,name=superseded_by_fact_id,json=supersededByFactId,proto3" json:"superseded_by_fact_id,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// stated_prior_bps: the submitter's declared prior probability, copied from
+	// Claim.prior_probability_bps on ACCEPT verdict. 0 = no prior was stated.
+	//
+	// Enables post-hoc Bayesian analysis: compare stated_prior_bps to the
+	// fact's confidence_bps to compute the update magnitude — how much the
+	// verification panel moved belief from the submitter's prior.
+	// |confidence_bps − stated_prior_bps| = Bayesian update magnitude.
+	StatedPriorBps uint64 `protobuf:"varint,85,opt,name=stated_prior_bps,json=statedPriorBps,proto3" json:"stated_prior_bps,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Fact) Reset() {
@@ -3087,6 +3095,13 @@ func (x *Fact) GetSupersededByFactId() string {
 		return x.SupersededByFactId
 	}
 	return ""
+}
+
+func (x *Fact) GetStatedPriorBps() uint64 {
+	if x != nil {
+		return x.StatedPriorBps
+	}
+	return 0
 }
 
 // TokenizerSpec is the governance-ratified contract that names the special
@@ -5371,9 +5386,20 @@ type Claim struct {
 	//
 	// Set in CompleteRound. Never changed once assigned (subsequent re-submissions
 	// are new claim IDs; the original claim's verdict is immutable).
-	DungLabel     DungLabel `protobuf:"varint,49,opt,name=dung_label,json=dungLabel,proto3,enum=zerone.knowledge.v1.DungLabel" json:"dung_label,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	DungLabel DungLabel `protobuf:"varint,49,opt,name=dung_label,json=dungLabel,proto3,enum=zerone.knowledge.v1.DungLabel" json:"dung_label,omitempty"`
+	// prior_probability_bps: the submitter's stated prior probability for this
+	// claim, in 1M-BPS scale (0 = not stated; valid range [1, 999_999]).
+	//
+	// Bayesian Gap 1: anchors the Bayesian update primitive. A claim that enters
+	// the verification system with an explicit prior can have its update magnitude
+	// computed: |ConfidenceBps − PriorBps|. High update magnitude = strong
+	// evidence. Low update magnitude = evidence matched prior = less informative.
+	//
+	// Declared at submission. Not changed post-submission. Propagates to Fact as
+	// Fact.stated_prior_bps on ACCEPT verdict.
+	PriorProbabilityBps uint64 `protobuf:"varint,50,opt,name=prior_probability_bps,json=priorProbabilityBps,proto3" json:"prior_probability_bps,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *Claim) Reset() {
@@ -5747,6 +5773,13 @@ func (x *Claim) GetDungLabel() DungLabel {
 		return x.DungLabel
 	}
 	return DungLabel_DUNG_LABEL_UNSPECIFIED
+}
+
+func (x *Claim) GetPriorProbabilityBps() uint64 {
+	if x != nil {
+		return x.PriorProbabilityBps
+	}
+	return 0
 }
 
 // PreRegistration records a submitter's declared intent to submit a claim
@@ -9985,7 +10018,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x05scope\x18\x04 \x01(\tR\x05scope\x12%\n" +
 	"\x0etemporal_scope\x18\x05 \x01(\tR\rtemporalScope\x12\x1c\n" +
 	"\tnegatable\x18\x06 \x01(\bR\tnegatable\x12\x12\n" +
-	"\x04tags\x18\a \x03(\tR\x04tags\"\xb3\x19\n" +
+	"\x04tags\x18\a \x03(\tR\x04tags\"\xdd\x19\n" +
 	"\x04Fact\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12\x16\n" +
@@ -10071,7 +10104,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x12sublated_claim_ids\x18Q \x03(\tR\x10sublatedClaimIds\x12)\n" +
 	"\x10enrichment_count\x18R \x01(\x04R\x0fenrichmentCount\x123\n" +
 	"\x16last_enriched_at_block\x18S \x01(\x04R\x13lastEnrichedAtBlock\x121\n" +
-	"\x15superseded_by_fact_id\x18T \x01(\tR\x12supersededByFactId\"\xe0\x05\n" +
+	"\x15superseded_by_fact_id\x18T \x01(\tR\x12supersededByFactId\x12(\n" +
+	"\x10stated_prior_bps\x18U \x01(\x04R\x0estatedPriorBps\"\xe0\x05\n" +
 	"\rTokenizerSpec\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x04R\aversion\x12*\n" +
 	"\x11ratified_at_block\x18\x02 \x01(\x04R\x0fratifiedAtBlock\x12.\n" +
@@ -10270,7 +10304,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x06format\x18\x01 \x01(\x0e2 .zerone.knowledge.v1.ProofFormatR\x06format\x12+\n" +
 	"\x11certificate_bytes\x18\x02 \x01(\fR\x10certificateBytes\x12#\n" +
 	"\rformal_system\x18\x03 \x01(\tR\fformalSystem\x12(\n" +
-	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\xf6\x11\n" +
+	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\xaa\x12\n" +
 	"\x05Claim\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\ffact_content\x18\x02 \x01(\tR\vfactContent\x12\x16\n" +
@@ -10325,7 +10359,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\tin_aporia\x18/ \x01(\bR\binAporia\x125\n" +
 	"\x17aporia_reached_at_block\x180 \x01(\x04R\x14aporiaReachedAtBlock\x12=\n" +
 	"\n" +
-	"dung_label\x181 \x01(\x0e2\x1e.zerone.knowledge.v1.DungLabelR\tdungLabel\"\xf5\x02\n" +
+	"dung_label\x181 \x01(\x0e2\x1e.zerone.knowledge.v1.DungLabelR\tdungLabel\x122\n" +
+	"\x15prior_probability_bps\x182 \x01(\x04R\x13priorProbabilityBps\"\xf5\x02\n" +
 	"\x0fPreRegistration\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
 	"\tsubmitter\x18\x02 \x01(\tR\tsubmitter\x12!\n" +

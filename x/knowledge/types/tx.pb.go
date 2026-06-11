@@ -103,8 +103,12 @@ type MsgSubmitClaim struct {
 	// legitimate vs. ad-hoc theory modification). Propagated to Claim on creation.
 	// See Claim.rescues_claim_id and Claim.is_potentially_ad_hoc.
 	RescuesClaimId string `protobuf:"bytes,24,opt,name=rescues_claim_id,json=rescuesClaimId,proto3" json:"rescues_claim_id,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// prior_probability_bps: the submitter's stated prior probability for this
+	// claim, in 1M-BPS scale. Optional; 0 = no prior stated. Valid range [1, 999_999].
+	// Bayesian Gap 1.
+	PriorProbabilityBps uint64 `protobuf:"varint,25,opt,name=prior_probability_bps,json=priorProbabilityBps,proto3" json:"prior_probability_bps,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *MsgSubmitClaim) Reset() {
@@ -303,6 +307,13 @@ func (x *MsgSubmitClaim) GetRescuesClaimId() string {
 		return x.RescuesClaimId
 	}
 	return ""
+}
+
+func (x *MsgSubmitClaim) GetPriorProbabilityBps() uint64 {
+	if x != nil {
+		return x.PriorProbabilityBps
+	}
+	return 0
 }
 
 type MsgSubmitClaimResponse struct {
@@ -6902,7 +6913,7 @@ var File_zerone_knowledge_v1_tx_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_tx_proto_rawDesc = "" +
 	"\n" +
-	"\x1czerone/knowledge/v1/tx.proto\x12\x13zerone.knowledge.v1\x1a\x17cosmos/msg/v1/msg.proto\x1a\x1fzerone/knowledge/v1/types.proto\x1a!zerone/knowledge/v1/genesis.proto\"\xa6\b\n" +
+	"\x1czerone/knowledge/v1/tx.proto\x12\x13zerone.knowledge.v1\x1a\x17cosmos/msg/v1/msg.proto\x1a\x1fzerone/knowledge/v1/types.proto\x1a!zerone/knowledge/v1/genesis.proto\"\xda\b\n" +
 	"\x0eMsgSubmitClaim\x12\x1c\n" +
 	"\tsubmitter\x18\x01 \x01(\tR\tsubmitter\x12!\n" +
 	"\ffact_content\x18\x02 \x01(\tR\vfactContent\x12\x16\n" +
@@ -6931,7 +6942,8 @@ const file_zerone_knowledge_v1_tx_proto_rawDesc = "" +
 	"\awarrant\x18\x15 \x01(\tR\awarrant\x12\x18\n" +
 	"\abacking\x18\x16 \x01(\tR\abacking\x12#\n" +
 	"\rqualifier_bps\x18\x17 \x01(\x04R\fqualifierBps\x12(\n" +
-	"\x10rescues_claim_id\x18\x18 \x01(\tR\x0erescuesClaimId:\x0e\x82\xe7\xb0*\tsubmitter\"3\n" +
+	"\x10rescues_claim_id\x18\x18 \x01(\tR\x0erescuesClaimId\x122\n" +
+	"\x15prior_probability_bps\x18\x19 \x01(\x04R\x13priorProbabilityBps:\x0e\x82\xe7\xb0*\tsubmitter\"3\n" +
 	"\x16MsgSubmitClaimResponse\x12\x19\n" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\"|\n" +
 	"\x13MsgSubmitCommitment\x12\x1a\n" +

@@ -1351,6 +1351,7 @@ Research fund proposal executed.
 - `claim_id` -- source claim ID
 - `domain` -- knowledge domain
 - `confidence` -- confidence score (BPS)
+- `stated_prior_bps` -- submitter's stated prior (BPS); `"0"` when no prior was declared. Bayesian Gap 1 — enables update-magnitude analysis: `|confidence − stated_prior_bps|`
 
 ### zerone.knowledge.round_phase_changed
 *BeginBlock.* Verification round phase transitioned.

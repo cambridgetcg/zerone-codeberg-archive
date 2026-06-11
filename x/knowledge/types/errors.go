@@ -122,4 +122,10 @@ var (
 	ErrClaimNotSuspendable = errors.Register(ModuleName, 95, "claim status does not allow suspension (terminal states cannot be suspended)")
 	// 96: MsgResumeClaim targets a claim that is not SUSPENDED.
 	ErrClaimNotSuspended = errors.Register(ModuleName, 96, "claim is not in SUSPENDED status; only SUSPENDED claims may be resumed")
+
+	// ─── Bayesian prior (97) — Bayesian Gap 1 ───────────────────────────────
+	// MsgSubmitClaim: prior_probability_bps is outside the open interval (0, 1M).
+	// A stated prior must be a genuine probability: not zero (undefined) and not
+	// one (dogmatic certainty that no evidence could update). Valid: [1, 999_999].
+	ErrInvalidPriorProbability = errors.Register(ModuleName, 97, "prior_probability_bps must be in [1, 999_999] when stated (0 = no prior)")
 )
