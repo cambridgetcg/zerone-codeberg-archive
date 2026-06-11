@@ -47,8 +47,13 @@ type Pool struct {
 	// A pool-level value of 0 means "use the global default" — backward compatible.
 	// Valid range: 1 – 1,000,000 (enforced at CreatePool).
 	PoolMaxSwapFractionBps uint64 `protobuf:"varint,13,opt,name=pool_max_swap_fraction_bps,json=poolMaxSwapFractionBps,proto3" json:"pool_max_swap_fraction_bps,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// mev_reserve_balance: per-pool MEV priority-tip LP reserve in uzrn (bigint string).
+	// Accumulates the LP fraction of RevealSwap priority tips (Params.mev_fee_share_bps).
+	// Pro-rata distributed to LPs on RemoveLiquidity (proportional to LP tokens burned).
+	// "" or "0" = no reserve (backward compatible — all pre-Gap-3 pools have 0).
+	MevReserveBalance string `protobuf:"bytes,14,opt,name=mev_reserve_balance,json=mevReserveBalance,proto3" json:"mev_reserve_balance,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Pool) Reset() {
@@ -170,6 +175,13 @@ func (x *Pool) GetPoolMaxSwapFractionBps() uint64 {
 		return x.PoolMaxSwapFractionBps
 	}
 	return 0
+}
+
+func (x *Pool) GetMevReserveBalance() string {
+	if x != nil {
+		return x.MevReserveBalance
+	}
+	return ""
 }
 
 // LiquidityMiningPeriod defines a per-pool emission schedule for LP reward distribution.
@@ -566,7 +578,7 @@ var File_zerone_liquiditypool_v1_types_proto protoreflect.FileDescriptor
 
 const file_zerone_liquiditypool_v1_types_proto_rawDesc = "" +
 	"\n" +
-	"#zerone/liquiditypool/v1/types.proto\x12\x17zerone.liquiditypool.v1\"\xc3\x03\n" +
+	"#zerone/liquiditypool/v1/types.proto\x12\x17zerone.liquiditypool.v1\"\xf3\x03\n" +
 	"\x04Pool\x12\x17\n" +
 	"\apool_id\x18\x01 \x01(\tR\x06poolId\x12\x17\n" +
 	"\adenom_a\x18\x02 \x01(\tR\x06denomA\x12\x17\n" +
@@ -582,7 +594,8 @@ const file_zerone_liquiditypool_v1_types_proto_rawDesc = "" +
 	" \x01(\x04R\x0ecreatedAtBlock\x12\x16\n" +
 	"\x06locked\x18\v \x01(\bR\x06locked\x129\n" +
 	"\x19accumulated_reward_per_lp\x18\f \x01(\tR\x16accumulatedRewardPerLp\x12:\n" +
-	"\x1apool_max_swap_fraction_bps\x18\r \x01(\x04R\x16poolMaxSwapFractionBps\"\xfb\x01\n" +
+	"\x1apool_max_swap_fraction_bps\x18\r \x01(\x04R\x16poolMaxSwapFractionBps\x12.\n" +
+	"\x13mev_reserve_balance\x18\x0e \x01(\tR\x11mevReserveBalance\"\xfb\x01\n" +
 	"\x15LiquidityMiningPeriod\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\apool_id\x18\x02 \x01(\tR\x06poolId\x12(\n" +

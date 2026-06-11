@@ -1938,6 +1938,15 @@ Liquidity removed from pool.
 - `lp_tokens_burned` -- LP tokens burned
 - `amount_a` -- returned token A
 - `amount_b` -- returned token B
+- `mev_reserve_payout` -- uzrn paid from pool MEV reserve (pro-rata); "0" if no reserve (Gap 3)
+
+### zerone.liquiditypool.mev_tip_processed
+Emitted by `RevealSwap` when a non-zero `priority_tip_uzrn` is processed (Market Microstructure Gap 3).
+- `pool_id` -- pool receiving the LP share
+- `sender` -- payer of the priority tip
+- `tip_total` -- total uzrn tip paid (bigint string)
+- `lp_share` -- uzrn added to pool MEV reserve (tip × mev_fee_share_bps / 1M)
+- `protocol_share` -- uzrn burned as protocol fee (tip − lp_share)
 
 ### zerone.liquiditypool.update_params
 Governance parameter update.

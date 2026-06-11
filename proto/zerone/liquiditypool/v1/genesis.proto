@@ -17,6 +17,12 @@ message Params {
   uint64 commit_reveal_delay_blocks  = 8; // minimum blocks between CommitSwap and RevealSwap (0 = commit-reveal disabled)
   uint64 min_liquidity_duration_blocks = 9; // minimum blocks LP must hold before withdrawing (0 = disabled, anti-JIT)
   uint64 max_twap_deviation_bps = 10; // max spot/TWAP price deviation before swaps are blocked (1M bps scale, 0 = disabled)
+
+  // mev_fee_share_bps: fraction of RevealSwap priority tips allocated to the pool's LP
+  // MEV reserve (1M bps scale). 0 = tips go entirely to protocol (disabled / default).
+  // 1,000,000 = all tips become LP revenue. Valid range: 0 – 1,000,000.
+  // Market Microstructure Gap 3.
+  uint64 mev_fee_share_bps = 11;
 }
 
 // GenesisState defines the liquiditypool module genesis state.

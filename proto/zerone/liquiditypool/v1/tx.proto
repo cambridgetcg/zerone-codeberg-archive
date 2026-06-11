@@ -52,10 +52,17 @@ message MsgRevealSwap {
   string token_in_amount = 5; // bigint string
   string min_token_out   = 6; // slippage protection (bigint string, optional)
   uint64 deadline_block  = 7; // swap must execute at or before this block height; 0 = no deadline
+
+  // priority_tip_uzrn: optional MEV priority tip in uzrn (bigint string).
+  // NOT included in the commitment hash — can be decided at reveal time.
+  // Paid by sender: mev_fee_share_bps fraction goes to pool LP reserve, remainder to protocol.
+  // "" or "0" = no tip. Market Microstructure Gap 3.
+  string priority_tip_uzrn = 8;
 }
 message MsgRevealSwapResponse {
   string token_out_amount = 1; // bigint string
   string fee_amount       = 2; // bigint string
+  string mev_lp_share     = 3; // uzrn bigint string added to pool LP reserve; "0" if no tip or disabled
 }
 
 // --- CreatePool ---

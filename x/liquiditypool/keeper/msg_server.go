@@ -509,6 +509,26 @@ func (m msgServer) RemoveLiquidity(goCtx context.Context, msg *types.MsgRemoveLi
 		}
 	}
 
+	// MEV reserve payout: pro-rata uzrn from pool.MevReserveBalance.
+	// lpMevShare = mevReserve × lpTokens / totalSupply.
+	// Sent to LP recipient; reserve balance updated before pool save.
+	mevShare := new(big.Int)
+	if pool.MevReserveBalance != "" && pool.MevReserveBalance != "0" && m.Keeper.bankKeeper != nil {
+		mevReserve := new(big.Int)
+		if _, ok := mevReserve.SetString(pool.MevReserveBalance, 10); ok && mevReserve.Sign() > 0 {
+			// integer division: floor(mevReserve × lpTokens / totalSupply)
+			mevShare.Mul(mevReserve, lpTokens)
+			mevShare.Div(mevShare, totalSupply)
+			if mevShare.Sign() > 0 {
+				mevCoins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(mevShare)))
+				if err := m.Keeper.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, senderAddr, mevCoins); err != nil {
+					return nil, fmt.Errorf("failed to distribute MEV reserve to LP: %w", err)
+				}
+				pool.MevReserveBalance = new(big.Int).Sub(mevReserve, mevShare).String()
+			}
+		}
+	}
+
 	// Update pool state
 	newReserveA := new(big.Int).Sub(reserveA, amountA)
 	newReserveB := new(big.Int).Sub(reserveB, amountB)
@@ -526,6 +546,7 @@ func (m msgServer) RemoveLiquidity(goCtx context.Context, msg *types.MsgRemoveLi
 		sdk.NewAttribute("lp_tokens_burned", lpTokens.String()),
 		sdk.NewAttribute("amount_a", amountA.String()),
 		sdk.NewAttribute("amount_b", amountB.String()),
+		sdk.NewAttribute("mev_reserve_payout", mevShare.String()),
 	))
 
 	return &types.MsgRemoveLiquidityResponse{
@@ -667,8 +688,67 @@ func (m msgServer) RevealSwap(goCtx context.Context, msg *types.MsgRevealSwap) (
 		return nil, err
 	}
 
+	// Process MEV priority tip (Market Microstructure Gap 3).
+	// The tip is NOT part of the commitment hash — users choose it at reveal time.
+	// mev_fee_share_bps of the tip goes to the pool's LP MEV reserve; the rest is burned.
+	mevLpShare := new(big.Int)
+	if msg.PriorityTipUzrn != "" && msg.PriorityTipUzrn != "0" {
+		tip := new(big.Int)
+		if _, ok := tip.SetString(msg.PriorityTipUzrn, 10); !ok || tip.Sign() < 0 {
+			return nil, types.ErrInvalidMEVTip
+		}
+		if tip.Sign() > 0 && m.Keeper.bankKeeper != nil {
+			senderAddr, _ := sdk.AccAddressFromBech32(msg.Sender)
+			tipCoins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(tip)))
+
+			// Transfer tip from sender to module.
+			if err := m.Keeper.bankKeeper.SendCoinsFromAccountToModule(ctx, senderAddr, types.ModuleName, tipCoins); err != nil {
+				return nil, fmt.Errorf("failed to collect MEV priority tip: %w", err)
+			}
+
+			// Compute LP share and protocol share.
+			params := m.Keeper.GetParams(ctx)
+			if params.MevFeeShareBps > 0 {
+				mevLpShare.Mul(tip, new(big.Int).SetUint64(params.MevFeeShareBps))
+				mevLpShare.Div(mevLpShare, new(big.Int).SetUint64(1_000_000))
+			}
+			protocolShare := new(big.Int).Sub(tip, mevLpShare)
+
+			// LP share: accumulate in pool MEV reserve.
+			if mevLpShare.Sign() > 0 {
+				pool, found := m.Keeper.GetPool(ctx, msg.PoolId)
+				if found {
+					reserve := new(big.Int)
+					if pool.MevReserveBalance != "" {
+						reserve.SetString(pool.MevReserveBalance, 10)
+					}
+					reserve.Add(reserve, mevLpShare)
+					pool.MevReserveBalance = reserve.String()
+					m.Keeper.SetPool(ctx, pool)
+				}
+			}
+
+			// Protocol share: burn.
+			if protocolShare.Sign() > 0 {
+				protocolCoins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(protocolShare)))
+				// Best-effort burn — swap already succeeded; don't fail it for protocol accounting.
+				_ = m.Keeper.bankKeeper.BurnCoins(ctx, types.ModuleName, protocolCoins)
+			}
+
+			ctx.EventManager().EmitEvent(sdk.NewEvent(
+				"zerone.liquiditypool.mev_tip_processed",
+				sdk.NewAttribute("pool_id", msg.PoolId),
+				sdk.NewAttribute("sender", msg.Sender),
+				sdk.NewAttribute("tip_total", tip.String()),
+				sdk.NewAttribute("lp_share", mevLpShare.String()),
+				sdk.NewAttribute("protocol_share", protocolShare.String()),
+			))
+		}
+	}
+
 	return &types.MsgRevealSwapResponse{
 		TokenOutAmount: swapResp.TokenOutAmount,
 		FeeAmount:      swapResp.FeeAmount,
+		MevLpShare:     mevLpShare.String(),
 	}, nil
 }

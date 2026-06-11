@@ -29,6 +29,12 @@ message Pool {
   // A pool-level value of 0 means "use the global default" — backward compatible.
   // Valid range: 1 – 1,000,000 (enforced at CreatePool).
   uint64 pool_max_swap_fraction_bps = 13;
+
+  // mev_reserve_balance: per-pool MEV priority-tip LP reserve in uzrn (bigint string).
+  // Accumulates the LP fraction of RevealSwap priority tips (Params.mev_fee_share_bps).
+  // Pro-rata distributed to LPs on RemoveLiquidity (proportional to LP tokens burned).
+  // "" or "0" = no reserve (backward compatible — all pre-Gap-3 pools have 0).
+  string mev_reserve_balance = 14;
 }
 
 // LiquidityMiningPeriod defines a per-pool emission schedule for LP reward distribution.

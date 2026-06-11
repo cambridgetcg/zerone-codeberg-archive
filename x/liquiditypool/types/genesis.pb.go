@@ -34,8 +34,13 @@ type Params struct {
 	CommitRevealDelayBlocks    uint64                 `protobuf:"varint,8,opt,name=commit_reveal_delay_blocks,json=commitRevealDelayBlocks,proto3" json:"commit_reveal_delay_blocks,omitempty"`          // minimum blocks between CommitSwap and RevealSwap (0 = commit-reveal disabled)
 	MinLiquidityDurationBlocks uint64                 `protobuf:"varint,9,opt,name=min_liquidity_duration_blocks,json=minLiquidityDurationBlocks,proto3" json:"min_liquidity_duration_blocks,omitempty"` // minimum blocks LP must hold before withdrawing (0 = disabled, anti-JIT)
 	MaxTwapDeviationBps        uint64                 `protobuf:"varint,10,opt,name=max_twap_deviation_bps,json=maxTwapDeviationBps,proto3" json:"max_twap_deviation_bps,omitempty"`                     // max spot/TWAP price deviation before swaps are blocked (1M bps scale, 0 = disabled)
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	// mev_fee_share_bps: fraction of RevealSwap priority tips allocated to the pool's LP
+	// MEV reserve (1M bps scale). 0 = tips go entirely to protocol (disabled / default).
+	// 1,000,000 = all tips become LP revenue. Valid range: 0 – 1,000,000.
+	// Market Microstructure Gap 3.
+	MevFeeShareBps uint64 `protobuf:"varint,11,opt,name=mev_fee_share_bps,json=mevFeeShareBps,proto3" json:"mev_fee_share_bps,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -138,6 +143,13 @@ func (x *Params) GetMaxTwapDeviationBps() uint64 {
 	return 0
 }
 
+func (x *Params) GetMevFeeShareBps() uint64 {
+	if x != nil {
+		return x.MevFeeShareBps
+	}
+	return 0
+}
+
 // GenesisState defines the liquiditypool module genesis state.
 type GenesisState struct {
 	state            protoimpl.MessageState   `protogen:"open.v1"`
@@ -227,7 +239,7 @@ var File_zerone_liquiditypool_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_liquiditypool_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"%zerone/liquiditypool/v1/genesis.proto\x12\x17zerone.liquiditypool.v1\x1a#zerone/liquiditypool/v1/types.proto\"\xeb\x03\n" +
+	"%zerone/liquiditypool/v1/genesis.proto\x12\x17zerone.liquiditypool.v1\x1a#zerone/liquiditypool/v1/types.proto\"\x96\x04\n" +
 	"\x06Params\x12/\n" +
 	"\x14default_swap_fee_bps\x18\x01 \x01(\x04R\x11defaultSwapFeeBps\x12\x1b\n" +
 	"\tmax_pools\x18\x02 \x01(\x04R\bmaxPools\x122\n" +
@@ -240,7 +252,8 @@ const file_zerone_liquiditypool_v1_genesis_proto_rawDesc = "" +
 	"\x1acommit_reveal_delay_blocks\x18\b \x01(\x04R\x17commitRevealDelayBlocks\x12A\n" +
 	"\x1dmin_liquidity_duration_blocks\x18\t \x01(\x04R\x1aminLiquidityDurationBlocks\x123\n" +
 	"\x16max_twap_deviation_bps\x18\n" +
-	" \x01(\x04R\x13maxTwapDeviationBps\"\xd1\x03\n" +
+	" \x01(\x04R\x13maxTwapDeviationBps\x12)\n" +
+	"\x11mev_fee_share_bps\x18\v \x01(\x04R\x0emevFeeShareBps\"\xd1\x03\n" +
 	"\fGenesisState\x127\n" +
 	"\x06params\x18\x01 \x01(\v2\x1f.zerone.liquiditypool.v1.ParamsR\x06params\x123\n" +
 	"\x05pools\x18\x02 \x03(\v2\x1d.zerone.liquiditypool.v1.PoolR\x05pools\x12U\n" +

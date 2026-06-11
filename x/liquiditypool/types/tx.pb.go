@@ -131,8 +131,13 @@ type MsgRevealSwap struct {
 	TokenInAmount string                 `protobuf:"bytes,5,opt,name=token_in_amount,json=tokenInAmount,proto3" json:"token_in_amount,omitempty"` // bigint string
 	MinTokenOut   string                 `protobuf:"bytes,6,opt,name=min_token_out,json=minTokenOut,proto3" json:"min_token_out,omitempty"`       // slippage protection (bigint string, optional)
 	DeadlineBlock uint64                 `protobuf:"varint,7,opt,name=deadline_block,json=deadlineBlock,proto3" json:"deadline_block,omitempty"`  // swap must execute at or before this block height; 0 = no deadline
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// priority_tip_uzrn: optional MEV priority tip in uzrn (bigint string).
+	// NOT included in the commitment hash — can be decided at reveal time.
+	// Paid by sender: mev_fee_share_bps fraction goes to pool LP reserve, remainder to protocol.
+	// "" or "0" = no tip. Market Microstructure Gap 3.
+	PriorityTipUzrn string `protobuf:"bytes,8,opt,name=priority_tip_uzrn,json=priorityTipUzrn,proto3" json:"priority_tip_uzrn,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *MsgRevealSwap) Reset() {
@@ -214,10 +219,18 @@ func (x *MsgRevealSwap) GetDeadlineBlock() uint64 {
 	return 0
 }
 
+func (x *MsgRevealSwap) GetPriorityTipUzrn() string {
+	if x != nil {
+		return x.PriorityTipUzrn
+	}
+	return ""
+}
+
 type MsgRevealSwapResponse struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	TokenOutAmount string                 `protobuf:"bytes,1,opt,name=token_out_amount,json=tokenOutAmount,proto3" json:"token_out_amount,omitempty"` // bigint string
 	FeeAmount      string                 `protobuf:"bytes,2,opt,name=fee_amount,json=feeAmount,proto3" json:"fee_amount,omitempty"`                  // bigint string
+	MevLpShare     string                 `protobuf:"bytes,3,opt,name=mev_lp_share,json=mevLpShare,proto3" json:"mev_lp_share,omitempty"`             // uzrn bigint string added to pool LP reserve; "0" if no tip or disabled
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -262,6 +275,13 @@ func (x *MsgRevealSwapResponse) GetTokenOutAmount() string {
 func (x *MsgRevealSwapResponse) GetFeeAmount() string {
 	if x != nil {
 		return x.FeeAmount
+	}
+	return ""
+}
+
+func (x *MsgRevealSwapResponse) GetMevLpShare() string {
+	if x != nil {
+		return x.MevLpShare
 	}
 	return ""
 }
@@ -1119,7 +1139,7 @@ const file_zerone_liquiditypool_v1_tx_proto_rawDesc = "" +
 	"\n" +
 	"commitment\x18\x03 \x01(\fR\n" +
 	"commitment\"\x17\n" +
-	"\x15MsgCommitSwapResponse\"\xef\x01\n" +
+	"\x15MsgCommitSwapResponse\"\x9b\x02\n" +
 	"\rMsgRevealSwap\x12\x16\n" +
 	"\x06sender\x18\x01 \x01(\tR\x06sender\x12\x17\n" +
 	"\apool_id\x18\x02 \x01(\tR\x06poolId\x12\x14\n" +
@@ -1127,11 +1147,14 @@ const file_zerone_liquiditypool_v1_tx_proto_rawDesc = "" +
 	"\x0etoken_in_denom\x18\x04 \x01(\tR\ftokenInDenom\x12&\n" +
 	"\x0ftoken_in_amount\x18\x05 \x01(\tR\rtokenInAmount\x12\"\n" +
 	"\rmin_token_out\x18\x06 \x01(\tR\vminTokenOut\x12%\n" +
-	"\x0edeadline_block\x18\a \x01(\x04R\rdeadlineBlock\"`\n" +
+	"\x0edeadline_block\x18\a \x01(\x04R\rdeadlineBlock\x12*\n" +
+	"\x11priority_tip_uzrn\x18\b \x01(\tR\x0fpriorityTipUzrn\"\x82\x01\n" +
 	"\x15MsgRevealSwapResponse\x12(\n" +
 	"\x10token_out_amount\x18\x01 \x01(\tR\x0etokenOutAmount\x12\x1d\n" +
 	"\n" +
-	"fee_amount\x18\x02 \x01(\tR\tfeeAmount\"\xef\x01\n" +
+	"fee_amount\x18\x02 \x01(\tR\tfeeAmount\x12 \n" +
+	"\fmev_lp_share\x18\x03 \x01(\tR\n" +
+	"mevLpShare\"\xef\x01\n" +
 	"\rMsgCreatePool\x12\x18\n" +
 	"\acreator\x18\x01 \x01(\tR\acreator\x12\x17\n" +
 	"\adenom_a\x18\x02 \x01(\tR\x06denomA\x12\x17\n" +

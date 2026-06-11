@@ -44,5 +44,8 @@ func (p *Params) Validate() error {
 	if p.MaxSwapFractionBps > 1_000_000 {
 		return fmt.Errorf("max_swap_fraction_bps cannot exceed 1000000")
 	}
+	if p.MevFeeShareBps > 1_000_000 {
+		return fmt.Errorf("mev_fee_share_bps cannot exceed 1000000")
+	}
 	return nil
 }
