@@ -391,6 +391,32 @@ func (m *msgServer) SubmitCommitment(ctx context.Context, msg *types.MsgSubmitCo
 		}
 	}
 
+	// Methodology-level account type gate (Phenomenology Brief): if the claim's
+	// methodology declares required_account_types, enforce panel composition at
+	// the methodology layer. This gate is governance-amendable (the methodology
+	// registry can be updated via proposal) and applies to ALL claims under the
+	// methodology regardless of per-claim flags. M-PHENOMENOLOGICAL ships with
+	// required_account_types = ["human"] — agents cannot assess first-person
+	// phenomenal experience. Fail-open: if methodology not found or types empty,
+	// no restriction applies.
+	if methodClaim, methFound := m.keeper.GetClaim(ctx, round.ClaimId); methFound && methodClaim.MethodId != "" {
+		if methodology, mFound := m.keeper.GetMethodology(ctx, methodClaim.MethodId); mFound && len(methodology.RequiredAccountTypes) > 0 {
+			accountType := m.keeper.getAccountType(ctx, msg.Verifier)
+			permitted := false
+			for _, allowed := range methodology.RequiredAccountTypes {
+				if allowed == accountType {
+					permitted = true
+					break
+				}
+			}
+			if !permitted {
+				return nil, types.ErrMethodologyRequiresAccountType.Wrapf(
+					"verifier %s (type %q) not in required_account_types %v for methodology %s",
+					msg.Verifier, accountType, methodology.RequiredAccountTypes, methodClaim.MethodId)
+			}
+		}
+	}
+
 	// Verifier independence gate (P-10a): block validators who consistently
 	// agree with the majority if governance has enabled a minimum independence
 	// score. Fallback applies if not enough independent validators exist to

@@ -178,6 +178,13 @@ message Methodology {
   uint64 version                     = 8;  // Incremented on each governance amendment
   uint64 ratified_at_block           = 9;  // Height at which this version took effect
   bool   is_transitional             = 10; // True for M-LEGACY; retired under sunset
+  // required_account_types: when non-empty, only verifiers whose account_type
+  // appears in this list may join panels for claims under this methodology.
+  // Use ["human"] to mandate human-only panels at the methodology layer.
+  // Governance can amend this field to restrict or relax panel composition
+  // for an entire class of claims without requiring per-claim flags.
+  // Empty = no restriction (default for all methodologies except M-PHENOMENOLOGICAL).
+  repeated string required_account_types = 11;
 }
 
 // DomainStatus tracks whether an epistemic domain is active or proposed.

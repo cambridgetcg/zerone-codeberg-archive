@@ -1820,8 +1820,15 @@ type Methodology struct {
 	Version                uint64            `protobuf:"varint,8,opt,name=version,proto3" json:"version,omitempty"`                                                               // Incremented on each governance amendment
 	RatifiedAtBlock        uint64            `protobuf:"varint,9,opt,name=ratified_at_block,json=ratifiedAtBlock,proto3" json:"ratified_at_block,omitempty"`                      // Height at which this version took effect
 	IsTransitional         bool              `protobuf:"varint,10,opt,name=is_transitional,json=isTransitional,proto3" json:"is_transitional,omitempty"`                          // True for M-LEGACY; retired under sunset
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// required_account_types: when non-empty, only verifiers whose account_type
+	// appears in this list may join panels for claims under this methodology.
+	// Use ["human"] to mandate human-only panels at the methodology layer.
+	// Governance can amend this field to restrict or relax panel composition
+	// for an entire class of claims without requiring per-claim flags.
+	// Empty = no restriction (default for all methodologies except M-PHENOMENOLOGICAL).
+	RequiredAccountTypes []string `protobuf:"bytes,11,rep,name=required_account_types,json=requiredAccountTypes,proto3" json:"required_account_types,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *Methodology) Reset() {
@@ -1922,6 +1929,13 @@ func (x *Methodology) GetIsTransitional() bool {
 		return x.IsTransitional
 	}
 	return false
+}
+
+func (x *Methodology) GetRequiredAccountTypes() []string {
+	if x != nil {
+		return x.RequiredAccountTypes
+	}
+	return nil
 }
 
 // ClaimStructure provides machine-readable decomposition of a claim.
@@ -4634,6 +4648,9 @@ type Claim struct {
 	// Operationalizes the theory-ladenness gap from the scientific method brief
 	// (Kuhn's observation that all observation is theory-laden — the chain should
 	// record which theory is doing the loading).
+	//
+	// This comment is theory-laden. So is this field. So is the claim
+	// that it isn't. Kuhn sends his regards.
 	TheoreticalFramework string `protobuf:"bytes,29,opt,name=theoretical_framework,json=theoreticalFramework,proto3" json:"theoretical_framework,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
@@ -8765,7 +8782,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x1alast_amendment_proposal_id\x18\b \x01(\tR\x17lastAmendmentProposalId\x12\x16\n" +
 	"\x06active\x18\t \x01(\bR\x06active\x12)\n" +
 	"\x10referenced_facts\x18\n" +
-	" \x03(\tR\x0freferencedFacts\"\xa2\x04\n" +
+	" \x03(\tR\x0freferencedFacts\"\xd8\x04\n" +
 	"\vMethodology\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -8777,7 +8794,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\aversion\x18\b \x01(\x04R\aversion\x12*\n" +
 	"\x11ratified_at_block\x18\t \x01(\x04R\x0fratifiedAtBlock\x12'\n" +
 	"\x0fis_transitional\x18\n" +
-	" \x01(\bR\x0eisTransitional\x1aI\n" +
+	" \x01(\bR\x0eisTransitional\x124\n" +
+	"\x16required_account_types\x18\v \x03(\tR\x14requiredAccountTypes\x1aI\n" +
 	"\x1bCrossMethodDiscountBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xcf\x01\n" +

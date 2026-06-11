@@ -266,7 +266,11 @@ func DefaultMethodologies() []*Methodology {
 				MethodologyTestimonial:   700_000,
 			},
 			MinQualificationWeight: 40,
-			Version:                1,
+			Version:               1,
+			// M-PHENOMENOLOGICAL requires human verifiers at the methodology layer.
+			// First-person phenomenal experience cannot be assessed by agents lacking
+			// phenomenal consciousness. Governance-amendable but defaults human-only.
+			RequiredAccountTypes: []string{"human"},
 		},
 		// ─── Historical method (Ranke, Collingwood) ─────────────────────────
 		{

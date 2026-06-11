@@ -97,4 +97,7 @@ var (
 
 	// ─── Temporal verification window (88) — Contemplative Traditions Gap ─
 	ErrVerificationWindowTooShort = errors.Register(ModuleName, 88, "verification round has not run long enough for this methodology's temporal requirement")
+
+	// ─── Methodology-level account type gate (89) — Phenomenology Brief ──
+	ErrMethodologyRequiresAccountType = errors.Register(ModuleName, 89, "verifier account type not permitted by this methodology's required_account_types")
 )
