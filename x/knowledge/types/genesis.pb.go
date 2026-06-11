@@ -559,8 +559,23 @@ type Params struct {
 	//
 	// Socratic Dialectic Gap 2 (★★★☆☆). Default: 0 (disabled).
 	AporiaThreshold uint64 `protobuf:"varint,188,opt,name=aporia_threshold,json=aporiaThreshold,proto3" json:"aporia_threshold,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// min_cross_tradition_diversity_bps: minimum cross-tradition panel diversity
+	// score required for an M-PHENOMENOLOGICAL claim to be ACCEPTED. If the
+	// score (distinct_tradition_count × 1_000_000 / total_verifiers) falls below
+	// this threshold, an otherwise-ACCEPT verdict becomes INCONCLUSIVE.
+	//
+	// Fail-open: 0 = disabled (no cross-tradition gate). Empty/unknown tradition
+	// on a verifier's AgentCalibration counts as a unique singleton — verifiers
+	// without declared traditions are never penalised.
+	//
+	// Rationale: confirmation from practitioners across independent lineages
+	// is stronger evidence than same-tradition consensus — the replication logic
+	// from Scientific Method Gap 1 (panel_diversity_score_bps) applied to the
+	// contemplative domain. Contemplative Traditions Brief Gap 4 (★★☆☆☆).
+	// Default: 0 (disabled).
+	MinCrossTraditionDiversityBps uint64 `protobuf:"varint,189,opt,name=min_cross_tradition_diversity_bps,json=minCrossTraditionDiversityBps,proto3" json:"min_cross_tradition_diversity_bps,omitempty"`
+	unknownFields                 protoimpl.UnknownFields
+	sizeCache                     protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -1909,6 +1924,13 @@ func (x *Params) GetAporiaThreshold() uint64 {
 	return 0
 }
 
+func (x *Params) GetMinCrossTraditionDiversityBps() uint64 {
+	if x != nil {
+		return x.MinCrossTraditionDiversityBps
+	}
+	return 0
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -2156,7 +2178,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xaf]\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xfa]\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2346,7 +2368,8 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\x18constraint_check_enabled\x18\xb9\x01 \x01(\bR\x16constraintCheckEnabled\x125\n" +
 	"\x16socratic_check_enabled\x18\xba\x01 \x01(\bR\x14socraticCheckEnabled\x12.\n" +
 	"\x12suspension_enabled\x18\xbb\x01 \x01(\bR\x11suspensionEnabled\x12*\n" +
-	"\x10aporia_threshold\x18\xbc\x01 \x01(\x04R\x0faporiaThreshold\x1aN\n" +
+	"\x10aporia_threshold\x18\xbc\x01 \x01(\x04R\x0faporiaThreshold\x12I\n" +
+	"!min_cross_tradition_diversity_bps\x18\xbd\x01 \x01(\x04R\x1dminCrossTraditionDiversityBps\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xb8\x0f\n" +

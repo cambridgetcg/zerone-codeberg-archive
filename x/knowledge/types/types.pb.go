@@ -4611,8 +4611,22 @@ type AgentCalibration struct {
 	// Non-empty = governance-confirmed practice depth. Used for auditing and
 	// for higher-confidence qualification tiers (if governance enables them).
 	AttentionalPracticeVerifiedBy string `protobuf:"bytes,27,opt,name=attentional_practice_verified_by,json=attentionalPracticeVerifiedBy,proto3" json:"attentional_practice_verified_by,omitempty"`
-	unknownFields                 protoimpl.UnknownFields
-	sizeCache                     protoimpl.SizeCache
+	// contemplative_tradition: the tradition within which this verifier's
+	// attentional practice took shape (e.g. "theravada", "tibetan", "zen",
+	// "sufi", "christian_contemplative", "vipassana", "secular_mindfulness").
+	// Governance-defined vocabulary is recommended but not enforced at the
+	// proto layer — the chain stores whatever string is submitted.
+	//
+	// Used for cross-tradition diversity scoring on M-PHENOMENOLOGICAL panels:
+	// independent confirmation from practitioners across lineages is treated as
+	// stronger evidence than same-tradition consensus (lineage-corroboration
+	// replication analogue from Scientific Method Gap 1).
+	//
+	// Empty = tradition unknown (treated as unique singleton for scoring —
+	// fail-open). Contemplative Traditions Brief Gap 4 (★★☆☆☆).
+	ContemplativeTradition string `protobuf:"bytes,28,opt,name=contemplative_tradition,json=contemplativeTradition,proto3" json:"contemplative_tradition,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *AgentCalibration) Reset() {
@@ -4816,6 +4830,13 @@ func (x *AgentCalibration) GetAttentionalPracticeHours() uint64 {
 func (x *AgentCalibration) GetAttentionalPracticeVerifiedBy() string {
 	if x != nil {
 		return x.AttentionalPracticeVerifiedBy
+	}
+	return ""
+}
+
+func (x *AgentCalibration) GetContemplativeTradition() string {
+	if x != nil {
+		return x.ContemplativeTradition
 	}
 	return ""
 }
@@ -6020,8 +6041,19 @@ type VerificationRound struct {
 	// Set by CompleteRound when Verdict = VERDICT_REJECT. UNSPECIFIED otherwise.
 	// Hegelian Dialectic Brief — determinate negation.
 	DeterminateNegationType DeterminateNegationType `protobuf:"varint,17,opt,name=determinate_negation_type,json=determinateNegationType,proto3,enum=zerone.knowledge.v1.DeterminateNegationType" json:"determinate_negation_type,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// cross_tradition_score_bps: panel cross-tradition diversity score, in BPS
+	// (0–1_000_000). Computed at aggregation as:
+	//
+	//	distinct_tradition_count × 1_000_000 / total_verifiers
+	//
+	// where an empty/unknown tradition counts as a unique singleton.
+	// Only meaningful for M-PHENOMENOLOGICAL claims; set to 0 for all others.
+	// Stored for audit. Gate: if Params.min_cross_tradition_diversity_bps > 0 and
+	// score < threshold, ACCEPT → INCONCLUSIVE.
+	// Contemplative Traditions Brief Gap 4 (★★☆☆☆).
+	CrossTraditionScoreBps uint64 `protobuf:"varint,18,opt,name=cross_tradition_score_bps,json=crossTraditionScoreBps,proto3" json:"cross_tradition_score_bps,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *VerificationRound) Reset() {
@@ -6171,6 +6203,13 @@ func (x *VerificationRound) GetDeterminateNegationType() DeterminateNegationType
 		return x.DeterminateNegationType
 	}
 	return DeterminateNegationType_DETERMINATE_NEGATION_UNSPECIFIED
+}
+
+func (x *VerificationRound) GetCrossTraditionScoreBps() uint64 {
+	if x != nil {
+		return x.CrossTraditionScoreBps
+	}
+	return 0
 }
 
 // CommitEntry records a validator's blinded commitment (SHA-256(vote || salt)).
@@ -10179,8 +10218,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x15corroborations_earned\x18\x04 \x01(\x04R\x14corroborationsEarned\x12\x1c\n" +
 	"\tdisproven\x18\x05 \x01(\x04R\tdisproven\x12'\n" +
 	"\x0fverifier_rounds\x18\x06 \x01(\x04R\x0everifierRounds\x123\n" +
-	"\x16verifier_sum_brier_bps\x18\a \x01(\x04R\x13verifierSumBrierBps\"\xc7\n" +
-	"\n" +
+	"\x16verifier_sum_brier_bps\x18\a \x01(\x04R\x13verifierSumBrierBps\"\x80\v\n" +
 	"\x10AgentCalibration\x12\x18\n" +
 	"\aaddress\x18\x01 \x01(\tR\aaddress\x12!\n" +
 	"\faccount_type\x18\x02 \x01(\tR\vaccountType\x12+\n" +
@@ -10208,7 +10246,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x17verifier_resolution_bps\x18\x18 \x01(\x04R\x15verifierResolutionBps\x12'\n" +
 	"\x0forganization_id\x18\x19 \x01(\tR\x0eorganizationId\x12<\n" +
 	"\x1aattentional_practice_hours\x18\x1a \x01(\x04R\x18attentionalPracticeHours\x12G\n" +
-	" attentional_practice_verified_by\x18\x1b \x01(\tR\x1dattentionalPracticeVerifiedBy\x1ac\n" +
+	" attentional_practice_verified_by\x18\x1b \x01(\tR\x1dattentionalPracticeVerifiedBy\x127\n" +
+	"\x17contemplative_tradition\x18\x1c \x01(\tR\x16contemplativeTradition\x1ac\n" +
 	"\x0ePerMethodEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12;\n" +
 	"\x05value\x18\x02 \x01(\v2%.zerone.knowledge.v1.AgentMethodStatsR\x05value:\x028\x01\"\xb5\x01\n" +
@@ -10307,7 +10346,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x10observed_outcome\x18\x03 \x01(\tR\x0fobservedOutcome\x12#\n" +
 	"\revidence_hash\x18\x04 \x01(\tR\fevidenceHash\x12,\n" +
 	"\x12submitted_at_block\x18\x05 \x01(\x04R\x10submittedAtBlock\x12!\n" +
-	"\fsubmitted_by\x18\x06 \x01(\tR\vsubmittedBy\"\xe0\x06\n" +
+	"\fsubmitted_by\x18\x06 \x01(\tR\vsubmittedBy\"\x9b\a\n" +
 	"\x11VerificationRound\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\bclaim_id\x18\x02 \x01(\tR\aclaimId\x12(\n" +
@@ -10326,7 +10365,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x12verdict_block_hash\x18\x0e \x01(\fR\x10verdictBlockHash\x129\n" +
 	"\x19panel_diversity_score_bps\x18\x0f \x01(\x04R\x16panelDiversityScoreBps\x122\n" +
 	"\x15finality_receipt_hash\x18\x10 \x01(\fR\x13finalityReceiptHash\x12h\n" +
-	"\x19determinate_negation_type\x18\x11 \x01(\x0e2,.zerone.knowledge.v1.DeterminateNegationTypeR\x17determinateNegationType\"x\n" +
+	"\x19determinate_negation_type\x18\x11 \x01(\x0e2,.zerone.knowledge.v1.DeterminateNegationTypeR\x17determinateNegationType\x129\n" +
+	"\x19cross_tradition_score_bps\x18\x12 \x01(\x04R\x16crossTraditionScoreBps\"x\n" +
 	"\vCommitEntry\x12\x1a\n" +
 	"\bverifier\x18\x01 \x01(\tR\bverifier\x12\x1f\n" +
 	"\vcommit_hash\x18\x02 \x01(\fR\n" +

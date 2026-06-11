@@ -597,6 +597,22 @@ message Params {
   //
   // Socratic Dialectic Gap 2 (★★★☆☆). Default: 0 (disabled).
   uint64 aporia_threshold = 188;
+
+  // min_cross_tradition_diversity_bps: minimum cross-tradition panel diversity
+  // score required for an M-PHENOMENOLOGICAL claim to be ACCEPTED. If the
+  // score (distinct_tradition_count × 1_000_000 / total_verifiers) falls below
+  // this threshold, an otherwise-ACCEPT verdict becomes INCONCLUSIVE.
+  //
+  // Fail-open: 0 = disabled (no cross-tradition gate). Empty/unknown tradition
+  // on a verifier's AgentCalibration counts as a unique singleton — verifiers
+  // without declared traditions are never penalised.
+  //
+  // Rationale: confirmation from practitioners across independent lineages
+  // is stronger evidence than same-tradition consensus — the replication logic
+  // from Scientific Method Gap 1 (panel_diversity_score_bps) applied to the
+  // contemplative domain. Contemplative Traditions Brief Gap 4 (★★☆☆☆).
+  // Default: 0 (disabled).
+  uint64 min_cross_tradition_diversity_bps = 189;
 }
 
 // GenesisState is the genesis state of the knowledge module.

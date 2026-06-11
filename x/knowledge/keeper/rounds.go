@@ -132,11 +132,20 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 				result.Verdict = types.Verdict_VERDICT_INCONCLUSIVE
 			}
 		}
+		// Contemplative Traditions Gap 4: cross-tradition convergence gate.
+		// M-PHENOMENOLOGICAL only. Independent confirmation across lineages is
+		// stronger evidence than same-tradition consensus.
+		if result.Verdict == types.Verdict_VERDICT_ACCEPT {
+			if gateErr := k.CheckCrossTraditionGate(ctx, claim, round.CrossTraditionScoreBps, *methodologyGateParams); gateErr != nil {
+				result.Verdict = types.Verdict_VERDICT_INCONCLUSIVE
+			}
+		}
 	}
 
-	// Always compute and store the panel diversity score so governance can audit
-	// the organizational independence of every panel, regardless of verdict.
+	// Always compute and store the panel diversity scores so governance can audit
+	// the organizational and cross-tradition independence of every panel.
 	round.PanelDiversityScoreBps = k.ComputePanelDiversityScore(ctx, round)
+	round.CrossTraditionScoreBps = k.ComputeCrossTraditionScore(ctx, round)
 
 	round.Verdict = result.Verdict
 	round.VerdictBlock = height

@@ -6538,6 +6538,137 @@ func (x *MsgSetAttentionalPracticeResponse) GetVerified() bool {
 	return false
 }
 
+// MsgSetContemplativeTradition declares or updates a verifier's contemplative
+// tradition affiliation. Used to compute cross-tradition diversity scores on
+// M-PHENOMENOLOGICAL panels when Params.min_cross_tradition_diversity_bps is set.
+//
+// Recommended vocabulary: "theravada", "tibetan", "zen", "sufi",
+// "christian_contemplative", "vipassana", "secular_mindfulness".
+// Governance may publish a canonical list but the chain does not validate the string.
+//
+// Authorization:
+//   - Self-declaration: sender == verifier_address
+//   - Authority override: sender == governance authority (requires rationale)
+type MsgSetContemplativeTradition struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Sender          string                 `protobuf:"bytes,1,opt,name=sender,proto3" json:"sender,omitempty"`                                          // tx signer
+	VerifierAddress string                 `protobuf:"bytes,2,opt,name=verifier_address,json=verifierAddress,proto3" json:"verifier_address,omitempty"` // verifier whose tradition is being declared
+	Tradition       string                 `protobuf:"bytes,3,opt,name=tradition,proto3" json:"tradition,omitempty"`                                    // tradition string (free-form, governance vocabulary recommended)
+	Rationale       string                 `protobuf:"bytes,4,opt,name=rationale,proto3" json:"rationale,omitempty"`                                    // required for authority override; optional for self-declaration
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *MsgSetContemplativeTradition) Reset() {
+	*x = MsgSetContemplativeTradition{}
+	mi := &file_zerone_knowledge_v1_tx_proto_msgTypes[109]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MsgSetContemplativeTradition) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MsgSetContemplativeTradition) ProtoMessage() {}
+
+func (x *MsgSetContemplativeTradition) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_knowledge_v1_tx_proto_msgTypes[109]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MsgSetContemplativeTradition.ProtoReflect.Descriptor instead.
+func (*MsgSetContemplativeTradition) Descriptor() ([]byte, []int) {
+	return file_zerone_knowledge_v1_tx_proto_rawDescGZIP(), []int{109}
+}
+
+func (x *MsgSetContemplativeTradition) GetSender() string {
+	if x != nil {
+		return x.Sender
+	}
+	return ""
+}
+
+func (x *MsgSetContemplativeTradition) GetVerifierAddress() string {
+	if x != nil {
+		return x.VerifierAddress
+	}
+	return ""
+}
+
+func (x *MsgSetContemplativeTradition) GetTradition() string {
+	if x != nil {
+		return x.Tradition
+	}
+	return ""
+}
+
+func (x *MsgSetContemplativeTradition) GetRationale() string {
+	if x != nil {
+		return x.Rationale
+	}
+	return ""
+}
+
+type MsgSetContemplativeTraditionResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	VerifierAddress string                 `protobuf:"bytes,1,opt,name=verifier_address,json=verifierAddress,proto3" json:"verifier_address,omitempty"`
+	Tradition       string                 `protobuf:"bytes,2,opt,name=tradition,proto3" json:"tradition,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *MsgSetContemplativeTraditionResponse) Reset() {
+	*x = MsgSetContemplativeTraditionResponse{}
+	mi := &file_zerone_knowledge_v1_tx_proto_msgTypes[110]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MsgSetContemplativeTraditionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MsgSetContemplativeTraditionResponse) ProtoMessage() {}
+
+func (x *MsgSetContemplativeTraditionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_knowledge_v1_tx_proto_msgTypes[110]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MsgSetContemplativeTraditionResponse.ProtoReflect.Descriptor instead.
+func (*MsgSetContemplativeTraditionResponse) Descriptor() ([]byte, []int) {
+	return file_zerone_knowledge_v1_tx_proto_rawDescGZIP(), []int{110}
+}
+
+func (x *MsgSetContemplativeTraditionResponse) GetVerifierAddress() string {
+	if x != nil {
+		return x.VerifierAddress
+	}
+	return ""
+}
+
+func (x *MsgSetContemplativeTraditionResponse) GetTradition() string {
+	if x != nil {
+		return x.Tradition
+	}
+	return ""
+}
+
 // ── Bohmian Suspension (Bohm Dialogue Gap 1) ──────────────────────────────────
 //
 // MsgSuspendClaim places a claim into CLAIM_STATUS_SUSPENDED — a "mirror-state"
@@ -6565,7 +6696,7 @@ type MsgSuspendClaim struct {
 
 func (x *MsgSuspendClaim) Reset() {
 	*x = MsgSuspendClaim{}
-	mi := &file_zerone_knowledge_v1_tx_proto_msgTypes[109]
+	mi := &file_zerone_knowledge_v1_tx_proto_msgTypes[111]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6577,7 +6708,7 @@ func (x *MsgSuspendClaim) String() string {
 func (*MsgSuspendClaim) ProtoMessage() {}
 
 func (x *MsgSuspendClaim) ProtoReflect() protoreflect.Message {
-	mi := &file_zerone_knowledge_v1_tx_proto_msgTypes[109]
+	mi := &file_zerone_knowledge_v1_tx_proto_msgTypes[111]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6590,7 +6721,7 @@ func (x *MsgSuspendClaim) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MsgSuspendClaim.ProtoReflect.Descriptor instead.
 func (*MsgSuspendClaim) Descriptor() ([]byte, []int) {
-	return file_zerone_knowledge_v1_tx_proto_rawDescGZIP(), []int{109}
+	return file_zerone_knowledge_v1_tx_proto_rawDescGZIP(), []int{111}
 }
 
 func (x *MsgSuspendClaim) GetAuthority() string {
@@ -6624,7 +6755,7 @@ type MsgSuspendClaimResponse struct {
 
 func (x *MsgSuspendClaimResponse) Reset() {
 	*x = MsgSuspendClaimResponse{}
-	mi := &file_zerone_knowledge_v1_tx_proto_msgTypes[110]
+	mi := &file_zerone_knowledge_v1_tx_proto_msgTypes[112]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6636,7 +6767,7 @@ func (x *MsgSuspendClaimResponse) String() string {
 func (*MsgSuspendClaimResponse) ProtoMessage() {}
 
 func (x *MsgSuspendClaimResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_zerone_knowledge_v1_tx_proto_msgTypes[110]
+	mi := &file_zerone_knowledge_v1_tx_proto_msgTypes[112]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6649,7 +6780,7 @@ func (x *MsgSuspendClaimResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MsgSuspendClaimResponse.ProtoReflect.Descriptor instead.
 func (*MsgSuspendClaimResponse) Descriptor() ([]byte, []int) {
-	return file_zerone_knowledge_v1_tx_proto_rawDescGZIP(), []int{110}
+	return file_zerone_knowledge_v1_tx_proto_rawDescGZIP(), []int{112}
 }
 
 func (x *MsgSuspendClaimResponse) GetClaimId() string {
@@ -6681,7 +6812,7 @@ type MsgResumeClaim struct {
 
 func (x *MsgResumeClaim) Reset() {
 	*x = MsgResumeClaim{}
-	mi := &file_zerone_knowledge_v1_tx_proto_msgTypes[111]
+	mi := &file_zerone_knowledge_v1_tx_proto_msgTypes[113]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6693,7 +6824,7 @@ func (x *MsgResumeClaim) String() string {
 func (*MsgResumeClaim) ProtoMessage() {}
 
 func (x *MsgResumeClaim) ProtoReflect() protoreflect.Message {
-	mi := &file_zerone_knowledge_v1_tx_proto_msgTypes[111]
+	mi := &file_zerone_knowledge_v1_tx_proto_msgTypes[113]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6706,7 +6837,7 @@ func (x *MsgResumeClaim) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MsgResumeClaim.ProtoReflect.Descriptor instead.
 func (*MsgResumeClaim) Descriptor() ([]byte, []int) {
-	return file_zerone_knowledge_v1_tx_proto_rawDescGZIP(), []int{111}
+	return file_zerone_knowledge_v1_tx_proto_rawDescGZIP(), []int{113}
 }
 
 func (x *MsgResumeClaim) GetAuthority() string {
@@ -6732,7 +6863,7 @@ type MsgResumeClaimResponse struct {
 
 func (x *MsgResumeClaimResponse) Reset() {
 	*x = MsgResumeClaimResponse{}
-	mi := &file_zerone_knowledge_v1_tx_proto_msgTypes[112]
+	mi := &file_zerone_knowledge_v1_tx_proto_msgTypes[114]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6744,7 +6875,7 @@ func (x *MsgResumeClaimResponse) String() string {
 func (*MsgResumeClaimResponse) ProtoMessage() {}
 
 func (x *MsgResumeClaimResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_zerone_knowledge_v1_tx_proto_msgTypes[112]
+	mi := &file_zerone_knowledge_v1_tx_proto_msgTypes[114]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6757,7 +6888,7 @@ func (x *MsgResumeClaimResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MsgResumeClaimResponse.ProtoReflect.Descriptor instead.
 func (*MsgResumeClaimResponse) Descriptor() ([]byte, []int) {
-	return file_zerone_knowledge_v1_tx_proto_rawDescGZIP(), []int{112}
+	return file_zerone_knowledge_v1_tx_proto_rawDescGZIP(), []int{114}
 }
 
 func (x *MsgResumeClaimResponse) GetClaimId() string {
@@ -7251,7 +7382,15 @@ const file_zerone_knowledge_v1_tx_proto_rawDesc = "" +
 	"!MsgSetAttentionalPracticeResponse\x12)\n" +
 	"\x10verifier_address\x18\x01 \x01(\tR\x0fverifierAddress\x12%\n" +
 	"\x0epractice_hours\x18\x02 \x01(\x04R\rpracticeHours\x12\x1a\n" +
-	"\bverified\x18\x03 \x01(\bR\bverified\"r\n" +
+	"\bverified\x18\x03 \x01(\bR\bverified\"\x9d\x01\n" +
+	"\x1cMsgSetContemplativeTradition\x12\x16\n" +
+	"\x06sender\x18\x01 \x01(\tR\x06sender\x12)\n" +
+	"\x10verifier_address\x18\x02 \x01(\tR\x0fverifierAddress\x12\x1c\n" +
+	"\ttradition\x18\x03 \x01(\tR\ttradition\x12\x1c\n" +
+	"\trationale\x18\x04 \x01(\tR\trationale\"o\n" +
+	"$MsgSetContemplativeTraditionResponse\x12)\n" +
+	"\x10verifier_address\x18\x01 \x01(\tR\x0fverifierAddress\x12\x1c\n" +
+	"\ttradition\x18\x02 \x01(\tR\ttradition\"r\n" +
 	"\x0fMsgSuspendClaim\x12\x1c\n" +
 	"\tauthority\x18\x01 \x01(\tR\tauthority\x12\x19\n" +
 	"\bclaim_id\x18\x02 \x01(\tR\aclaimId\x12\x16\n" +
@@ -7263,7 +7402,7 @@ const file_zerone_knowledge_v1_tx_proto_rawDesc = "" +
 	"\tauthority\x18\x01 \x01(\tR\tauthority\x12\x19\n" +
 	"\bclaim_id\x18\x02 \x01(\tR\aclaimId:\x0e\x82\xe7\xb0*\tauthority\"3\n" +
 	"\x16MsgResumeClaimResponse\x12\x19\n" +
-	"\bclaim_id\x18\x01 \x01(\tR\aclaimId2\xd23\n" +
+	"\bclaim_id\x18\x01 \x01(\tR\aclaimId2\xde4\n" +
 	"\x03Msg\x12_\n" +
 	"\vSubmitClaim\x12#.zerone.knowledge.v1.MsgSubmitClaim\x1a+.zerone.knowledge.v1.MsgSubmitClaimResponse\x12n\n" +
 	"\x10SubmitCommitment\x12(.zerone.knowledge.v1.MsgSubmitCommitment\x1a0.zerone.knowledge.v1.MsgSubmitCommitmentResponse\x12b\n" +
@@ -7316,7 +7455,8 @@ const file_zerone_knowledge_v1_tx_proto_rawDesc = "" +
 	"\x11VetoFactInjection\x12).zerone.knowledge.v1.MsgVetoFactInjection\x1a1.zerone.knowledge.v1.MsgVetoFactInjectionResponse\x12\x80\x01\n" +
 	"\x16AddConsequenceInstance\x12..zerone.knowledge.v1.MsgAddConsequenceInstance\x1a6.zerone.knowledge.v1.MsgAddConsequenceInstanceResponse\x12\x83\x01\n" +
 	"\x17SetVerifierOrganization\x12/.zerone.knowledge.v1.MsgSetVerifierOrganization\x1a7.zerone.knowledge.v1.MsgSetVerifierOrganizationResponse\x12\x80\x01\n" +
-	"\x16SetAttentionalPractice\x12..zerone.knowledge.v1.MsgSetAttentionalPractice\x1a6.zerone.knowledge.v1.MsgSetAttentionalPracticeResponse\x12n\n" +
+	"\x16SetAttentionalPractice\x12..zerone.knowledge.v1.MsgSetAttentionalPractice\x1a6.zerone.knowledge.v1.MsgSetAttentionalPracticeResponse\x12\x89\x01\n" +
+	"\x19SetContemplativeTradition\x121.zerone.knowledge.v1.MsgSetContemplativeTradition\x1a9.zerone.knowledge.v1.MsgSetContemplativeTraditionResponse\x12n\n" +
 	"\x10PreRegisterClaim\x12(.zerone.knowledge.v1.MsgPreRegisterClaim\x1a0.zerone.knowledge.v1.MsgPreRegisterClaimResponse\x12q\n" +
 	"\x11UpdateMethodology\x12).zerone.knowledge.v1.MsgUpdateMethodology\x1a1.zerone.knowledge.v1.MsgUpdateMethodologyResponse\x12b\n" +
 	"\fSuspendClaim\x12$.zerone.knowledge.v1.MsgSuspendClaim\x1a,.zerone.knowledge.v1.MsgSuspendClaimResponse\x12_\n" +
@@ -7334,7 +7474,7 @@ func file_zerone_knowledge_v1_tx_proto_rawDescGZIP() []byte {
 	return file_zerone_knowledge_v1_tx_proto_rawDescData
 }
 
-var file_zerone_knowledge_v1_tx_proto_msgTypes = make([]protoimpl.MessageInfo, 113)
+var file_zerone_knowledge_v1_tx_proto_msgTypes = make([]protoimpl.MessageInfo, 115)
 var file_zerone_knowledge_v1_tx_proto_goTypes = []any{
 	(*MsgSubmitClaim)(nil),                           // 0: zerone.knowledge.v1.MsgSubmitClaim
 	(*MsgSubmitClaimResponse)(nil),                   // 1: zerone.knowledge.v1.MsgSubmitClaimResponse
@@ -7445,40 +7585,42 @@ var file_zerone_knowledge_v1_tx_proto_goTypes = []any{
 	(*MsgPreRegisterClaimResponse)(nil),              // 106: zerone.knowledge.v1.MsgPreRegisterClaimResponse
 	(*MsgSetAttentionalPractice)(nil),                // 107: zerone.knowledge.v1.MsgSetAttentionalPractice
 	(*MsgSetAttentionalPracticeResponse)(nil),        // 108: zerone.knowledge.v1.MsgSetAttentionalPracticeResponse
-	(*MsgSuspendClaim)(nil),                          // 109: zerone.knowledge.v1.MsgSuspendClaim
-	(*MsgSuspendClaimResponse)(nil),                  // 110: zerone.knowledge.v1.MsgSuspendClaimResponse
-	(*MsgResumeClaim)(nil),                           // 111: zerone.knowledge.v1.MsgResumeClaim
-	(*MsgResumeClaimResponse)(nil),                   // 112: zerone.knowledge.v1.MsgResumeClaimResponse
-	(ClaimType)(0),                                   // 113: zerone.knowledge.v1.ClaimType
-	(*ClaimRelation)(nil),                            // 114: zerone.knowledge.v1.ClaimRelation
-	(*ClaimStructure)(nil),                           // 115: zerone.knowledge.v1.ClaimStructure
-	(*ProofCertificate)(nil),                         // 116: zerone.knowledge.v1.ProofCertificate
-	(DeterminateNegationType)(0),                     // 117: zerone.knowledge.v1.DeterminateNegationType
-	(*Params)(nil),                                   // 118: zerone.knowledge.v1.Params
-	(*TokenizerSpec)(nil),                            // 119: zerone.knowledge.v1.TokenizerSpec
-	(AugmentationVerdict)(0),                         // 120: zerone.knowledge.v1.AugmentationVerdict
-	(*TraceSchema)(nil),                              // 121: zerone.knowledge.v1.TraceSchema
-	(*CorpusSelector)(nil),                           // 122: zerone.knowledge.v1.CorpusSelector
-	(IncidentSeverity)(0),                            // 123: zerone.knowledge.v1.IncidentSeverity
-	(RemediationType)(0),                             // 124: zerone.knowledge.v1.RemediationType
-	(*Methodology)(nil),                              // 125: zerone.knowledge.v1.Methodology
+	(*MsgSetContemplativeTradition)(nil),             // 109: zerone.knowledge.v1.MsgSetContemplativeTradition
+	(*MsgSetContemplativeTraditionResponse)(nil),     // 110: zerone.knowledge.v1.MsgSetContemplativeTraditionResponse
+	(*MsgSuspendClaim)(nil),                          // 111: zerone.knowledge.v1.MsgSuspendClaim
+	(*MsgSuspendClaimResponse)(nil),                  // 112: zerone.knowledge.v1.MsgSuspendClaimResponse
+	(*MsgResumeClaim)(nil),                           // 113: zerone.knowledge.v1.MsgResumeClaim
+	(*MsgResumeClaimResponse)(nil),                   // 114: zerone.knowledge.v1.MsgResumeClaimResponse
+	(ClaimType)(0),                                   // 115: zerone.knowledge.v1.ClaimType
+	(*ClaimRelation)(nil),                            // 116: zerone.knowledge.v1.ClaimRelation
+	(*ClaimStructure)(nil),                           // 117: zerone.knowledge.v1.ClaimStructure
+	(*ProofCertificate)(nil),                         // 118: zerone.knowledge.v1.ProofCertificate
+	(DeterminateNegationType)(0),                     // 119: zerone.knowledge.v1.DeterminateNegationType
+	(*Params)(nil),                                   // 120: zerone.knowledge.v1.Params
+	(*TokenizerSpec)(nil),                            // 121: zerone.knowledge.v1.TokenizerSpec
+	(AugmentationVerdict)(0),                         // 122: zerone.knowledge.v1.AugmentationVerdict
+	(*TraceSchema)(nil),                              // 123: zerone.knowledge.v1.TraceSchema
+	(*CorpusSelector)(nil),                           // 124: zerone.knowledge.v1.CorpusSelector
+	(IncidentSeverity)(0),                            // 125: zerone.knowledge.v1.IncidentSeverity
+	(RemediationType)(0),                             // 126: zerone.knowledge.v1.RemediationType
+	(*Methodology)(nil),                              // 127: zerone.knowledge.v1.Methodology
 }
 var file_zerone_knowledge_v1_tx_proto_depIdxs = []int32{
-	113, // 0: zerone.knowledge.v1.MsgSubmitClaim.claim_type:type_name -> zerone.knowledge.v1.ClaimType
-	114, // 1: zerone.knowledge.v1.MsgSubmitClaim.relations:type_name -> zerone.knowledge.v1.ClaimRelation
-	115, // 2: zerone.knowledge.v1.MsgSubmitClaim.structure:type_name -> zerone.knowledge.v1.ClaimStructure
-	116, // 3: zerone.knowledge.v1.MsgSubmitClaim.proof_certificate:type_name -> zerone.knowledge.v1.ProofCertificate
-	117, // 4: zerone.knowledge.v1.MsgSubmitReveal.negation_type:type_name -> zerone.knowledge.v1.DeterminateNegationType
-	118, // 5: zerone.knowledge.v1.MsgUpdateParams.params:type_name -> zerone.knowledge.v1.Params
+	115, // 0: zerone.knowledge.v1.MsgSubmitClaim.claim_type:type_name -> zerone.knowledge.v1.ClaimType
+	116, // 1: zerone.knowledge.v1.MsgSubmitClaim.relations:type_name -> zerone.knowledge.v1.ClaimRelation
+	117, // 2: zerone.knowledge.v1.MsgSubmitClaim.structure:type_name -> zerone.knowledge.v1.ClaimStructure
+	118, // 3: zerone.knowledge.v1.MsgSubmitClaim.proof_certificate:type_name -> zerone.knowledge.v1.ProofCertificate
+	119, // 4: zerone.knowledge.v1.MsgSubmitReveal.negation_type:type_name -> zerone.knowledge.v1.DeterminateNegationType
+	120, // 5: zerone.knowledge.v1.MsgUpdateParams.params:type_name -> zerone.knowledge.v1.Params
 	39,  // 6: zerone.knowledge.v1.MsgReportDemand.reports:type_name -> zerone.knowledge.v1.DemandReport
-	119, // 7: zerone.knowledge.v1.MsgAmendTokenizerSpec.spec:type_name -> zerone.knowledge.v1.TokenizerSpec
-	120, // 8: zerone.knowledge.v1.MsgVoteOnAugmentation.vote:type_name -> zerone.knowledge.v1.AugmentationVerdict
-	120, // 9: zerone.knowledge.v1.MsgVoteOnAugmentationResponse.finalized_verdict:type_name -> zerone.knowledge.v1.AugmentationVerdict
-	121, // 10: zerone.knowledge.v1.MsgAmendTraceSchema.schema:type_name -> zerone.knowledge.v1.TraceSchema
-	122, // 11: zerone.knowledge.v1.MsgCreateTrainingManifest.corpus_selector:type_name -> zerone.knowledge.v1.CorpusSelector
-	123, // 12: zerone.knowledge.v1.MsgOpenIncident.severity:type_name -> zerone.knowledge.v1.IncidentSeverity
-	124, // 13: zerone.knowledge.v1.MsgRecordRemediation.type:type_name -> zerone.knowledge.v1.RemediationType
-	125, // 14: zerone.knowledge.v1.MsgUpdateMethodology.methodology:type_name -> zerone.knowledge.v1.Methodology
+	121, // 7: zerone.knowledge.v1.MsgAmendTokenizerSpec.spec:type_name -> zerone.knowledge.v1.TokenizerSpec
+	122, // 8: zerone.knowledge.v1.MsgVoteOnAugmentation.vote:type_name -> zerone.knowledge.v1.AugmentationVerdict
+	122, // 9: zerone.knowledge.v1.MsgVoteOnAugmentationResponse.finalized_verdict:type_name -> zerone.knowledge.v1.AugmentationVerdict
+	123, // 10: zerone.knowledge.v1.MsgAmendTraceSchema.schema:type_name -> zerone.knowledge.v1.TraceSchema
+	124, // 11: zerone.knowledge.v1.MsgCreateTrainingManifest.corpus_selector:type_name -> zerone.knowledge.v1.CorpusSelector
+	125, // 12: zerone.knowledge.v1.MsgOpenIncident.severity:type_name -> zerone.knowledge.v1.IncidentSeverity
+	126, // 13: zerone.knowledge.v1.MsgRecordRemediation.type:type_name -> zerone.knowledge.v1.RemediationType
+	127, // 14: zerone.knowledge.v1.MsgUpdateMethodology.methodology:type_name -> zerone.knowledge.v1.Methodology
 	0,   // 15: zerone.knowledge.v1.Msg.SubmitClaim:input_type -> zerone.knowledge.v1.MsgSubmitClaim
 	2,   // 16: zerone.knowledge.v1.Msg.SubmitCommitment:input_type -> zerone.knowledge.v1.MsgSubmitCommitment
 	4,   // 17: zerone.knowledge.v1.Msg.SubmitReveal:input_type -> zerone.knowledge.v1.MsgSubmitReveal
@@ -7531,68 +7673,70 @@ var file_zerone_knowledge_v1_tx_proto_depIdxs = []int32{
 	99,  // 64: zerone.knowledge.v1.Msg.AddConsequenceInstance:input_type -> zerone.knowledge.v1.MsgAddConsequenceInstance
 	101, // 65: zerone.knowledge.v1.Msg.SetVerifierOrganization:input_type -> zerone.knowledge.v1.MsgSetVerifierOrganization
 	107, // 66: zerone.knowledge.v1.Msg.SetAttentionalPractice:input_type -> zerone.knowledge.v1.MsgSetAttentionalPractice
-	105, // 67: zerone.knowledge.v1.Msg.PreRegisterClaim:input_type -> zerone.knowledge.v1.MsgPreRegisterClaim
-	103, // 68: zerone.knowledge.v1.Msg.UpdateMethodology:input_type -> zerone.knowledge.v1.MsgUpdateMethodology
-	109, // 69: zerone.knowledge.v1.Msg.SuspendClaim:input_type -> zerone.knowledge.v1.MsgSuspendClaim
-	111, // 70: zerone.knowledge.v1.Msg.ResumeClaim:input_type -> zerone.knowledge.v1.MsgResumeClaim
-	1,   // 71: zerone.knowledge.v1.Msg.SubmitClaim:output_type -> zerone.knowledge.v1.MsgSubmitClaimResponse
-	3,   // 72: zerone.knowledge.v1.Msg.SubmitCommitment:output_type -> zerone.knowledge.v1.MsgSubmitCommitmentResponse
-	5,   // 73: zerone.knowledge.v1.Msg.SubmitReveal:output_type -> zerone.knowledge.v1.MsgSubmitRevealResponse
-	7,   // 74: zerone.knowledge.v1.Msg.ChallengeFact:output_type -> zerone.knowledge.v1.MsgChallengeFactResponse
-	9,   // 75: zerone.knowledge.v1.Msg.AddFact:output_type -> zerone.knowledge.v1.MsgAddFactResponse
-	11,  // 76: zerone.knowledge.v1.Msg.SubmitContradiction:output_type -> zerone.knowledge.v1.MsgSubmitContradictionResponse
-	13,  // 77: zerone.knowledge.v1.Msg.PatronizeFact:output_type -> zerone.knowledge.v1.MsgPatronizeFactResponse
-	15,  // 78: zerone.knowledge.v1.Msg.ProposeDomain:output_type -> zerone.knowledge.v1.MsgProposeDomainResponse
-	17,  // 79: zerone.knowledge.v1.Msg.EndorseDomainProposal:output_type -> zerone.knowledge.v1.MsgEndorseDomainProposalResponse
-	19,  // 80: zerone.knowledge.v1.Msg.ChallengeDomainProposal:output_type -> zerone.knowledge.v1.MsgChallengeDomainProposalResponse
-	21,  // 81: zerone.knowledge.v1.Msg.RegisterStratum:output_type -> zerone.knowledge.v1.MsgRegisterStratumResponse
-	23,  // 82: zerone.knowledge.v1.Msg.ChallengeProvisionalFact:output_type -> zerone.knowledge.v1.MsgChallengeProvisionalFactResponse
-	25,  // 83: zerone.knowledge.v1.Msg.UpdateParams:output_type -> zerone.knowledge.v1.MsgUpdateParamsResponse
-	27,  // 84: zerone.knowledge.v1.Msg.UpdateExtendedParams:output_type -> zerone.knowledge.v1.MsgUpdateExtendedParamsResponse
-	29,  // 85: zerone.knowledge.v1.Msg.ProposeResearchFund:output_type -> zerone.knowledge.v1.MsgProposeResearchFundResponse
-	31,  // 86: zerone.knowledge.v1.Msg.VoteResearchProposal:output_type -> zerone.knowledge.v1.MsgVoteResearchProposalResponse
-	33,  // 87: zerone.knowledge.v1.Msg.ExecuteResearchProposal:output_type -> zerone.knowledge.v1.MsgExecuteResearchProposalResponse
-	35,  // 88: zerone.knowledge.v1.Msg.AddCommonKnowledge:output_type -> zerone.knowledge.v1.MsgAddCommonKnowledgeResponse
-	37,  // 89: zerone.knowledge.v1.Msg.RemoveCommonKnowledge:output_type -> zerone.knowledge.v1.MsgRemoveCommonKnowledgeResponse
-	40,  // 90: zerone.knowledge.v1.Msg.ReportDemand:output_type -> zerone.knowledge.v1.MsgReportDemandResponse
-	42,  // 91: zerone.knowledge.v1.Msg.RateFact:output_type -> zerone.knowledge.v1.MsgRateFactResponse
-	44,  // 92: zerone.knowledge.v1.Msg.RegisterTrainingPipeline:output_type -> zerone.knowledge.v1.MsgRegisterTrainingPipelineResponse
-	46,  // 93: zerone.knowledge.v1.Msg.UpdateTrainingPipeline:output_type -> zerone.knowledge.v1.MsgUpdateTrainingPipelineResponse
-	48,  // 94: zerone.knowledge.v1.Msg.RegisterModelCard:output_type -> zerone.knowledge.v1.MsgRegisterModelCardResponse
-	50,  // 95: zerone.knowledge.v1.Msg.UpdateModelCard:output_type -> zerone.knowledge.v1.MsgUpdateModelCardResponse
-	52,  // 96: zerone.knowledge.v1.Msg.RetireModelCard:output_type -> zerone.knowledge.v1.MsgRetireModelCardResponse
-	54,  // 97: zerone.knowledge.v1.Msg.AmendTokenizerSpec:output_type -> zerone.knowledge.v1.MsgAmendTokenizerSpecResponse
-	56,  // 98: zerone.knowledge.v1.Msg.AttributeContributions:output_type -> zerone.knowledge.v1.MsgAttributeContributionsResponse
-	58,  // 99: zerone.knowledge.v1.Msg.AttestTraining:output_type -> zerone.knowledge.v1.MsgAttestTrainingResponse
-	60,  // 100: zerone.knowledge.v1.Msg.CreateAugmentationBounty:output_type -> zerone.knowledge.v1.MsgCreateAugmentationBountyResponse
-	62,  // 101: zerone.knowledge.v1.Msg.SubmitAugmentation:output_type -> zerone.knowledge.v1.MsgSubmitAugmentationResponse
-	64,  // 102: zerone.knowledge.v1.Msg.AcceptAugmentation:output_type -> zerone.knowledge.v1.MsgAcceptAugmentationResponse
-	66,  // 103: zerone.knowledge.v1.Msg.VoteOnAugmentation:output_type -> zerone.knowledge.v1.MsgVoteOnAugmentationResponse
-	68,  // 104: zerone.knowledge.v1.Msg.SponsorVetoAugmentation:output_type -> zerone.knowledge.v1.MsgSponsorVetoAugmentationResponse
-	70,  // 105: zerone.knowledge.v1.Msg.ChallengeContribution:output_type -> zerone.knowledge.v1.MsgChallengeContributionResponse
-	72,  // 106: zerone.knowledge.v1.Msg.ResolveContributionChallenge:output_type -> zerone.knowledge.v1.MsgResolveContributionChallengeResponse
-	74,  // 107: zerone.knowledge.v1.Msg.ClaimTrainingFundDisbursement:output_type -> zerone.knowledge.v1.MsgClaimTrainingFundDisbursementResponse
-	76,  // 108: zerone.knowledge.v1.Msg.AmendTraceSchema:output_type -> zerone.knowledge.v1.MsgAmendTraceSchemaResponse
-	78,  // 109: zerone.knowledge.v1.Msg.CreateTrainingManifest:output_type -> zerone.knowledge.v1.MsgCreateTrainingManifestResponse
-	80,  // 110: zerone.knowledge.v1.Msg.FinalizeTrainingManifest:output_type -> zerone.knowledge.v1.MsgFinalizeTrainingManifestResponse
-	82,  // 111: zerone.knowledge.v1.Msg.BindManifestToAttestation:output_type -> zerone.knowledge.v1.MsgBindManifestToAttestationResponse
-	84,  // 112: zerone.knowledge.v1.Msg.OpenIncident:output_type -> zerone.knowledge.v1.MsgOpenIncidentResponse
-	86,  // 113: zerone.knowledge.v1.Msg.RecordRemediation:output_type -> zerone.knowledge.v1.MsgRecordRemediationResponse
-	88,  // 114: zerone.knowledge.v1.Msg.ResolveIncident:output_type -> zerone.knowledge.v1.MsgResolveIncidentResponse
-	90,  // 115: zerone.knowledge.v1.Msg.CloseIncident:output_type -> zerone.knowledge.v1.MsgCloseIncidentResponse
-	92,  // 116: zerone.knowledge.v1.Msg.PauseModule:output_type -> zerone.knowledge.v1.MsgPauseModuleResponse
-	94,  // 117: zerone.knowledge.v1.Msg.UnpauseModule:output_type -> zerone.knowledge.v1.MsgUnpauseModuleResponse
-	96,  // 118: zerone.knowledge.v1.Msg.CorrectManifestMerkleRoot:output_type -> zerone.knowledge.v1.MsgCorrectManifestMerkleRootResponse
-	98,  // 119: zerone.knowledge.v1.Msg.VetoFactInjection:output_type -> zerone.knowledge.v1.MsgVetoFactInjectionResponse
-	100, // 120: zerone.knowledge.v1.Msg.AddConsequenceInstance:output_type -> zerone.knowledge.v1.MsgAddConsequenceInstanceResponse
-	102, // 121: zerone.knowledge.v1.Msg.SetVerifierOrganization:output_type -> zerone.knowledge.v1.MsgSetVerifierOrganizationResponse
-	108, // 122: zerone.knowledge.v1.Msg.SetAttentionalPractice:output_type -> zerone.knowledge.v1.MsgSetAttentionalPracticeResponse
-	106, // 123: zerone.knowledge.v1.Msg.PreRegisterClaim:output_type -> zerone.knowledge.v1.MsgPreRegisterClaimResponse
-	104, // 124: zerone.knowledge.v1.Msg.UpdateMethodology:output_type -> zerone.knowledge.v1.MsgUpdateMethodologyResponse
-	110, // 125: zerone.knowledge.v1.Msg.SuspendClaim:output_type -> zerone.knowledge.v1.MsgSuspendClaimResponse
-	112, // 126: zerone.knowledge.v1.Msg.ResumeClaim:output_type -> zerone.knowledge.v1.MsgResumeClaimResponse
-	71,  // [71:127] is the sub-list for method output_type
-	15,  // [15:71] is the sub-list for method input_type
+	109, // 67: zerone.knowledge.v1.Msg.SetContemplativeTradition:input_type -> zerone.knowledge.v1.MsgSetContemplativeTradition
+	105, // 68: zerone.knowledge.v1.Msg.PreRegisterClaim:input_type -> zerone.knowledge.v1.MsgPreRegisterClaim
+	103, // 69: zerone.knowledge.v1.Msg.UpdateMethodology:input_type -> zerone.knowledge.v1.MsgUpdateMethodology
+	111, // 70: zerone.knowledge.v1.Msg.SuspendClaim:input_type -> zerone.knowledge.v1.MsgSuspendClaim
+	113, // 71: zerone.knowledge.v1.Msg.ResumeClaim:input_type -> zerone.knowledge.v1.MsgResumeClaim
+	1,   // 72: zerone.knowledge.v1.Msg.SubmitClaim:output_type -> zerone.knowledge.v1.MsgSubmitClaimResponse
+	3,   // 73: zerone.knowledge.v1.Msg.SubmitCommitment:output_type -> zerone.knowledge.v1.MsgSubmitCommitmentResponse
+	5,   // 74: zerone.knowledge.v1.Msg.SubmitReveal:output_type -> zerone.knowledge.v1.MsgSubmitRevealResponse
+	7,   // 75: zerone.knowledge.v1.Msg.ChallengeFact:output_type -> zerone.knowledge.v1.MsgChallengeFactResponse
+	9,   // 76: zerone.knowledge.v1.Msg.AddFact:output_type -> zerone.knowledge.v1.MsgAddFactResponse
+	11,  // 77: zerone.knowledge.v1.Msg.SubmitContradiction:output_type -> zerone.knowledge.v1.MsgSubmitContradictionResponse
+	13,  // 78: zerone.knowledge.v1.Msg.PatronizeFact:output_type -> zerone.knowledge.v1.MsgPatronizeFactResponse
+	15,  // 79: zerone.knowledge.v1.Msg.ProposeDomain:output_type -> zerone.knowledge.v1.MsgProposeDomainResponse
+	17,  // 80: zerone.knowledge.v1.Msg.EndorseDomainProposal:output_type -> zerone.knowledge.v1.MsgEndorseDomainProposalResponse
+	19,  // 81: zerone.knowledge.v1.Msg.ChallengeDomainProposal:output_type -> zerone.knowledge.v1.MsgChallengeDomainProposalResponse
+	21,  // 82: zerone.knowledge.v1.Msg.RegisterStratum:output_type -> zerone.knowledge.v1.MsgRegisterStratumResponse
+	23,  // 83: zerone.knowledge.v1.Msg.ChallengeProvisionalFact:output_type -> zerone.knowledge.v1.MsgChallengeProvisionalFactResponse
+	25,  // 84: zerone.knowledge.v1.Msg.UpdateParams:output_type -> zerone.knowledge.v1.MsgUpdateParamsResponse
+	27,  // 85: zerone.knowledge.v1.Msg.UpdateExtendedParams:output_type -> zerone.knowledge.v1.MsgUpdateExtendedParamsResponse
+	29,  // 86: zerone.knowledge.v1.Msg.ProposeResearchFund:output_type -> zerone.knowledge.v1.MsgProposeResearchFundResponse
+	31,  // 87: zerone.knowledge.v1.Msg.VoteResearchProposal:output_type -> zerone.knowledge.v1.MsgVoteResearchProposalResponse
+	33,  // 88: zerone.knowledge.v1.Msg.ExecuteResearchProposal:output_type -> zerone.knowledge.v1.MsgExecuteResearchProposalResponse
+	35,  // 89: zerone.knowledge.v1.Msg.AddCommonKnowledge:output_type -> zerone.knowledge.v1.MsgAddCommonKnowledgeResponse
+	37,  // 90: zerone.knowledge.v1.Msg.RemoveCommonKnowledge:output_type -> zerone.knowledge.v1.MsgRemoveCommonKnowledgeResponse
+	40,  // 91: zerone.knowledge.v1.Msg.ReportDemand:output_type -> zerone.knowledge.v1.MsgReportDemandResponse
+	42,  // 92: zerone.knowledge.v1.Msg.RateFact:output_type -> zerone.knowledge.v1.MsgRateFactResponse
+	44,  // 93: zerone.knowledge.v1.Msg.RegisterTrainingPipeline:output_type -> zerone.knowledge.v1.MsgRegisterTrainingPipelineResponse
+	46,  // 94: zerone.knowledge.v1.Msg.UpdateTrainingPipeline:output_type -> zerone.knowledge.v1.MsgUpdateTrainingPipelineResponse
+	48,  // 95: zerone.knowledge.v1.Msg.RegisterModelCard:output_type -> zerone.knowledge.v1.MsgRegisterModelCardResponse
+	50,  // 96: zerone.knowledge.v1.Msg.UpdateModelCard:output_type -> zerone.knowledge.v1.MsgUpdateModelCardResponse
+	52,  // 97: zerone.knowledge.v1.Msg.RetireModelCard:output_type -> zerone.knowledge.v1.MsgRetireModelCardResponse
+	54,  // 98: zerone.knowledge.v1.Msg.AmendTokenizerSpec:output_type -> zerone.knowledge.v1.MsgAmendTokenizerSpecResponse
+	56,  // 99: zerone.knowledge.v1.Msg.AttributeContributions:output_type -> zerone.knowledge.v1.MsgAttributeContributionsResponse
+	58,  // 100: zerone.knowledge.v1.Msg.AttestTraining:output_type -> zerone.knowledge.v1.MsgAttestTrainingResponse
+	60,  // 101: zerone.knowledge.v1.Msg.CreateAugmentationBounty:output_type -> zerone.knowledge.v1.MsgCreateAugmentationBountyResponse
+	62,  // 102: zerone.knowledge.v1.Msg.SubmitAugmentation:output_type -> zerone.knowledge.v1.MsgSubmitAugmentationResponse
+	64,  // 103: zerone.knowledge.v1.Msg.AcceptAugmentation:output_type -> zerone.knowledge.v1.MsgAcceptAugmentationResponse
+	66,  // 104: zerone.knowledge.v1.Msg.VoteOnAugmentation:output_type -> zerone.knowledge.v1.MsgVoteOnAugmentationResponse
+	68,  // 105: zerone.knowledge.v1.Msg.SponsorVetoAugmentation:output_type -> zerone.knowledge.v1.MsgSponsorVetoAugmentationResponse
+	70,  // 106: zerone.knowledge.v1.Msg.ChallengeContribution:output_type -> zerone.knowledge.v1.MsgChallengeContributionResponse
+	72,  // 107: zerone.knowledge.v1.Msg.ResolveContributionChallenge:output_type -> zerone.knowledge.v1.MsgResolveContributionChallengeResponse
+	74,  // 108: zerone.knowledge.v1.Msg.ClaimTrainingFundDisbursement:output_type -> zerone.knowledge.v1.MsgClaimTrainingFundDisbursementResponse
+	76,  // 109: zerone.knowledge.v1.Msg.AmendTraceSchema:output_type -> zerone.knowledge.v1.MsgAmendTraceSchemaResponse
+	78,  // 110: zerone.knowledge.v1.Msg.CreateTrainingManifest:output_type -> zerone.knowledge.v1.MsgCreateTrainingManifestResponse
+	80,  // 111: zerone.knowledge.v1.Msg.FinalizeTrainingManifest:output_type -> zerone.knowledge.v1.MsgFinalizeTrainingManifestResponse
+	82,  // 112: zerone.knowledge.v1.Msg.BindManifestToAttestation:output_type -> zerone.knowledge.v1.MsgBindManifestToAttestationResponse
+	84,  // 113: zerone.knowledge.v1.Msg.OpenIncident:output_type -> zerone.knowledge.v1.MsgOpenIncidentResponse
+	86,  // 114: zerone.knowledge.v1.Msg.RecordRemediation:output_type -> zerone.knowledge.v1.MsgRecordRemediationResponse
+	88,  // 115: zerone.knowledge.v1.Msg.ResolveIncident:output_type -> zerone.knowledge.v1.MsgResolveIncidentResponse
+	90,  // 116: zerone.knowledge.v1.Msg.CloseIncident:output_type -> zerone.knowledge.v1.MsgCloseIncidentResponse
+	92,  // 117: zerone.knowledge.v1.Msg.PauseModule:output_type -> zerone.knowledge.v1.MsgPauseModuleResponse
+	94,  // 118: zerone.knowledge.v1.Msg.UnpauseModule:output_type -> zerone.knowledge.v1.MsgUnpauseModuleResponse
+	96,  // 119: zerone.knowledge.v1.Msg.CorrectManifestMerkleRoot:output_type -> zerone.knowledge.v1.MsgCorrectManifestMerkleRootResponse
+	98,  // 120: zerone.knowledge.v1.Msg.VetoFactInjection:output_type -> zerone.knowledge.v1.MsgVetoFactInjectionResponse
+	100, // 121: zerone.knowledge.v1.Msg.AddConsequenceInstance:output_type -> zerone.knowledge.v1.MsgAddConsequenceInstanceResponse
+	102, // 122: zerone.knowledge.v1.Msg.SetVerifierOrganization:output_type -> zerone.knowledge.v1.MsgSetVerifierOrganizationResponse
+	108, // 123: zerone.knowledge.v1.Msg.SetAttentionalPractice:output_type -> zerone.knowledge.v1.MsgSetAttentionalPracticeResponse
+	110, // 124: zerone.knowledge.v1.Msg.SetContemplativeTradition:output_type -> zerone.knowledge.v1.MsgSetContemplativeTraditionResponse
+	106, // 125: zerone.knowledge.v1.Msg.PreRegisterClaim:output_type -> zerone.knowledge.v1.MsgPreRegisterClaimResponse
+	104, // 126: zerone.knowledge.v1.Msg.UpdateMethodology:output_type -> zerone.knowledge.v1.MsgUpdateMethodologyResponse
+	112, // 127: zerone.knowledge.v1.Msg.SuspendClaim:output_type -> zerone.knowledge.v1.MsgSuspendClaimResponse
+	114, // 128: zerone.knowledge.v1.Msg.ResumeClaim:output_type -> zerone.knowledge.v1.MsgResumeClaimResponse
+	72,  // [72:129] is the sub-list for method output_type
+	15,  // [15:72] is the sub-list for method input_type
 	15,  // [15:15] is the sub-list for extension type_name
 	15,  // [15:15] is the sub-list for extension extendee
 	0,   // [0:15] is the sub-list for field type_name
@@ -7611,7 +7755,7 @@ func file_zerone_knowledge_v1_tx_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_zerone_knowledge_v1_tx_proto_rawDesc), len(file_zerone_knowledge_v1_tx_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   113,
+			NumMessages:   115,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -71,6 +71,7 @@ const (
 	Msg_AddConsequenceInstance_FullMethodName        = "/zerone.knowledge.v1.Msg/AddConsequenceInstance"
 	Msg_SetVerifierOrganization_FullMethodName       = "/zerone.knowledge.v1.Msg/SetVerifierOrganization"
 	Msg_SetAttentionalPractice_FullMethodName        = "/zerone.knowledge.v1.Msg/SetAttentionalPractice"
+	Msg_SetContemplativeTradition_FullMethodName     = "/zerone.knowledge.v1.Msg/SetContemplativeTradition"
 	Msg_PreRegisterClaim_FullMethodName              = "/zerone.knowledge.v1.Msg/PreRegisterClaim"
 	Msg_UpdateMethodology_FullMethodName             = "/zerone.knowledge.v1.Msg/UpdateMethodology"
 	Msg_SuspendClaim_FullMethodName                  = "/zerone.knowledge.v1.Msg/SuspendClaim"
@@ -243,6 +244,12 @@ type MsgClient interface {
 	// authority override is available for governance-confirmed practitioners.
 	// Gate: Params.min_phenomenological_practice_hours gates M-PHENOMENOLOGICAL panels.
 	SetAttentionalPractice(ctx context.Context, in *MsgSetAttentionalPractice, opts ...grpc.CallOption) (*MsgSetAttentionalPracticeResponse, error)
+	// ─── Contemplative Traditions Gap 4: Cross-Tradition Convergence ──────────
+	// SetContemplativeTradition declares the lineage tradition within which a
+	// verifier's attentional practice took shape. Used to compute panel
+	// cross-tradition diversity scores on M-PHENOMENOLOGICAL claims.
+	// Self-declaration is permitted; authority override is available.
+	SetContemplativeTradition(ctx context.Context, in *MsgSetContemplativeTradition, opts ...grpc.CallOption) (*MsgSetContemplativeTraditionResponse, error)
 	// ─── Scientific Method Gap 3: Submission Bias / Pre-registration ─────────
 	// PreRegisterClaim anchors a claim intent on-chain before evidence collection.
 	// Corrects submission bias (p-hacking): the hypothesis is declared before the
@@ -797,6 +804,16 @@ func (c *msgClient) SetAttentionalPractice(ctx context.Context, in *MsgSetAttent
 	return out, nil
 }
 
+func (c *msgClient) SetContemplativeTradition(ctx context.Context, in *MsgSetContemplativeTradition, opts ...grpc.CallOption) (*MsgSetContemplativeTraditionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgSetContemplativeTraditionResponse)
+	err := c.cc.Invoke(ctx, Msg_SetContemplativeTradition_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *msgClient) PreRegisterClaim(ctx context.Context, in *MsgPreRegisterClaim, opts ...grpc.CallOption) (*MsgPreRegisterClaimResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MsgPreRegisterClaimResponse)
@@ -1003,6 +1020,12 @@ type MsgServer interface {
 	// authority override is available for governance-confirmed practitioners.
 	// Gate: Params.min_phenomenological_practice_hours gates M-PHENOMENOLOGICAL panels.
 	SetAttentionalPractice(context.Context, *MsgSetAttentionalPractice) (*MsgSetAttentionalPracticeResponse, error)
+	// ─── Contemplative Traditions Gap 4: Cross-Tradition Convergence ──────────
+	// SetContemplativeTradition declares the lineage tradition within which a
+	// verifier's attentional practice took shape. Used to compute panel
+	// cross-tradition diversity scores on M-PHENOMENOLOGICAL claims.
+	// Self-declaration is permitted; authority override is available.
+	SetContemplativeTradition(context.Context, *MsgSetContemplativeTradition) (*MsgSetContemplativeTraditionResponse, error)
 	// ─── Scientific Method Gap 3: Submission Bias / Pre-registration ─────────
 	// PreRegisterClaim anchors a claim intent on-chain before evidence collection.
 	// Corrects submission bias (p-hacking): the hypothesis is declared before the
@@ -1192,6 +1215,9 @@ func (UnimplementedMsgServer) SetVerifierOrganization(context.Context, *MsgSetVe
 }
 func (UnimplementedMsgServer) SetAttentionalPractice(context.Context, *MsgSetAttentionalPractice) (*MsgSetAttentionalPracticeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetAttentionalPractice not implemented")
+}
+func (UnimplementedMsgServer) SetContemplativeTradition(context.Context, *MsgSetContemplativeTradition) (*MsgSetContemplativeTraditionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetContemplativeTradition not implemented")
 }
 func (UnimplementedMsgServer) PreRegisterClaim(context.Context, *MsgPreRegisterClaim) (*MsgPreRegisterClaimResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method PreRegisterClaim not implemented")
@@ -2162,6 +2188,24 @@ func _Msg_SetAttentionalPractice_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Msg_SetContemplativeTradition_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgSetContemplativeTradition)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).SetContemplativeTradition(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_SetContemplativeTradition_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).SetContemplativeTradition(ctx, req.(*MsgSetContemplativeTradition))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Msg_PreRegisterClaim_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MsgPreRegisterClaim)
 	if err := dec(in); err != nil {
@@ -2448,6 +2492,10 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetAttentionalPractice",
 			Handler:    _Msg_SetAttentionalPractice_Handler,
+		},
+		{
+			MethodName: "SetContemplativeTradition",
+			Handler:    _Msg_SetContemplativeTradition_Handler,
 		},
 		{
 			MethodName: "PreRegisterClaim",

@@ -2010,6 +2010,13 @@ A verifier's contemplative practice hours were recorded or updated (Contemplativ
 - `action` -- `"self_declared"` or `"authority_override"`
 - `sender` -- address that submitted the message
 
+### zerone.knowledge.contemplative_tradition_set
+A verifier's contemplative lineage tradition was recorded or updated (Contemplative Traditions Gap 4). Fired by `MsgSetContemplativeTradition`. When `params.min_cross_tradition_diversity_bps > 0`, M-PHENOMENOLOGICAL panels must include verifiers from sufficiently diverse lineages (cross-tradition diversity score = distinct_tradition_count / total_verifiers × 1_000_000).
+- `verifier` -- verifier address whose tradition declaration was updated
+- `tradition` -- declared tradition string (e.g. "theravada", "tibetan", "zen", "sufi")
+- `action` -- `"self-declared"` or `"authority-override"`
+- `sender` -- address that submitted the message
+
 ### zerone.knowledge.verifier_organization_set
 A verifier's organizational affiliation was recorded or updated (Scientific Method Gap 1). Fired by `MsgSetVerifierOrganization`. Used by the panel diversity gate to compute organizational independence scores.
 - `verifier` -- verifier address whose affiliation was updated

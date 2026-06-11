@@ -224,6 +224,13 @@ service Msg {
   // Gate: Params.min_phenomenological_practice_hours gates M-PHENOMENOLOGICAL panels.
   rpc SetAttentionalPractice(MsgSetAttentionalPractice) returns (MsgSetAttentionalPracticeResponse);
 
+  // ─── Contemplative Traditions Gap 4: Cross-Tradition Convergence ──────────
+  // SetContemplativeTradition declares the lineage tradition within which a
+  // verifier's attentional practice took shape. Used to compute panel
+  // cross-tradition diversity scores on M-PHENOMENOLOGICAL claims.
+  // Self-declaration is permitted; authority override is available.
+  rpc SetContemplativeTradition(MsgSetContemplativeTradition) returns (MsgSetContemplativeTraditionResponse);
+
   // ─── Scientific Method Gap 3: Submission Bias / Pre-registration ─────────
   // PreRegisterClaim anchors a claim intent on-chain before evidence collection.
   // Corrects submission bias (p-hacking): the hypothesis is declared before the
@@ -1121,6 +1128,29 @@ message MsgSetAttentionalPracticeResponse {
   string verifier_address = 1;
   uint64 practice_hours   = 2;
   bool   verified         = 3; // true when set by governance authority, false for self-declaration
+}
+
+// MsgSetContemplativeTradition declares or updates a verifier's contemplative
+// tradition affiliation. Used to compute cross-tradition diversity scores on
+// M-PHENOMENOLOGICAL panels when Params.min_cross_tradition_diversity_bps is set.
+//
+// Recommended vocabulary: "theravada", "tibetan", "zen", "sufi",
+// "christian_contemplative", "vipassana", "secular_mindfulness".
+// Governance may publish a canonical list but the chain does not validate the string.
+//
+// Authorization:
+//   - Self-declaration: sender == verifier_address
+//   - Authority override: sender == governance authority (requires rationale)
+message MsgSetContemplativeTradition {
+  string sender              = 1; // tx signer
+  string verifier_address    = 2; // verifier whose tradition is being declared
+  string tradition           = 3; // tradition string (free-form, governance vocabulary recommended)
+  string rationale           = 4; // required for authority override; optional for self-declaration
+}
+
+message MsgSetContemplativeTraditionResponse {
+  string verifier_address = 1;
+  string tradition        = 2;
 }
 
 // ── Bohmian Suspension (Bohm Dialogue Gap 1) ──────────────────────────────────

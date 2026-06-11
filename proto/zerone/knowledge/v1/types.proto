@@ -926,6 +926,21 @@ message AgentCalibration {
   // Non-empty = governance-confirmed practice depth. Used for auditing and
   // for higher-confidence qualification tiers (if governance enables them).
   string attentional_practice_verified_by = 27;
+
+  // contemplative_tradition: the tradition within which this verifier's
+  // attentional practice took shape (e.g. "theravada", "tibetan", "zen",
+  // "sufi", "christian_contemplative", "vipassana", "secular_mindfulness").
+  // Governance-defined vocabulary is recommended but not enforced at the
+  // proto layer — the chain stores whatever string is submitted.
+  //
+  // Used for cross-tradition diversity scoring on M-PHENOMENOLOGICAL panels:
+  // independent confirmation from practitioners across lineages is treated as
+  // stronger evidence than same-tradition consensus (lineage-corroboration
+  // replication analogue from Scientific Method Gap 1).
+  //
+  // Empty = tradition unknown (treated as unique singleton for scoring —
+  // fail-open). Contemplative Traditions Brief Gap 4 (★★☆☆☆).
+  string contemplative_tradition = 28;
 }
 
 // CalibrationBucket tracks prediction hit-rates within a confidence band.
@@ -1428,6 +1443,16 @@ message VerificationRound {
   // Set by CompleteRound when Verdict = VERDICT_REJECT. UNSPECIFIED otherwise.
   // Hegelian Dialectic Brief — determinate negation.
   DeterminateNegationType determinate_negation_type = 17;
+
+  // cross_tradition_score_bps: panel cross-tradition diversity score, in BPS
+  // (0–1_000_000). Computed at aggregation as:
+  //   distinct_tradition_count × 1_000_000 / total_verifiers
+  // where an empty/unknown tradition counts as a unique singleton.
+  // Only meaningful for M-PHENOMENOLOGICAL claims; set to 0 for all others.
+  // Stored for audit. Gate: if Params.min_cross_tradition_diversity_bps > 0 and
+  // score < threshold, ACCEPT → INCONCLUSIVE.
+  // Contemplative Traditions Brief Gap 4 (★★☆☆☆).
+  uint64 cross_tradition_score_bps = 18;
 }
 
 // CommitEntry records a validator's blinded commitment (SHA-256(vote || salt)).
