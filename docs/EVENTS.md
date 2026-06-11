@@ -1916,6 +1916,43 @@ A null-result credit was paid to a submitter whose claim was rejected but had de
 - `claim_id` -- rejected claim that triggered the credit
 - `refutation_conditions_count` -- number of declared falsification conditions on the claim
 
+### zerone.knowledge.claim_pre_registered
+A hypothesis was anchored on-chain before evidence collection (Scientific Method Gap 3). Fired by `MsgPreRegisterClaim` when a submitter creates a pre-registration to prove temporal priority of their hypothesis.
+- `pre_registration_id` -- unique identifier for this pre-registration record
+- `submitter` -- address creating the pre-registration
+- `domain` -- knowledge domain the claim will be submitted under
+- `methodology_id` -- expected methodology for the eventual claim
+- `expiry_block` -- block height at which the pre-registration expires if unfulfilled
+- `bond_amount` -- bond escrowed in uzrn (returned on fulfillment, forfeited on expiry)
+
+### zerone.knowledge.pre_registration_expired
+A pre-registration was not fulfilled before its expiry block and the bond was forfeited to the research fund (Scientific Method Gap 3). Fired by BeginBlock when processing expired pre-registrations.
+- `pre_registration_id` -- identifier of the expired pre-registration
+- `submitter` -- address whose bond was forfeited
+- `bond_forfeited` -- forfeited bond amount in uzrn
+
+### zerone.knowledge.attentional_practice_set
+A verifier's contemplative practice hours were recorded or updated (Contemplative Traditions Gap 2). Fired by `MsgSetAttentionalPractice`. When `params.min_phenomenological_practice_hours > 0`, verifiers must meet the declared threshold to join M-PHENOMENOLOGICAL panels.
+- `verifier` -- verifier address whose practice record was updated
+- `practice_hours` -- total declared hours of contemplative practice
+- `action` -- `"self_declared"` or `"authority_override"`
+- `sender` -- address that submitted the message
+
+### zerone.knowledge.verifier_organization_set
+A verifier's organizational affiliation was recorded or updated (Scientific Method Gap 1). Fired by `MsgSetVerifierOrganization`. Used by the panel diversity gate to compute organizational independence scores.
+- `verifier` -- verifier address whose affiliation was updated
+- `organization_id` -- declared organizational identifier
+- `action` -- `"self_declared"` or `"authority_override"`
+- `sender` -- address that submitted the message
+
+### zerone.knowledge.methodology_amended
+A registered methodology was amended by governance (Scientific Method Gap 2). Fired by `MsgUpdateMethodology`. Version is auto-incremented; the amendment rationale is stored on-chain.
+- `methodology_id` -- identifier of the amended methodology
+- `new_version` -- incremented version number after the amendment
+- `ratified_at_block` -- block height at which the amendment was ratified
+- `authority` -- governance authority address that submitted the amendment
+- `rationale` -- free-form rationale for the amendment
+
 
 ## liquiditypool
 
@@ -2556,6 +2593,18 @@ A validator operator deposited uzrn into their per-validator insurance fund (Sla
 - `operator` -- validator operator address
 - `amount` -- amount deposited in uzrn
 - `new_balance` -- total insurance fund balance after deposit
+
+### zerone.staking.validator_tombstoned
+A validator was permanently banned from the active set due to repeated slashing (Slashing Gap 1). Tombstoning requires governance intervention (`MsgUntombstoneValidator`) to lift; it is stronger than jailing which is cleared automatically.
+- `validator` -- operator address of the tombstoned validator
+- `slash_count` -- cumulative slash count that triggered tombstoning
+- `tombstoned_at` -- block height at which tombstoning was applied
+
+### zerone.staking.validator_untombstoned
+A tombstoned validator was reinstated by governance (Slashing Gap 1). Untombstoning clears the tombstone flag but does not automatically reactivate the validator; they must re-register or be re-elected.
+- `validator` -- operator address of the reinstated validator
+- `authority` -- governance authority address that submitted `MsgUntombstoneValidator`
+- `reason` -- stated reason for reinstatement
 
 ---
 
