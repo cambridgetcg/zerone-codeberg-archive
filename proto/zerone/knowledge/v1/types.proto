@@ -454,6 +454,22 @@ message Fact {
   // challenges). This field encodes HOW CONVINCINGLY each challenge was
   // defeated, not just how many were.
   uint64 corroboration_severity_score_bps = 80;
+
+  // ── Hegelian Aufhebung (Sublation) — Hegelian Dialectic Gap 2 ─────────────
+  //
+  // sublated_claim_ids: the IDs of REJECTED claims whose content has been
+  // sublated (aufgehoben) by this Fact. The inverse of Claim.sublation_successor_fact_id.
+  //
+  // Hegel: sublation simultaneously cancels, preserves, and elevates. When a
+  // claim is REJECTED but an accepted Fact contradicted it, the Fact is the
+  // higher-order determination. Its sublated_claim_ids records which claims
+  // contributed content it absorbed — making the Hegelian lineage visible and
+  // auditable. A Fact with many sublated claims has achieved rich Aufhebung:
+  // many prior inadequate attempts whose essence it carries forward.
+  //
+  // Populated by CompleteRound REJECT path when sublation is detected.
+  // Appended — never overwritten.
+  repeated string sublated_claim_ids = 81;
 }
 
 // CurriculumTier orders training examples by difficulty and foundational depth.
@@ -1124,6 +1140,31 @@ message Claim {
   // submitter) whose canonical form opposes the new claim's canonical form.
   // Empty when is_self_contradictory = false. Non-empty ↔ is_self_contradictory.
   string self_contradiction_fact_id = 42;
+
+  // ── Hegelian Aufhebung (Sublation) — Hegelian Dialectic Gap 2 ─────────────
+  //
+  // sublation_successor_fact_id: the ID of the accepted Fact that "sublates"
+  // this rejected claim — absorbing its content while transcending its
+  // inadequacy. Hegel (Science of Logic): "That which is sublated is thus
+  // something at the same time preserved, something that has lost its
+  // immediacy but has not come to nothing for that."
+  //
+  // This is NOT a "the claim was wrong, end of story." It is the positive
+  // link forward: the rejected claim's content is preserved in the superior
+  // determination. The chain records WHO achieved the Aufhebung.
+  //
+  // Detection priority:
+  //   1. Claim.conflicting_fact_id (canonical-form opposition — most precise)
+  //   2. Claim.self_contradiction_fact_id (submitter-scope Socratic sublation)
+  //   3. Scan Claim.relations for CONTRADICTS → accepted Fact (broadest)
+  //
+  // Empty when: claim is not REJECTED, or no contradicted accepted Fact was found.
+  // Set in CompleteRound REJECT path. Non-blocking — does not affect the verdict.
+  string sublation_successor_fact_id = 45;
+
+  // sublation_at_block: block height at which the sublation link was established.
+  // Zero when sublation_successor_fact_id is empty.
+  uint64 sublation_at_block = 46;
 
   // ── Bohmian Dialogue: Suspension (Bohm Gap 1) ─────────────────────────────
   //

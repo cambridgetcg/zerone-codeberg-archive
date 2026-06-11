@@ -1376,6 +1376,18 @@ hash. Detection is informational — the claim proceeds to PoT regardless.
 
 ---
 
+### zerone.knowledge.hegelian_sublation
+*Tx (CompleteRound REJECT path).* A rejected claim has been linked to its
+Hegelian sublation successor — the accepted Fact that absorbed the claim's
+content while transcending its inadequacy. Hegel: "That which is sublated is
+something at the same time preserved, something that has lost its immediacy
+but has not come to nothing for that." (Hegelian Dialectic Gap 2.)
+
+Detection priority: (1) Claim.conflicting_fact_id (canonical-form opposition),
+(2) Claim.self_contradiction_fact_id (Socratic scope), (3) CONTRADICTS relation.
+- `rejected_claim_id` -- ID of the rejected claim
+- `sublation_successor_fact_id` -- ID of the accepted Fact that achieved the Aufhebung
+
 ### zerone.knowledge.claim_suspended
 *Tx (MsgSuspendClaim).* Governance places a claim into CLAIM_STATUS_SUSPENDED —
 a Bohmian mirror-state where the claim is held visible without being acted upon.

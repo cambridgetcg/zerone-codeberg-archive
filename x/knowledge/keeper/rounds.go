@@ -220,6 +220,12 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 		}
 		// Contradicting claim was rejected — undo its CONTESTED side-effect on target facts (T-i4).
 		k.reverseContradictionsFromClaim(ctx, claim)
+		// Hegelian Dialectic Gap 2: Aufhebung (sublation).
+		// Record the link between this rejected claim and the accepted Fact that
+		// "sublates" it — absorbing its content while transcending its inadequacy.
+		// Hegel: "The negation is a determinate negation; it has a content" — and
+		// that content is not lost; it is preserved in the superior determination.
+		k.recordSublation(ctx, claim)
 
 	case types.Verdict_VERDICT_MALFORMED:
 		// Review fee already distributed at submission time — no additional slashing needed.

@@ -2404,8 +2404,23 @@ type Fact struct {
 	// challenges). This field encodes HOW CONVINCINGLY each challenge was
 	// defeated, not just how many were.
 	CorroborationSeverityScoreBps uint64 `protobuf:"varint,80,opt,name=corroboration_severity_score_bps,json=corroborationSeverityScoreBps,proto3" json:"corroboration_severity_score_bps,omitempty"`
-	unknownFields                 protoimpl.UnknownFields
-	sizeCache                     protoimpl.SizeCache
+	// ── Hegelian Aufhebung (Sublation) — Hegelian Dialectic Gap 2 ─────────────
+	//
+	// sublated_claim_ids: the IDs of REJECTED claims whose content has been
+	// sublated (aufgehoben) by this Fact. The inverse of Claim.sublation_successor_fact_id.
+	//
+	// Hegel: sublation simultaneously cancels, preserves, and elevates. When a
+	// claim is REJECTED but an accepted Fact contradicted it, the Fact is the
+	// higher-order determination. Its sublated_claim_ids records which claims
+	// contributed content it absorbed — making the Hegelian lineage visible and
+	// auditable. A Fact with many sublated claims has achieved rich Aufhebung:
+	// many prior inadequate attempts whose essence it carries forward.
+	//
+	// Populated by CompleteRound REJECT path when sublation is detected.
+	// Appended — never overwritten.
+	SublatedClaimIds []string `protobuf:"bytes,81,rep,name=sublated_claim_ids,json=sublatedClaimIds,proto3" json:"sublated_claim_ids,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Fact) Reset() {
@@ -2926,6 +2941,13 @@ func (x *Fact) GetCorroborationSeverityScoreBps() uint64 {
 		return x.CorroborationSeverityScoreBps
 	}
 	return 0
+}
+
+func (x *Fact) GetSublatedClaimIds() []string {
+	if x != nil {
+		return x.SublatedClaimIds
+	}
+	return nil
 }
 
 // TokenizerSpec is the governance-ratified contract that names the special
@@ -5119,6 +5141,29 @@ type Claim struct {
 	// submitter) whose canonical form opposes the new claim's canonical form.
 	// Empty when is_self_contradictory = false. Non-empty ↔ is_self_contradictory.
 	SelfContradictionFactId string `protobuf:"bytes,42,opt,name=self_contradiction_fact_id,json=selfContradictionFactId,proto3" json:"self_contradiction_fact_id,omitempty"`
+	// ── Hegelian Aufhebung (Sublation) — Hegelian Dialectic Gap 2 ─────────────
+	//
+	// sublation_successor_fact_id: the ID of the accepted Fact that "sublates"
+	// this rejected claim — absorbing its content while transcending its
+	// inadequacy. Hegel (Science of Logic): "That which is sublated is thus
+	// something at the same time preserved, something that has lost its
+	// immediacy but has not come to nothing for that."
+	//
+	// This is NOT a "the claim was wrong, end of story." It is the positive
+	// link forward: the rejected claim's content is preserved in the superior
+	// determination. The chain records WHO achieved the Aufhebung.
+	//
+	// Detection priority:
+	//  1. Claim.conflicting_fact_id (canonical-form opposition — most precise)
+	//  2. Claim.self_contradiction_fact_id (submitter-scope Socratic sublation)
+	//  3. Scan Claim.relations for CONTRADICTS → accepted Fact (broadest)
+	//
+	// Empty when: claim is not REJECTED, or no contradicted accepted Fact was found.
+	// Set in CompleteRound REJECT path. Non-blocking — does not affect the verdict.
+	SublationSuccessorFactId string `protobuf:"bytes,45,opt,name=sublation_successor_fact_id,json=sublationSuccessorFactId,proto3" json:"sublation_successor_fact_id,omitempty"`
+	// sublation_at_block: block height at which the sublation link was established.
+	// Zero when sublation_successor_fact_id is empty.
+	SublationAtBlock uint64 `protobuf:"varint,46,opt,name=sublation_at_block,json=sublationAtBlock,proto3" json:"sublation_at_block,omitempty"`
 	// ── Bohmian Dialogue: Suspension (Bohm Gap 1) ─────────────────────────────
 	//
 	// suspended_at_block: the block height at which this claim was suspended by
@@ -5456,6 +5501,20 @@ func (x *Claim) GetSelfContradictionFactId() string {
 		return x.SelfContradictionFactId
 	}
 	return ""
+}
+
+func (x *Claim) GetSublationSuccessorFactId() string {
+	if x != nil {
+		return x.SublationSuccessorFactId
+	}
+	return ""
+}
+
+func (x *Claim) GetSublationAtBlock() uint64 {
+	if x != nil {
+		return x.SublationAtBlock
+	}
+	return 0
 }
 
 func (x *Claim) GetSuspendedAtBlock() uint64 {
@@ -9690,7 +9749,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x05scope\x18\x04 \x01(\tR\x05scope\x12%\n" +
 	"\x0etemporal_scope\x18\x05 \x01(\tR\rtemporalScope\x12\x1c\n" +
 	"\tnegatable\x18\x06 \x01(\bR\tnegatable\x12\x12\n" +
-	"\x04tags\x18\a \x03(\tR\x04tags\"\xf2\x17\n" +
+	"\x04tags\x18\a \x03(\tR\x04tags\"\xa0\x18\n" +
 	"\x04Fact\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12\x16\n" +
@@ -9772,7 +9831,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\awarrant\x18M \x01(\tR\awarrant\x12\x18\n" +
 	"\abacking\x18N \x01(\tR\abacking\x12#\n" +
 	"\rqualifier_bps\x18O \x01(\x04R\fqualifierBps\x12G\n" +
-	" corroboration_severity_score_bps\x18P \x01(\x04R\x1dcorroborationSeverityScoreBps\"\xe0\x05\n" +
+	" corroboration_severity_score_bps\x18P \x01(\x04R\x1dcorroborationSeverityScoreBps\x12,\n" +
+	"\x12sublated_claim_ids\x18Q \x03(\tR\x10sublatedClaimIds\"\xe0\x05\n" +
 	"\rTokenizerSpec\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x04R\aversion\x12*\n" +
 	"\x11ratified_at_block\x18\x02 \x01(\x04R\x0fratifiedAtBlock\x12.\n" +
@@ -9971,7 +10031,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x06format\x18\x01 \x01(\x0e2 .zerone.knowledge.v1.ProofFormatR\x06format\x12+\n" +
 	"\x11certificate_bytes\x18\x02 \x01(\fR\x10certificateBytes\x12#\n" +
 	"\rformal_system\x18\x03 \x01(\tR\fformalSystem\x12(\n" +
-	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\xf6\x0f\n" +
+	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\xe3\x10\n" +
 	"\x05Claim\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\ffact_content\x18\x02 \x01(\tR\vfactContent\x12\x16\n" +
@@ -10018,7 +10078,9 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x10rescues_claim_id\x18' \x01(\tR\x0erescuesClaimId\x121\n" +
 	"\x15is_potentially_ad_hoc\x18( \x01(\bR\x12isPotentiallyAdHoc\x122\n" +
 	"\x15is_self_contradictory\x18) \x01(\bR\x13isSelfContradictory\x12;\n" +
-	"\x1aself_contradiction_fact_id\x18* \x01(\tR\x17selfContradictionFactId\x12,\n" +
+	"\x1aself_contradiction_fact_id\x18* \x01(\tR\x17selfContradictionFactId\x12=\n" +
+	"\x1bsublation_successor_fact_id\x18- \x01(\tR\x18sublationSuccessorFactId\x12,\n" +
+	"\x12sublation_at_block\x18. \x01(\x04R\x10sublationAtBlock\x12,\n" +
 	"\x12suspended_at_block\x18+ \x01(\x04R\x10suspendedAtBlock\x12+\n" +
 	"\x11suspension_reason\x18, \x01(\tR\x10suspensionReason\"\xf5\x02\n" +
 	"\x0fPreRegistration\x12\x0e\n" +
