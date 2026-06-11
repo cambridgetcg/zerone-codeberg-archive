@@ -70,6 +70,7 @@ const (
 	Msg_VetoFactInjection_FullMethodName             = "/zerone.knowledge.v1.Msg/VetoFactInjection"
 	Msg_AddConsequenceInstance_FullMethodName        = "/zerone.knowledge.v1.Msg/AddConsequenceInstance"
 	Msg_SetVerifierOrganization_FullMethodName       = "/zerone.knowledge.v1.Msg/SetVerifierOrganization"
+	Msg_PreRegisterClaim_FullMethodName              = "/zerone.knowledge.v1.Msg/PreRegisterClaim"
 	Msg_UpdateMethodology_FullMethodName             = "/zerone.knowledge.v1.Msg/UpdateMethodology"
 )
 
@@ -233,6 +234,13 @@ type MsgClient interface {
 	// The organization_id is stored in the verifier's AgentCalibration record and
 	// used to compute panel_diversity_score_bps at CompleteRound.
 	SetVerifierOrganization(ctx context.Context, in *MsgSetVerifierOrganization, opts ...grpc.CallOption) (*MsgSetVerifierOrganizationResponse, error)
+	// ─── Scientific Method Gap 3: Submission Bias / Pre-registration ─────────
+	// PreRegisterClaim anchors a claim intent on-chain before evidence collection.
+	// Corrects submission bias (p-hacking): the hypothesis is declared before the
+	// result is known, creating an unforgeable temporal anchor that proves the
+	// claim was not selected post-hoc from a distribution of tested hypotheses.
+	// Pre-registered claims may receive a review fee discount (Params.pre_registration_discount_bps).
+	PreRegisterClaim(ctx context.Context, in *MsgPreRegisterClaim, opts ...grpc.CallOption) (*MsgPreRegisterClaimResponse, error)
 	// ─── Scientific Method Gap 2: Methodology Governance ─────────────────────
 	// UpdateMethodology amends an existing methodology definition via governance
 	// proposal. Provides Kuhn's "revolutionary science" path: the on-chain
@@ -763,6 +771,16 @@ func (c *msgClient) SetVerifierOrganization(ctx context.Context, in *MsgSetVerif
 	return out, nil
 }
 
+func (c *msgClient) PreRegisterClaim(ctx context.Context, in *MsgPreRegisterClaim, opts ...grpc.CallOption) (*MsgPreRegisterClaimResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgPreRegisterClaimResponse)
+	err := c.cc.Invoke(ctx, Msg_PreRegisterClaim_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *msgClient) UpdateMethodology(ctx context.Context, in *MsgUpdateMethodology, opts ...grpc.CallOption) (*MsgUpdateMethodologyResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MsgUpdateMethodologyResponse)
@@ -933,6 +951,13 @@ type MsgServer interface {
 	// The organization_id is stored in the verifier's AgentCalibration record and
 	// used to compute panel_diversity_score_bps at CompleteRound.
 	SetVerifierOrganization(context.Context, *MsgSetVerifierOrganization) (*MsgSetVerifierOrganizationResponse, error)
+	// ─── Scientific Method Gap 3: Submission Bias / Pre-registration ─────────
+	// PreRegisterClaim anchors a claim intent on-chain before evidence collection.
+	// Corrects submission bias (p-hacking): the hypothesis is declared before the
+	// result is known, creating an unforgeable temporal anchor that proves the
+	// claim was not selected post-hoc from a distribution of tested hypotheses.
+	// Pre-registered claims may receive a review fee discount (Params.pre_registration_discount_bps).
+	PreRegisterClaim(context.Context, *MsgPreRegisterClaim) (*MsgPreRegisterClaimResponse, error)
 	// ─── Scientific Method Gap 2: Methodology Governance ─────────────────────
 	// UpdateMethodology amends an existing methodology definition via governance
 	// proposal. Provides Kuhn's "revolutionary science" path: the on-chain
@@ -1105,6 +1130,9 @@ func (UnimplementedMsgServer) AddConsequenceInstance(context.Context, *MsgAddCon
 }
 func (UnimplementedMsgServer) SetVerifierOrganization(context.Context, *MsgSetVerifierOrganization) (*MsgSetVerifierOrganizationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetVerifierOrganization not implemented")
+}
+func (UnimplementedMsgServer) PreRegisterClaim(context.Context, *MsgPreRegisterClaim) (*MsgPreRegisterClaimResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PreRegisterClaim not implemented")
 }
 func (UnimplementedMsgServer) UpdateMethodology(context.Context, *MsgUpdateMethodology) (*MsgUpdateMethodologyResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateMethodology not implemented")
@@ -2048,6 +2076,24 @@ func _Msg_SetVerifierOrganization_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Msg_PreRegisterClaim_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgPreRegisterClaim)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).PreRegisterClaim(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_PreRegisterClaim_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).PreRegisterClaim(ctx, req.(*MsgPreRegisterClaim))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Msg_UpdateMethodology_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MsgUpdateMethodology)
 	if err := dec(in); err != nil {
@@ -2276,6 +2322,10 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetVerifierOrganization",
 			Handler:    _Msg_SetVerifierOrganization_Handler,
+		},
+		{
+			MethodName: "PreRegisterClaim",
+			Handler:    _Msg_PreRegisterClaim_Handler,
 		},
 		{
 			MethodName: "UpdateMethodology",

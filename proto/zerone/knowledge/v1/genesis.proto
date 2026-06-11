@@ -473,6 +473,22 @@ message Params {
   // produces false confidence. Three verifiers from the same institution or
   // trained on the same corpus are not three independent assessments.
   uint64 min_panel_diversity_bps = 177; // default: 0 (disabled)
+
+  // Scientific Method Gap 3: Submission Bias / Pre-registration.
+  // Bond required to pre-register a claim intent (uzrn). Escrowed on
+  // MsgPreRegisterClaim, returned on MsgSubmitClaim fulfillment, forfeited
+  // to research_fund on expiry. 0 = disabled (no bond, no forfeiture).
+  string pre_registration_bond_uzrn = 178; // default: "" (disabled)
+
+  // How many blocks a pre-registration is valid before it expires.
+  // If 0, pre-registrations never expire (bond held indefinitely until fulfilled).
+  // Typical setting: 7200 blocks ≈ 12 hours at 6-second block time.
+  uint64 pre_registration_expiry_blocks = 179; // default: 0 (no expiry)
+
+  // Discount on the effective minimum review fee for pre-registered claims.
+  // 0 = no discount. 100_000 = 10% off. Max 500_000 (50%).
+  // Applied as: discounted_min = min * (1_000_000 - discount) / 1_000_000.
+  uint64 pre_registration_discount_bps = 180; // default: 0 (no discount)
 }
 
 // GenesisState is the genesis state of the knowledge module.
@@ -511,6 +527,10 @@ message GenesisState {
 
   // Agent calibration (Phase 5) — also Route-B-adjacent.
   repeated AgentCalibration     agent_calibrations     = 50;
+
+  // Scientific Method Gap 3: pre-registrations for state round-trip.
+  // Unfulfilled pre-registrations with active bonds must survive chain restarts.
+  repeated PreRegistration      pre_registrations      = 55;
 
   // Training fund initial balance (uzrn, minted on InitGenesis; analogous
   // to bootstrap_fund_allocation but for the KnowledgeTrainingFund module

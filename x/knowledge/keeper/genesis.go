@@ -227,6 +227,15 @@ func (k Keeper) InitGenesis(ctx context.Context, gs *types.GenesisState) error {
 		}
 	}
 
+	// Scientific Method Gap 3: restore pre-registrations.
+	for _, pr := range gs.PreRegistrations {
+		if pr != nil {
+			if err := k.SetPreRegistration(ctx, pr); err != nil {
+				return fmt.Errorf("import pre-registration %s: %w", pr.Id, err)
+			}
+		}
+	}
+
 	// Fund the training fund if an allocation is declared (Wave 4 +).
 	if gs.TrainingFundAllocation != "" && gs.TrainingFundAllocation != "0" {
 		alloc, ok := new(big.Int).SetString(gs.TrainingFundAllocation, 10)
@@ -393,6 +402,7 @@ func (k Keeper) ExportGenesis(ctx context.Context) *types.GenesisState {
 		TrainingManifests:         manifests,
 		AgentCalibrations:         calibrations,
 		TrainingFundAllocation:    trainingFundAllocation,
+		PreRegistrations:          k.GetAllPreRegistrations(ctx),
 	}
 }
 

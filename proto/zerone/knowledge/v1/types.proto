@@ -844,6 +844,58 @@ message Claim {
   // This comment is theory-laden. So is this field. So is the claim
   // that it isn't. Kuhn sends his regards.
   string theoretical_framework = 29;
+
+  // pre_registration_id: if non-empty, this claim was submitted after a
+  // pre-registration anchor that declared the hypothesis before evidence
+  // collection. The pre-registration proves temporal priority — the claim
+  // intent was committed on-chain before the evidence was gathered.
+  // Scientific Method Gap 3: corrects submission bias / p-hacking by
+  // creating an unforgeable timestamp that pre-dates the result.
+  string pre_registration_id = 30;
+
+  // pre_registered_at_block: the block height at which the pre-registration
+  // that anchored this claim was created. Copied from PreRegistration at
+  // MsgSubmitClaim time for denormalized auditability.
+  uint64 pre_registered_at_block = 31;
+}
+
+// PreRegistration records a submitter's declared intent to submit a claim
+// before collecting evidence. Scientific Method Gap 3: corrects submission bias /
+// p-hacking by anchoring the hypothesis on-chain with a timestamp that
+// predates evidence collection. Analogous to clinical trial pre-registration
+// (ClinicalTrials.gov) or OSF pre-registration in social science.
+//
+// Lifecycle: OPEN → FULFILLED (via MsgSubmitClaim.pre_registration_id) or EXPIRED
+// (via EndBlock when expiry_block is reached and the claim was never submitted).
+// Expired pre-registrations with bonds forfeit the bond to the research fund.
+message PreRegistration {
+  // id: unique identifier. Format: "prereg-{hex8}-{block}".
+  string id               = 1;
+  // submitter: the account that created this pre-registration.
+  string submitter        = 2;
+  // claim_intent: free-form description of the intended claim. This is the
+  // hypothesis as declared before evidence collection — the temporal anchor.
+  string claim_intent     = 3;
+  // methodology_id: the methodology under which the claim will be submitted.
+  string methodology_id   = 4;
+  // domain: the domain into which the claim will be submitted.
+  string domain           = 5;
+  // expiry_block: the block height at which this pre-registration expires.
+  // 0 = no expiry (held until fulfilled, or chain governance cleans up).
+  uint64 expiry_block     = 6;
+  // bond_amount: amount escrowed in uzrn. "0" or "" = no bond.
+  string bond_amount      = 7;
+  // created_at_block: the block at which the pre-registration was created.
+  // This is the unforgeable timestamp proving prior declaration.
+  uint64 created_at_block = 8;
+  // fulfilled: true when a MsgSubmitClaim has referenced this pre-registration.
+  bool   fulfilled        = 9;
+  // fulfilled_claim_id: the claim ID that fulfilled this pre-registration.
+  // Empty until fulfilled.
+  string fulfilled_claim_id = 10;
+  // expired: true when the pre-registration expired without fulfillment.
+  // Bonds are forfeited at expiry.
+  bool   expired          = 11;
 }
 
 // ConsequenceInstance records a single validated application of an M-PRAGMATIC claim.

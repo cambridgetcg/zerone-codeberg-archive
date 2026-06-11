@@ -446,8 +446,21 @@ type Params struct {
 	// produces false confidence. Three verifiers from the same institution or
 	// trained on the same corpus are not three independent assessments.
 	MinPanelDiversityBps uint64 `protobuf:"varint,177,opt,name=min_panel_diversity_bps,json=minPanelDiversityBps,proto3" json:"min_panel_diversity_bps,omitempty"` // default: 0 (disabled)
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Scientific Method Gap 3: Submission Bias / Pre-registration.
+	// Bond required to pre-register a claim intent (uzrn). Escrowed on
+	// MsgPreRegisterClaim, returned on MsgSubmitClaim fulfillment, forfeited
+	// to research_fund on expiry. 0 = disabled (no bond, no forfeiture).
+	PreRegistrationBondUzrn string `protobuf:"bytes,178,opt,name=pre_registration_bond_uzrn,json=preRegistrationBondUzrn,proto3" json:"pre_registration_bond_uzrn,omitempty"` // default: "" (disabled)
+	// How many blocks a pre-registration is valid before it expires.
+	// If 0, pre-registrations never expire (bond held indefinitely until fulfilled).
+	// Typical setting: 7200 blocks ≈ 12 hours at 6-second block time.
+	PreRegistrationExpiryBlocks uint64 `protobuf:"varint,179,opt,name=pre_registration_expiry_blocks,json=preRegistrationExpiryBlocks,proto3" json:"pre_registration_expiry_blocks,omitempty"` // default: 0 (no expiry)
+	// Discount on the effective minimum review fee for pre-registered claims.
+	// 0 = no discount. 100_000 = 10% off. Max 500_000 (50%).
+	// Applied as: discounted_min = min * (1_000_000 - discount) / 1_000_000.
+	PreRegistrationDiscountBps uint64 `protobuf:"varint,180,opt,name=pre_registration_discount_bps,json=preRegistrationDiscountBps,proto3" json:"pre_registration_discount_bps,omitempty"` // default: 0 (no discount)
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -1719,6 +1732,27 @@ func (x *Params) GetMinPanelDiversityBps() uint64 {
 	return 0
 }
 
+func (x *Params) GetPreRegistrationBondUzrn() string {
+	if x != nil {
+		return x.PreRegistrationBondUzrn
+	}
+	return ""
+}
+
+func (x *Params) GetPreRegistrationExpiryBlocks() uint64 {
+	if x != nil {
+		return x.PreRegistrationExpiryBlocks
+	}
+	return 0
+}
+
+func (x *Params) GetPreRegistrationDiscountBps() uint64 {
+	if x != nil {
+		return x.PreRegistrationDiscountBps
+	}
+	return 0
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -1746,6 +1780,9 @@ type GenesisState struct {
 	TrainingManifests         []*TrainingManifest         `protobuf:"bytes,48,rep,name=training_manifests,json=trainingManifests,proto3" json:"training_manifests,omitempty"`
 	// Agent calibration (Phase 5) — also Route-B-adjacent.
 	AgentCalibrations []*AgentCalibration `protobuf:"bytes,50,rep,name=agent_calibrations,json=agentCalibrations,proto3" json:"agent_calibrations,omitempty"`
+	// Scientific Method Gap 3: pre-registrations for state round-trip.
+	// Unfulfilled pre-registrations with active bonds must survive chain restarts.
+	PreRegistrations []*PreRegistration `protobuf:"bytes,55,rep,name=pre_registrations,json=preRegistrations,proto3" json:"pre_registrations,omitempty"`
 	// Training fund initial balance (uzrn, minted on InitGenesis; analogous
 	// to bootstrap_fund_allocation but for the KnowledgeTrainingFund module
 	// account).
@@ -1945,6 +1982,13 @@ func (x *GenesisState) GetAgentCalibrations() []*AgentCalibration {
 	return nil
 }
 
+func (x *GenesisState) GetPreRegistrations() []*PreRegistration {
+	if x != nil {
+		return x.PreRegistrations
+	}
+	return nil
+}
+
 func (x *GenesisState) GetTrainingFundAllocation() string {
 	if x != nil {
 		return x.TrainingFundAllocation
@@ -1956,7 +2000,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xe2W\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xaaY\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2135,10 +2179,13 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\x1daggregation_extremizing_alpha\x18\xae\x01 \x01(\x04R\x1baggregationExtremizingAlpha\x12N\n" +
 	"#min_pragmatic_consequence_instances\x18\xaf\x01 \x01(\x04R minPragmaticConsequenceInstances\x12L\n" +
 	"\"min_phenomenological_window_blocks\x18\xb0\x01 \x01(\x04R\x1fminPhenomenologicalWindowBlocks\x126\n" +
-	"\x17min_panel_diversity_bps\x18\xb1\x01 \x01(\x04R\x14minPanelDiversityBps\x1aN\n" +
+	"\x17min_panel_diversity_bps\x18\xb1\x01 \x01(\x04R\x14minPanelDiversityBps\x12<\n" +
+	"\x1apre_registration_bond_uzrn\x18\xb2\x01 \x01(\tR\x17preRegistrationBondUzrn\x12D\n" +
+	"\x1epre_registration_expiry_blocks\x18\xb3\x01 \x01(\x04R\x1bpreRegistrationExpiryBlocks\x12B\n" +
+	"\x1dpre_registration_discount_bps\x18\xb4\x01 \x01(\x04R\x1apreRegistrationDiscountBps\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xe5\x0e\n" +
+	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xb8\x0f\n" +
 	"\fGenesisState\x123\n" +
 	"\x06params\x18\x01 \x01(\v2\x1b.zerone.knowledge.v1.ParamsR\x06params\x12/\n" +
 	"\x05facts\x18\x02 \x03(\v2\x19.zerone.knowledge.v1.FactR\x05facts\x12A\n" +
@@ -2163,7 +2210,8 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\x17contribution_challenges\x18. \x03(\v2*.zerone.knowledge.v1.ContributionChallengeR\x16contributionChallenges\x12m\n" +
 	"\x1btraining_fund_disbursements\x18/ \x03(\v2-.zerone.knowledge.v1.TrainingFundDisbursementR\x19trainingFundDisbursements\x12T\n" +
 	"\x12training_manifests\x180 \x03(\v2%.zerone.knowledge.v1.TrainingManifestR\x11trainingManifests\x12T\n" +
-	"\x12agent_calibrations\x182 \x03(\v2%.zerone.knowledge.v1.AgentCalibrationR\x11agentCalibrations\x128\n" +
+	"\x12agent_calibrations\x182 \x03(\v2%.zerone.knowledge.v1.AgentCalibrationR\x11agentCalibrations\x12Q\n" +
+	"\x11pre_registrations\x187 \x03(\v2$.zerone.knowledge.v1.PreRegistrationR\x10preRegistrations\x128\n" +
 	"\x18training_fund_allocation\x18< \x01(\tR\x16trainingFundAllocationB2Z0github.com/zerone-chain/zerone/x/knowledge/typesb\x06proto3"
 
 var (
@@ -2202,6 +2250,7 @@ var file_zerone_knowledge_v1_genesis_proto_goTypes = []any{
 	(*TrainingFundDisbursement)(nil), // 19: zerone.knowledge.v1.TrainingFundDisbursement
 	(*TrainingManifest)(nil),         // 20: zerone.knowledge.v1.TrainingManifest
 	(*AgentCalibration)(nil),         // 21: zerone.knowledge.v1.AgentCalibration
+	(*PreRegistration)(nil),          // 22: zerone.knowledge.v1.PreRegistration
 }
 var file_zerone_knowledge_v1_genesis_proto_depIdxs = []int32{
 	2,  // 0: zerone.knowledge.v1.Params.methodology_normalization_bps:type_name -> zerone.knowledge.v1.Params.MethodologyNormalizationBpsEntry
@@ -2227,11 +2276,12 @@ var file_zerone_knowledge_v1_genesis_proto_depIdxs = []int32{
 	19, // 20: zerone.knowledge.v1.GenesisState.training_fund_disbursements:type_name -> zerone.knowledge.v1.TrainingFundDisbursement
 	20, // 21: zerone.knowledge.v1.GenesisState.training_manifests:type_name -> zerone.knowledge.v1.TrainingManifest
 	21, // 22: zerone.knowledge.v1.GenesisState.agent_calibrations:type_name -> zerone.knowledge.v1.AgentCalibration
-	23, // [23:23] is the sub-list for method output_type
-	23, // [23:23] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	22, // 23: zerone.knowledge.v1.GenesisState.pre_registrations:type_name -> zerone.knowledge.v1.PreRegistration
+	24, // [24:24] is the sub-list for method output_type
+	24, // [24:24] is the sub-list for method input_type
+	24, // [24:24] is the sub-list for extension type_name
+	24, // [24:24] is the sub-list for extension extendee
+	0,  // [0:24] is the sub-list for field type_name
 }
 
 func init() { file_zerone_knowledge_v1_genesis_proto_init() }

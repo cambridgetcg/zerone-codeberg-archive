@@ -71,6 +71,8 @@ func RegisterCodec(cdc *codec.LegacyAmino) {
 	cdc.RegisterConcrete(&MsgUpdateMethodology{}, "zerone_knowledge/UpdateMethodology", nil)
 	// Scientific Method Gap 1: Verifier Independence
 	cdc.RegisterConcrete(&MsgSetVerifierOrganization{}, "zerone_knowledge/SetVerifierOrganization", nil)
+	// Scientific Method Gap 3: Submission Bias / Pre-registration
+	cdc.RegisterConcrete(&MsgPreRegisterClaim{}, "zerone_knowledge/PreRegisterClaim", nil)
 }
 
 // RegisterInterfaces registers the knowledge module's interface implementations.
@@ -140,6 +142,8 @@ func RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
 		&MsgUpdateMethodology{},
 		// Scientific Method Gap 1: Verifier Independence
 		&MsgSetVerifierOrganization{},
+		// Scientific Method Gap 3: Submission Bias / Pre-registration
+		&MsgPreRegisterClaim{},
 	)
 }
 

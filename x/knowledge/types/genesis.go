@@ -889,5 +889,12 @@ func (p *Params) Validate() error {
 		return fmt.Errorf("aggregation_extremizing_alpha must be ≤ 10000 (α≤10.0); got %d", p.AggregationExtremizingAlpha)
 	}
 
+	// ─── Pre-registration discount (Scientific Method Gap 3) ─────────────────
+	// 0 = disabled. Max 500_000 (50%) — discount above 50% would make the
+	// effective minimum negligible and could be gamed for mass pre-registration.
+	if p.PreRegistrationDiscountBps > 500_000 {
+		return fmt.Errorf("pre_registration_discount_bps must be ≤ 500000 (50%%); got %d", p.PreRegistrationDiscountBps)
+	}
+
 	return nil
 }

@@ -103,6 +103,11 @@ func (k Keeper) BeginBlocker(ctx context.Context) error {
 	// does not exist in state — guardians can still cancel.
 	k.MaterializeMaturedFactInjections(ctx, height)
 
+	// Scientific Method Gap 3: process expired pre-registrations.
+	// Bond forfeiture to research_fund; marks expired records so they
+	// cannot be fulfilled. Non-fatal — never blocks consensus.
+	k.ProcessExpiredPreRegistrations(ctx)
+
 	return nil
 }
 

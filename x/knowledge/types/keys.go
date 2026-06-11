@@ -202,6 +202,10 @@ var (
 	PrivilegedActionKeyPrefix       = []byte{0x78} // 0x78 | be64(seq) → PrivilegedAction
 	PrivilegedActionSeqKey          = []byte{0x79} // singleton: next-seq counter (uvarint)
 
+	// ─── Scientific Method Gap 3: pre-registration ───────────────────
+	PreRegistrationKeyPrefix         = []byte{0x7A} // 0x7A | preRegID → PreRegistration (proto)
+	PreRegistrationExpiryIndexPrefix = []byte{0x7B} // 0x7B | be64(expiryBlock) | preRegID → 1
+
 	// ─── Wave 16: guardian-veto pending fact-injection queue ────────
 	PendingFactInjectionKeyPrefix          = []byte{0x7A} // 0x7A | id → PendingFactInjection
 	PendingFactInjectionByExecuteKeyPrefix = []byte{0x7B} // 0x7B | be64(execute_at) | id → 1 (time index for BeginBlocker scan)
@@ -752,4 +756,31 @@ func PrivilegedActionKey(seq uint64) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, seq)
 	return append(key, buf...)
+}
+
+// ─── Scientific Method Gap 3: pre-registration key constructors ─────────────
+
+// PreRegistrationKey returns the store key for a PreRegistration by id.
+func PreRegistrationKey(id string) []byte {
+	return append(append([]byte{}, PreRegistrationKeyPrefix...), []byte(id)...)
+}
+
+// PreRegistrationExpiryKey returns the expiry-index key for a PreRegistration.
+// Sorted by expiryBlock (big-endian) then id — allows range scan for expired records.
+func PreRegistrationExpiryKey(expiryBlock uint64, id string) []byte {
+	key := make([]byte, 0, 1+8+len(id))
+	key = append(key, PreRegistrationExpiryIndexPrefix...)
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, expiryBlock)
+	key = append(key, buf...)
+	key = append(key, []byte(id)...)
+	return key
+}
+
+// PreRegistrationExpiryPrefixUpTo returns the prefix for scanning all expiry
+// index entries with expiryBlock <= upToBlock (inclusive).
+func PreRegistrationExpiryPrefixUpTo(upToBlock uint64) []byte {
+	// We scan the full prefix range [0x7B][0x00...] → [0x7B][be64(upToBlock+1)]
+	// Callers iterate this range and stop at entries > upToBlock.
+	return append([]byte{}, PreRegistrationExpiryIndexPrefix...)
 }

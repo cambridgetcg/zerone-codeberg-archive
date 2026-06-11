@@ -79,6 +79,38 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 		return nil, fmt.Errorf("invalid review fee amount: %s", msg.Stake)
 	}
 	effectiveMinFee := m.keeper.GetEffectiveMinReviewFee(ctx)
+
+	// Scientific Method Gap 3: apply pre-registration discount on effective minimum.
+	// Pre-registered claims get a lower fee floor as an incentive for epistemic honesty.
+	var preRegCreatedAtBlock uint64
+	if msg.PreRegistrationId != "" {
+		// Validate pre-registration. FulfillPreRegistration also returns the bond.
+		// We validate here (before fee check) so the discount is applied correctly.
+		// Actual state mutation (mark fulfilled) happens after claim is successfully stored.
+		pr, found := m.keeper.GetPreRegistration(ctx, msg.PreRegistrationId)
+		if !found {
+			return nil, fmt.Errorf("pre-registration %q not found", msg.PreRegistrationId)
+		}
+		if pr.Submitter != msg.Submitter {
+			return nil, fmt.Errorf("pre-registration %q belongs to %s, not %s", msg.PreRegistrationId, pr.Submitter, msg.Submitter)
+		}
+		if pr.Fulfilled {
+			return nil, fmt.Errorf("pre-registration %q already fulfilled", msg.PreRegistrationId)
+		}
+		if pr.Expired {
+			return nil, fmt.Errorf("pre-registration %q has expired", msg.PreRegistrationId)
+		}
+		currentBlock := uint64(sdkCtx.BlockHeight())
+		if pr.ExpiryBlock > 0 && currentBlock > pr.ExpiryBlock {
+			return nil, fmt.Errorf("pre-registration %q expired at block %d (current: %d)", msg.PreRegistrationId, pr.ExpiryBlock, currentBlock)
+		}
+		preRegCreatedAtBlock = pr.CreatedAtBlock
+		// Apply discount to the effective minimum fee.
+		if params.PreRegistrationDiscountBps > 0 {
+			effectiveMinFee = ApplyPreRegistrationDiscount(effectiveMinFee, params.PreRegistrationDiscountBps)
+		}
+	}
+
 	minFee, _ := new(big.Int).SetString(effectiveMinFee, 10)
 	if minFee != nil && stakeAmt.Cmp(minFee) < 0 {
 		return nil, fmt.Errorf("review fee %s below minimum %s (effective)", msg.Stake, effectiveMinFee)
@@ -223,6 +255,8 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 		ProofCertificate:       msg.ProofCertificate,
 		CertificateVerified:    certVerified,
 		TheoreticalFramework:   msg.TheoreticalFramework,
+		PreRegistrationId:      msg.PreRegistrationId,
+		PreRegisteredAtBlock:   preRegCreatedAtBlock,
 	}
 
 	if err := m.keeper.SetClaim(ctx, claim); err != nil {
@@ -231,6 +265,17 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 
 	// Record last claim height for adaptive cooldown (R29-6)
 	m.keeper.SetLastClaimHeight(ctx, msg.Submitter, height)
+
+	// Scientific Method Gap 3: fulfill pre-registration and return bond.
+	// Done AFTER claim is stored so we can back-fill the fulfilled_claim_id.
+	if msg.PreRegistrationId != "" {
+		if _, fulfillErr := m.keeper.FulfillPreRegistration(ctx, msg.PreRegistrationId, msg.Submitter, params); fulfillErr != nil {
+			// Non-fatal: claim is already stored; log the error.
+			m.keeper.Logger(ctx).Error("failed to fulfill pre-registration", "pre_registration_id", msg.PreRegistrationId, "error", fulfillErr)
+		} else {
+			m.keeper.UpdatePreRegistrationClaimID(ctx, msg.PreRegistrationId, claimID)
+		}
+	}
 
 	// Contradiction detection: auto-mark target facts as CONTESTED
 	for _, rel := range msg.Relations {
