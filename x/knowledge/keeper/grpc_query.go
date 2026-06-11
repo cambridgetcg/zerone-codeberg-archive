@@ -2586,3 +2586,20 @@ func (q *queryServer) NetworkCapacity(ctx context.Context, req *types.QueryNetwo
 		SnapshotBlockHeight:            uint64(sdkCtx.BlockHeight()),
 	}, nil
 }
+
+// DerivedConsequences implements the QueryServer interface.
+// Formal Logic Brief Gap 4: returns the logical consequences that follow from
+// an accepted fact via the chain's inference rules (transitivity, definition
+// substitution).
+func (q *queryServer) DerivedConsequences(ctx context.Context, req *types.QueryDerivedConsequencesRequest) (*types.QueryDerivedConsequencesResponse, error) {
+	if req == nil || req.FactId == "" {
+		return nil, status.Error(codes.InvalidArgument, "fact_id is required")
+	}
+
+	consequences := q.keeper.DeriveConsequences(ctx, req.FactId)
+
+	return &types.QueryDerivedConsequencesResponse{
+		Consequences: consequences,
+		SourceFactId: req.FactId,
+	}, nil
+}

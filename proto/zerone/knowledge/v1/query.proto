@@ -494,6 +494,15 @@ service Query {
   rpc NetworkCapacity(QueryNetworkCapacityRequest) returns (QueryNetworkCapacityResponse) {
     option (google.api.http).get = "/zerone/knowledge/v1/network_capacity";
   }
+
+  // DerivedConsequences returns the logical consequences that follow from an
+  // accepted fact via the on-chain inference rules (transitivity, definition
+  // substitution). Off-chain engines use this to find derived claims worth
+  // submitting as M-COMPUTATIONAL facts citing the source.
+  // Formal Logic Brief Gap 4.
+  rpc DerivedConsequences(QueryDerivedConsequencesRequest) returns (QueryDerivedConsequencesResponse) {
+    option (google.api.http).get = "/zerone/knowledge/v1/facts/{fact_id}/derived_consequences";
+  }
 }
 
 // ─── Request / Response messages ─────────────────────────────────────────────
@@ -1608,4 +1617,23 @@ message QueryNetworkCapacityResponse {
 
   // snapshot_block_height is the block height at which these metrics were read.
   uint64 snapshot_block_height = 4;
+}
+
+// ─── Formal Logic Gap 4: Inference Rules Query ───────────────────────────────
+
+// QueryDerivedConsequencesRequest names the source fact whose logical
+// consequences should be derived.
+message QueryDerivedConsequencesRequest {
+  string fact_id = 1;
+}
+
+// QueryDerivedConsequencesResponse returns all consequences that follow
+// from the named fact via the chain's inference rules.
+message QueryDerivedConsequencesResponse {
+  // consequences is the list of derived facts. Empty if the source fact has
+  // no derivable consequences given the current corpus and Params.
+  repeated DerivedConsequence consequences = 1;
+
+  // source_fact_id echoes the input for easy correlation.
+  string source_fact_id = 2;
 }

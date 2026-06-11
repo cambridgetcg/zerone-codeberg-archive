@@ -504,8 +504,17 @@ type Params struct {
 	// zero window is ignored (field stored but not validated).
 	// Oracle Resilience Brief Gap 4 (★★★★☆).
 	OracleFreshnessWindowBlocks uint64 `protobuf:"varint,183,opt,name=oracle_freshness_window_blocks,json=oracleFreshnessWindowBlocks,proto3" json:"oracle_freshness_window_blocks,omitempty"`
-	unknownFields               protoimpl.UnknownFields
-	sizeCache                   protoimpl.SizeCache
+	// transitive_relation_verbs: the set of relation verbs for which the
+	// transitivity inference rule applies. When QueryDerivedConsequences is
+	// called with a RELATION fact whose verb is in this list, the chain derives
+	// relate(D, A, r, C) from relate(D, A, r, B) + relate(D, B, r, C).
+	//
+	// Governance-settable; defaults to ["is-a", "implies", "causes",
+	// "is-part-of"]. Empty list disables transitivity derivation entirely.
+	// Formal Logic Brief Gap 4 (★★★☆☆).
+	TransitiveRelationVerbs []string `protobuf:"bytes,184,rep,name=transitive_relation_verbs,json=transitiveRelationVerbs,proto3" json:"transitive_relation_verbs,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -1819,6 +1828,13 @@ func (x *Params) GetOracleFreshnessWindowBlocks() uint64 {
 	return 0
 }
 
+func (x *Params) GetTransitiveRelationVerbs() []string {
+	if x != nil {
+		return x.TransitiveRelationVerbs
+	}
+	return nil
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -2066,7 +2082,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xa4[\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xe1[\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2251,7 +2267,8 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\x1dpre_registration_discount_bps\x18\xb4\x01 \x01(\x04R\x1apreRegistrationDiscountBps\x12N\n" +
 	"#min_phenomenological_practice_hours\x18\xb5\x01 \x01(\x04R minPhenomenologicalPracticeHours\x12b\n" +
 	"-phenomenological_corroboration_confidence_bps\x18\xb6\x01 \x01(\x04R*phenomenologicalCorroborationConfidenceBps\x12D\n" +
-	"\x1eoracle_freshness_window_blocks\x18\xb7\x01 \x01(\x04R\x1boracleFreshnessWindowBlocks\x1aN\n" +
+	"\x1eoracle_freshness_window_blocks\x18\xb7\x01 \x01(\x04R\x1boracleFreshnessWindowBlocks\x12;\n" +
+	"\x19transitive_relation_verbs\x18\xb8\x01 \x03(\tR\x17transitiveRelationVerbs\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xb8\x0f\n" +

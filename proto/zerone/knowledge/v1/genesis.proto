@@ -537,6 +537,16 @@ message Params {
   // zero window is ignored (field stored but not validated).
   // Oracle Resilience Brief Gap 4 (★★★★☆).
   uint64 oracle_freshness_window_blocks = 183;
+
+  // transitive_relation_verbs: the set of relation verbs for which the
+  // transitivity inference rule applies. When QueryDerivedConsequences is
+  // called with a RELATION fact whose verb is in this list, the chain derives
+  // relate(D, A, r, C) from relate(D, A, r, B) + relate(D, B, r, C).
+  //
+  // Governance-settable; defaults to ["is-a", "implies", "causes",
+  // "is-part-of"]. Empty list disables transitivity derivation entirely.
+  // Formal Logic Brief Gap 4 (★★★☆☆).
+  repeated string transitive_relation_verbs = 184;
 }
 
 // GenesisState is the genesis state of the knowledge module.

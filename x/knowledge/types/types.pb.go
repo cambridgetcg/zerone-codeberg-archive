@@ -9077,6 +9077,100 @@ func (x *PendingFactInjection) GetExecuteAtBlock() uint64 {
 	return 0
 }
 
+// DerivedConsequence represents a fact that follows logically from one or more
+// accepted facts via an on-chain inference rule. Returned by
+// QueryDerivedConsequences; off-chain engines can submit derived consequences
+// as M-COMPUTATIONAL claims citing the source facts via ClaimRelation.
+type DerivedConsequence struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// rule_name identifies which inference rule produced this consequence.
+	// "transitivity"           — relate(D,A,r,B) + relate(D,B,r,C) → relate(D,A,r,C)
+	//
+	//	for r in Params.transitive_relation_verbs.
+	//
+	// "definition_substitution" — define(D,term,meaning) + assert(D,term,pred)
+	//
+	//	→ assert(D,meaning,pred).
+	RuleName string `protobuf:"bytes,1,opt,name=rule_name,json=ruleName,proto3" json:"rule_name,omitempty"`
+	// derived_canonical_form is the normalized canonical form of the consequence.
+	DerivedCanonicalForm string `protobuf:"bytes,2,opt,name=derived_canonical_form,json=derivedCanonicalForm,proto3" json:"derived_canonical_form,omitempty"`
+	// derived_claim_type is the ClaimType of the consequence.
+	DerivedClaimType ClaimType `protobuf:"varint,3,opt,name=derived_claim_type,json=derivedClaimType,proto3,enum=zerone.knowledge.v1.ClaimType" json:"derived_claim_type,omitempty"`
+	// derived_structure is the machine-readable decomposition of the consequence.
+	DerivedStructure *ClaimStructure `protobuf:"bytes,4,opt,name=derived_structure,json=derivedStructure,proto3" json:"derived_structure,omitempty"`
+	// source_fact_ids are the IDs of the accepted facts that together entail
+	// this consequence. Off-chain engines should cite all of them via
+	// ClaimRelation when submitting the derived claim.
+	SourceFactIds []string `protobuf:"bytes,5,rep,name=source_fact_ids,json=sourceFactIds,proto3" json:"source_fact_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DerivedConsequence) Reset() {
+	*x = DerivedConsequence{}
+	mi := &file_zerone_knowledge_v1_types_proto_msgTypes[55]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DerivedConsequence) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DerivedConsequence) ProtoMessage() {}
+
+func (x *DerivedConsequence) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_knowledge_v1_types_proto_msgTypes[55]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DerivedConsequence.ProtoReflect.Descriptor instead.
+func (*DerivedConsequence) Descriptor() ([]byte, []int) {
+	return file_zerone_knowledge_v1_types_proto_rawDescGZIP(), []int{55}
+}
+
+func (x *DerivedConsequence) GetRuleName() string {
+	if x != nil {
+		return x.RuleName
+	}
+	return ""
+}
+
+func (x *DerivedConsequence) GetDerivedCanonicalForm() string {
+	if x != nil {
+		return x.DerivedCanonicalForm
+	}
+	return ""
+}
+
+func (x *DerivedConsequence) GetDerivedClaimType() ClaimType {
+	if x != nil {
+		return x.DerivedClaimType
+	}
+	return ClaimType_CLAIM_TYPE_UNSPECIFIED
+}
+
+func (x *DerivedConsequence) GetDerivedStructure() *ClaimStructure {
+	if x != nil {
+		return x.DerivedStructure
+	}
+	return nil
+}
+
+func (x *DerivedConsequence) GetSourceFactIds() []string {
+	if x != nil {
+		return x.SourceFactIds
+	}
+	return nil
+}
+
 var File_zerone_knowledge_v1_types_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
@@ -9848,7 +9942,13 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"references\x12\x1a\n" +
 	"\bproposer\x18\a \x01(\tR\bproposer\x12*\n" +
 	"\x11proposed_at_block\x18\b \x01(\x04R\x0fproposedAtBlock\x12(\n" +
-	"\x10execute_at_block\x18\t \x01(\x04R\x0eexecuteAtBlock*\xe2\x02\n" +
+	"\x10execute_at_block\x18\t \x01(\x04R\x0eexecuteAtBlock\"\xaf\x02\n" +
+	"\x12DerivedConsequence\x12\x1b\n" +
+	"\trule_name\x18\x01 \x01(\tR\bruleName\x124\n" +
+	"\x16derived_canonical_form\x18\x02 \x01(\tR\x14derivedCanonicalForm\x12L\n" +
+	"\x12derived_claim_type\x18\x03 \x01(\x0e2\x1e.zerone.knowledge.v1.ClaimTypeR\x10derivedClaimType\x12P\n" +
+	"\x11derived_structure\x18\x04 \x01(\v2#.zerone.knowledge.v1.ClaimStructureR\x10derivedStructure\x12&\n" +
+	"\x0fsource_fact_ids\x18\x05 \x03(\tR\rsourceFactIds*\xe2\x02\n" +
 	"\n" +
 	"FactStatus\x12\x1b\n" +
 	"\x17FACT_STATUS_UNSPECIFIED\x10\x00\x12\x17\n" +
@@ -10062,7 +10162,7 @@ func file_zerone_knowledge_v1_types_proto_rawDescGZIP() []byte {
 }
 
 var file_zerone_knowledge_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 23)
-var file_zerone_knowledge_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 57)
+var file_zerone_knowledge_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 58)
 var file_zerone_knowledge_v1_types_proto_goTypes = []any{
 	(FactStatus)(0),                     // 0: zerone.knowledge.v1.FactStatus
 	(ClaimStatus)(0),                    // 1: zerone.knowledge.v1.ClaimStatus
@@ -10142,15 +10242,16 @@ var file_zerone_knowledge_v1_types_proto_goTypes = []any{
 	(*ModulePause)(nil),                 // 75: zerone.knowledge.v1.ModulePause
 	(*PrivilegedAction)(nil),            // 76: zerone.knowledge.v1.PrivilegedAction
 	(*PendingFactInjection)(nil),        // 77: zerone.knowledge.v1.PendingFactInjection
-	nil,                                 // 78: zerone.knowledge.v1.Methodology.CrossMethodDiscountBpsEntry
-	nil,                                 // 79: zerone.knowledge.v1.AgentCalibration.PerMethodEntry
+	(*DerivedConsequence)(nil),          // 78: zerone.knowledge.v1.DerivedConsequence
+	nil,                                 // 79: zerone.knowledge.v1.Methodology.CrossMethodDiscountBpsEntry
+	nil,                                 // 80: zerone.knowledge.v1.AgentCalibration.PerMethodEntry
 }
 var file_zerone_knowledge_v1_types_proto_depIdxs = []int32{
 	5,  // 0: zerone.knowledge.v1.FactRelation.relation:type_name -> zerone.knowledge.v1.RelationType
 	6,  // 1: zerone.knowledge.v1.FactRelation.inference:type_name -> zerone.knowledge.v1.InferenceType
 	5,  // 2: zerone.knowledge.v1.ClaimRelation.relation:type_name -> zerone.knowledge.v1.RelationType
 	6,  // 3: zerone.knowledge.v1.ClaimRelation.inference:type_name -> zerone.knowledge.v1.InferenceType
-	78, // 4: zerone.knowledge.v1.Methodology.cross_method_discount_bps:type_name -> zerone.knowledge.v1.Methodology.CrossMethodDiscountBpsEntry
+	79, // 4: zerone.knowledge.v1.Methodology.cross_method_discount_bps:type_name -> zerone.knowledge.v1.Methodology.CrossMethodDiscountBpsEntry
 	0,  // 5: zerone.knowledge.v1.Fact.status:type_name -> zerone.knowledge.v1.FactStatus
 	4,  // 6: zerone.knowledge.v1.Fact.claim_type:type_name -> zerone.knowledge.v1.ClaimType
 	23, // 7: zerone.knowledge.v1.Fact.outgoing_relations:type_name -> zerone.knowledge.v1.FactRelation
@@ -10158,7 +10259,7 @@ var file_zerone_knowledge_v1_types_proto_depIdxs = []int32{
 	27, // 9: zerone.knowledge.v1.Fact.structure:type_name -> zerone.knowledge.v1.ClaimStructure
 	10, // 10: zerone.knowledge.v1.Augmentation.verdict:type_name -> zerone.knowledge.v1.AugmentationVerdict
 	10, // 11: zerone.knowledge.v1.Augmentation.verdict_votes:type_name -> zerone.knowledge.v1.AugmentationVerdict
-	79, // 12: zerone.knowledge.v1.AgentCalibration.per_method:type_name -> zerone.knowledge.v1.AgentCalibration.PerMethodEntry
+	80, // 12: zerone.knowledge.v1.AgentCalibration.per_method:type_name -> zerone.knowledge.v1.AgentCalibration.PerMethodEntry
 	40, // 13: zerone.knowledge.v1.AgentCalibration.calibration_curve:type_name -> zerone.knowledge.v1.CalibrationBucket
 	11, // 14: zerone.knowledge.v1.ProofCertificate.format:type_name -> zerone.knowledge.v1.ProofFormat
 	1,  // 15: zerone.knowledge.v1.Claim.status:type_name -> zerone.knowledge.v1.ClaimStatus
@@ -10210,12 +10311,14 @@ var file_zerone_knowledge_v1_types_proto_depIdxs = []int32{
 	20, // 61: zerone.knowledge.v1.IncidentRecord.status:type_name -> zerone.knowledge.v1.IncidentStatus
 	73, // 62: zerone.knowledge.v1.IncidentRecord.remediations:type_name -> zerone.knowledge.v1.Remediation
 	22, // 63: zerone.knowledge.v1.PrivilegedAction.type:type_name -> zerone.knowledge.v1.PrivilegedActionType
-	38, // 64: zerone.knowledge.v1.AgentCalibration.PerMethodEntry.value:type_name -> zerone.knowledge.v1.AgentMethodStats
-	65, // [65:65] is the sub-list for method output_type
-	65, // [65:65] is the sub-list for method input_type
-	65, // [65:65] is the sub-list for extension type_name
-	65, // [65:65] is the sub-list for extension extendee
-	0,  // [0:65] is the sub-list for field type_name
+	4,  // 64: zerone.knowledge.v1.DerivedConsequence.derived_claim_type:type_name -> zerone.knowledge.v1.ClaimType
+	27, // 65: zerone.knowledge.v1.DerivedConsequence.derived_structure:type_name -> zerone.knowledge.v1.ClaimStructure
+	38, // 66: zerone.knowledge.v1.AgentCalibration.PerMethodEntry.value:type_name -> zerone.knowledge.v1.AgentMethodStats
+	67, // [67:67] is the sub-list for method output_type
+	67, // [67:67] is the sub-list for method input_type
+	67, // [67:67] is the sub-list for extension type_name
+	67, // [67:67] is the sub-list for extension extendee
+	0,  // [0:67] is the sub-list for field type_name
 }
 
 func init() { file_zerone_knowledge_v1_types_proto_init() }
@@ -10229,7 +10332,7 @@ func file_zerone_knowledge_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_zerone_knowledge_v1_types_proto_rawDesc), len(file_zerone_knowledge_v1_types_proto_rawDesc)),
 			NumEnums:      23,
-			NumMessages:   57,
+			NumMessages:   58,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

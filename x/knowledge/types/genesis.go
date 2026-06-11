@@ -386,6 +386,11 @@ func DefaultParams() Params {
 		// Oracle Resilience Brief Gap 4: oracle freshness window.
 		// 0 = disabled (default); governance enables by setting a positive block count.
 		OracleFreshnessWindowBlocks: 0,
+
+		// Formal Logic Brief Gap 4: transitive relation verbs.
+		// Default set covers the most universally transitive relation types.
+		// Empty list disables transitivity derivation entirely.
+		TransitiveRelationVerbs: []string{"is-a", "implies", "causes", "is-part-of"},
 	}
 }
 
@@ -922,6 +927,14 @@ func (p *Params) Validate() error {
 	// No upper bound enforced; governance is responsible for reasonable values.
 	// (Oracle Resilience Brief Gap 4)
 	_ = p.OracleFreshnessWindowBlocks // already uint64, always valid
+
+	// Formal Logic Brief Gap 4: transitive relation verbs must not contain
+	// empty strings (an empty string would match every relation verb).
+	for i, v := range p.TransitiveRelationVerbs {
+		if v == "" {
+			return fmt.Errorf("transitive_relation_verbs[%d] must not be empty", i)
+		}
+	}
 
 	return nil
 }

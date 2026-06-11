@@ -1845,3 +1845,32 @@ message PendingFactInjection {
   uint64 proposed_at_block   = 8;
   uint64 execute_at_block    = 9;  // proposed_at_block + Params.add_fact_veto_window_blocks
 }
+
+// ─── Formal Logic Gap 4: canonical form inference rules ──────────────────────
+
+// DerivedConsequence represents a fact that follows logically from one or more
+// accepted facts via an on-chain inference rule. Returned by
+// QueryDerivedConsequences; off-chain engines can submit derived consequences
+// as M-COMPUTATIONAL claims citing the source facts via ClaimRelation.
+message DerivedConsequence {
+  // rule_name identifies which inference rule produced this consequence.
+  // "transitivity"           — relate(D,A,r,B) + relate(D,B,r,C) → relate(D,A,r,C)
+  //                           for r in Params.transitive_relation_verbs.
+  // "definition_substitution" — define(D,term,meaning) + assert(D,term,pred)
+  //                            → assert(D,meaning,pred).
+  string rule_name = 1;
+
+  // derived_canonical_form is the normalized canonical form of the consequence.
+  string derived_canonical_form = 2;
+
+  // derived_claim_type is the ClaimType of the consequence.
+  ClaimType derived_claim_type = 3;
+
+  // derived_structure is the machine-readable decomposition of the consequence.
+  ClaimStructure derived_structure = 4;
+
+  // source_fact_ids are the IDs of the accepted facts that together entail
+  // this consequence. Off-chain engines should cite all of them via
+  // ClaimRelation when submitting the derived claim.
+  repeated string source_fact_ids = 5;
+}

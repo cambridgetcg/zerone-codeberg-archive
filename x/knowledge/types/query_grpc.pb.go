@@ -108,6 +108,7 @@ const (
 	Query_RoleElasticity_FullMethodName               = "/zerone.knowledge.v1.Query/RoleElasticity"
 	Query_IdleFacts_FullMethodName                    = "/zerone.knowledge.v1.Query/IdleFacts"
 	Query_NetworkCapacity_FullMethodName              = "/zerone.knowledge.v1.Query/NetworkCapacity"
+	Query_DerivedConsequences_FullMethodName          = "/zerone.knowledge.v1.Query/DerivedConsequences"
 )
 
 // QueryClient is the client API for Query service.
@@ -355,6 +356,12 @@ type QueryClient interface {
 	// NetworkCapacity returns the current verifier-network load metrics so that
 	// submitters can make informed decisions about priority_tip_bps bids.
 	NetworkCapacity(ctx context.Context, in *QueryNetworkCapacityRequest, opts ...grpc.CallOption) (*QueryNetworkCapacityResponse, error)
+	// DerivedConsequences returns the logical consequences that follow from an
+	// accepted fact via the on-chain inference rules (transitivity, definition
+	// substitution). Off-chain engines use this to find derived claims worth
+	// submitting as M-COMPUTATIONAL facts citing the source.
+	// Formal Logic Brief Gap 4.
+	DerivedConsequences(ctx context.Context, in *QueryDerivedConsequencesRequest, opts ...grpc.CallOption) (*QueryDerivedConsequencesResponse, error)
 }
 
 type queryClient struct {
@@ -1255,6 +1262,16 @@ func (c *queryClient) NetworkCapacity(ctx context.Context, in *QueryNetworkCapac
 	return out, nil
 }
 
+func (c *queryClient) DerivedConsequences(ctx context.Context, in *QueryDerivedConsequencesRequest, opts ...grpc.CallOption) (*QueryDerivedConsequencesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(QueryDerivedConsequencesResponse)
+	err := c.cc.Invoke(ctx, Query_DerivedConsequences_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // QueryServer is the server API for Query service.
 // All implementations must embed UnimplementedQueryServer
 // for forward compatibility.
@@ -1500,6 +1517,12 @@ type QueryServer interface {
 	// NetworkCapacity returns the current verifier-network load metrics so that
 	// submitters can make informed decisions about priority_tip_bps bids.
 	NetworkCapacity(context.Context, *QueryNetworkCapacityRequest) (*QueryNetworkCapacityResponse, error)
+	// DerivedConsequences returns the logical consequences that follow from an
+	// accepted fact via the on-chain inference rules (transitivity, definition
+	// substitution). Off-chain engines use this to find derived claims worth
+	// submitting as M-COMPUTATIONAL facts citing the source.
+	// Formal Logic Brief Gap 4.
+	DerivedConsequences(context.Context, *QueryDerivedConsequencesRequest) (*QueryDerivedConsequencesResponse, error)
 	mustEmbedUnimplementedQueryServer()
 }
 
@@ -1776,6 +1799,9 @@ func (UnimplementedQueryServer) IdleFacts(context.Context, *QueryIdleFactsReques
 }
 func (UnimplementedQueryServer) NetworkCapacity(context.Context, *QueryNetworkCapacityRequest) (*QueryNetworkCapacityResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method NetworkCapacity not implemented")
+}
+func (UnimplementedQueryServer) DerivedConsequences(context.Context, *QueryDerivedConsequencesRequest) (*QueryDerivedConsequencesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DerivedConsequences not implemented")
 }
 func (UnimplementedQueryServer) mustEmbedUnimplementedQueryServer() {}
 func (UnimplementedQueryServer) testEmbeddedByValue()               {}
@@ -3400,6 +3426,24 @@ func _Query_NetworkCapacity_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Query_DerivedConsequences_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryDerivedConsequencesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).DerivedConsequences(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Query_DerivedConsequences_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).DerivedConsequences(ctx, req.(*QueryDerivedConsequencesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Query_ServiceDesc is the grpc.ServiceDesc for Query service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -3762,6 +3806,10 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "NetworkCapacity",
 			Handler:    _Query_NetworkCapacity_Handler,
+		},
+		{
+			MethodName: "DerivedConsequences",
+			Handler:    _Query_DerivedConsequences_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
