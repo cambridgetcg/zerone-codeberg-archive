@@ -2515,8 +2515,30 @@ type Fact struct {
 	// Zero when enrichment_count == 0. Updated each time a new claim is sublated
 	// into this Fact — records when the determination was last deepened.
 	LastEnrichedAtBlock uint64 `protobuf:"varint,83,opt,name=last_enriched_at_block,json=lastEnrichedAtBlock,proto3" json:"last_enriched_at_block,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// ── Hegelian Dialectic Gap 4: Finite Determination as Self-Negating ───────
+	//
+	// superseded_by_fact_id: when this Fact transitions to FACT_STATUS_DISPROVEN
+	// (a challenge claim against it was ACCEPTED), this field is set to the ID
+	// of the new, more adequate Fact that replaced it.
+	//
+	// Hegel: "Every claim in the system should be understood as finite and
+	// therefore incomplete. The question is not whether it will be superseded,
+	// but when and how." (Science of Logic — adapted.) A fact's finitude is not
+	// a defect but a structural feature: it carries within itself the seeds of
+	// its own supersession. The forward pointer makes this visible — every
+	// DISPROVEN fact carries a link to what came next.
+	//
+	// Together with enrichment_count and sublated_claim_ids, this builds the
+	// full Hegelian succession chain: a directed graph of finite determinations,
+	// each pointing forward to the more adequate form that preserved its content
+	// while transcending its inadequacy.
+	//
+	// Empty when: status != DISPROVEN, or the superseding fact ID was not
+	// available at disproval time.
+	// Set in handleChallengeDisproven (vindication.go).
+	SupersededByFactId string `protobuf:"bytes,84,opt,name=superseded_by_fact_id,json=supersededByFactId,proto3" json:"superseded_by_fact_id,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *Fact) Reset() {
@@ -3058,6 +3080,13 @@ func (x *Fact) GetLastEnrichedAtBlock() uint64 {
 		return x.LastEnrichedAtBlock
 	}
 	return 0
+}
+
+func (x *Fact) GetSupersededByFactId() string {
+	if x != nil {
+		return x.SupersededByFactId
+	}
+	return ""
 }
 
 // TokenizerSpec is the governance-ratified contract that names the special
@@ -9917,7 +9946,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x05scope\x18\x04 \x01(\tR\x05scope\x12%\n" +
 	"\x0etemporal_scope\x18\x05 \x01(\tR\rtemporalScope\x12\x1c\n" +
 	"\tnegatable\x18\x06 \x01(\bR\tnegatable\x12\x12\n" +
-	"\x04tags\x18\a \x03(\tR\x04tags\"\x80\x19\n" +
+	"\x04tags\x18\a \x03(\tR\x04tags\"\xb3\x19\n" +
 	"\x04Fact\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12\x16\n" +
@@ -10002,7 +10031,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	" corroboration_severity_score_bps\x18P \x01(\x04R\x1dcorroborationSeverityScoreBps\x12,\n" +
 	"\x12sublated_claim_ids\x18Q \x03(\tR\x10sublatedClaimIds\x12)\n" +
 	"\x10enrichment_count\x18R \x01(\x04R\x0fenrichmentCount\x123\n" +
-	"\x16last_enriched_at_block\x18S \x01(\x04R\x13lastEnrichedAtBlock\"\xe0\x05\n" +
+	"\x16last_enriched_at_block\x18S \x01(\x04R\x13lastEnrichedAtBlock\x121\n" +
+	"\x15superseded_by_fact_id\x18T \x01(\tR\x12supersededByFactId\"\xe0\x05\n" +
 	"\rTokenizerSpec\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x04R\aversion\x12*\n" +
 	"\x11ratified_at_block\x18\x02 \x01(\x04R\x0fratifiedAtBlock\x12.\n" +

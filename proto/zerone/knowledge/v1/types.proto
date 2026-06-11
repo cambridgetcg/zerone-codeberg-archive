@@ -522,6 +522,29 @@ message Fact {
   // Zero when enrichment_count == 0. Updated each time a new claim is sublated
   // into this Fact — records when the determination was last deepened.
   uint64 last_enriched_at_block = 83;
+
+  // ── Hegelian Dialectic Gap 4: Finite Determination as Self-Negating ───────
+  //
+  // superseded_by_fact_id: when this Fact transitions to FACT_STATUS_DISPROVEN
+  // (a challenge claim against it was ACCEPTED), this field is set to the ID
+  // of the new, more adequate Fact that replaced it.
+  //
+  // Hegel: "Every claim in the system should be understood as finite and
+  // therefore incomplete. The question is not whether it will be superseded,
+  // but when and how." (Science of Logic — adapted.) A fact's finitude is not
+  // a defect but a structural feature: it carries within itself the seeds of
+  // its own supersession. The forward pointer makes this visible — every
+  // DISPROVEN fact carries a link to what came next.
+  //
+  // Together with enrichment_count and sublated_claim_ids, this builds the
+  // full Hegelian succession chain: a directed graph of finite determinations,
+  // each pointing forward to the more adequate form that preserved its content
+  // while transcending its inadequacy.
+  //
+  // Empty when: status != DISPROVEN, or the superseding fact ID was not
+  // available at disproval time.
+  // Set in handleChallengeDisproven (vindication.go).
+  string superseded_by_fact_id = 84;
 }
 
 // CurriculumTier orders training examples by difficulty and foundational depth.

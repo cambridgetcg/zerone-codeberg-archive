@@ -209,8 +209,16 @@ func (k Keeper) handleChallengeDisproven(ctx context.Context, challengeClaim *ty
 		return
 	}
 
-	// Transition to DISPROVEN
+	// Transition to DISPROVEN.
+	// Hegelian Dialectic Gap 4 — Finite Determination as Self-Negating:
+	// set the forward pointer to the more adequate determination that replaced
+	// this one. Every finite determination carries within itself the seed of
+	// its own supersession; the forward link makes the succession chain
+	// traversable (DISPROVEN → superseded_by → new Fact → ...).
 	originalFact.Status = types.FactStatus_FACT_STATUS_DISPROVEN
+	if newFactId != "" {
+		originalFact.SupersededByFactId = newFactId
+	}
 	_ = k.SetFact(ctx, originalFact)
 
 	sdkCtx := sdk.UnwrapSDKContext(ctx)
