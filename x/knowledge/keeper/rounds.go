@@ -244,6 +244,11 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 		if claim.FirstInconclusiveAtBlock == 0 {
 			claim.FirstInconclusiveAtBlock = uint64(sdkCtx.BlockHeight())
 		}
+		// Socratic Dialectic Gap 2: Aporia — productive perplexity.
+		// When the claim has now resisted resolution N times (≥ aporia_threshold),
+		// mark it as a named site of epistemic difficulty so future inquiry can
+		// attend to it with fresh instruments rather than repeating the impasse.
+		k.maybeMarkAporia(ctx, claim)
 		k.reverseContradictionsFromClaim(ctx, claim)
 	}
 

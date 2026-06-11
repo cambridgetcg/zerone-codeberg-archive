@@ -5175,8 +5175,28 @@ type Claim struct {
 	// reason for suspension names the assumption being held in mirror-state.
 	// Required non-empty when suspending; cleared on resume.
 	SuspensionReason string `protobuf:"bytes,44,opt,name=suspension_reason,json=suspensionReason,proto3" json:"suspension_reason,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// ── Socratic Dialectic Gap 2: Aporia ──────────────────────────────────────
+	//
+	// in_aporia: true when this claim has accumulated inconclusive_count >=
+	// Params.aporia_threshold (when threshold > 0). Encodes Socratic aporia —
+	// the productive perplexity that arises from exhausted inquiry. A claim in
+	// aporia does not become false; it becomes a named site of genuine
+	// epistemic difficulty. The chain marks it so that future submitters and
+	// verifiers can attend to it with fresh instruments rather than repeating
+	// the same inconclusive rounds.
+	//
+	// Theaetetus moment: "I don't know what knowledge is" (Plato, Theaetetus
+	// 210b) — the aporia is the beginning of understanding, not its failure.
+	//
+	// Set by the INCONCLUSIVE increment logic in both CompleteRound and
+	// AdvanceRoundPhases (insufficient-reveals expiry). Never cleared once set.
+	// Default: false (set only when threshold reached).
+	InAporia bool `protobuf:"varint,47,opt,name=in_aporia,json=inAporia,proto3" json:"in_aporia,omitempty"`
+	// aporia_reached_at_block: block height when in_aporia was first set.
+	// Zero when in_aporia is false.
+	AporiaReachedAtBlock uint64 `protobuf:"varint,48,opt,name=aporia_reached_at_block,json=aporiaReachedAtBlock,proto3" json:"aporia_reached_at_block,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *Claim) Reset() {
@@ -5529,6 +5549,20 @@ func (x *Claim) GetSuspensionReason() string {
 		return x.SuspensionReason
 	}
 	return ""
+}
+
+func (x *Claim) GetInAporia() bool {
+	if x != nil {
+		return x.InAporia
+	}
+	return false
+}
+
+func (x *Claim) GetAporiaReachedAtBlock() uint64 {
+	if x != nil {
+		return x.AporiaReachedAtBlock
+	}
+	return 0
 }
 
 // PreRegistration records a submitter's declared intent to submit a claim
@@ -10031,7 +10065,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x06format\x18\x01 \x01(\x0e2 .zerone.knowledge.v1.ProofFormatR\x06format\x12+\n" +
 	"\x11certificate_bytes\x18\x02 \x01(\fR\x10certificateBytes\x12#\n" +
 	"\rformal_system\x18\x03 \x01(\tR\fformalSystem\x12(\n" +
-	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\xe3\x10\n" +
+	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\xb7\x11\n" +
 	"\x05Claim\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\ffact_content\x18\x02 \x01(\tR\vfactContent\x12\x16\n" +
@@ -10082,7 +10116,9 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x1bsublation_successor_fact_id\x18- \x01(\tR\x18sublationSuccessorFactId\x12,\n" +
 	"\x12sublation_at_block\x18. \x01(\x04R\x10sublationAtBlock\x12,\n" +
 	"\x12suspended_at_block\x18+ \x01(\x04R\x10suspendedAtBlock\x12+\n" +
-	"\x11suspension_reason\x18, \x01(\tR\x10suspensionReason\"\xf5\x02\n" +
+	"\x11suspension_reason\x18, \x01(\tR\x10suspensionReason\x12\x1b\n" +
+	"\tin_aporia\x18/ \x01(\bR\binAporia\x125\n" +
+	"\x17aporia_reached_at_block\x180 \x01(\x04R\x14aporiaReachedAtBlock\"\xf5\x02\n" +
 	"\x0fPreRegistration\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
 	"\tsubmitter\x18\x02 \x01(\tR\tsubmitter\x12!\n" +

@@ -655,6 +655,7 @@ func (m *msgServer) SubmitReveal(ctx context.Context, msg *types.MsgSubmitReveal
 		Vote:            msg.Vote,
 		Salt:            msg.Salt,
 		RevealedAtBlock: height,
+		NegationType:    msg.NegationType, // Hegelian determinate negation: failure mode diagnosis
 	}, msg.Confidence); err != nil {
 		return nil, err
 	}

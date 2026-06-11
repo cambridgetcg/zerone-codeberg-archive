@@ -1178,6 +1178,28 @@ message Claim {
   // reason for suspension names the assumption being held in mirror-state.
   // Required non-empty when suspending; cleared on resume.
   string suspension_reason = 44;
+
+  // ── Socratic Dialectic Gap 2: Aporia ──────────────────────────────────────
+  //
+  // in_aporia: true when this claim has accumulated inconclusive_count >=
+  // Params.aporia_threshold (when threshold > 0). Encodes Socratic aporia —
+  // the productive perplexity that arises from exhausted inquiry. A claim in
+  // aporia does not become false; it becomes a named site of genuine
+  // epistemic difficulty. The chain marks it so that future submitters and
+  // verifiers can attend to it with fresh instruments rather than repeating
+  // the same inconclusive rounds.
+  //
+  // Theaetetus moment: "I don't know what knowledge is" (Plato, Theaetetus
+  // 210b) — the aporia is the beginning of understanding, not its failure.
+  //
+  // Set by the INCONCLUSIVE increment logic in both CompleteRound and
+  // AdvanceRoundPhases (insufficient-reveals expiry). Never cleared once set.
+  // Default: false (set only when threshold reached).
+  bool in_aporia = 47;
+
+  // aporia_reached_at_block: block height when in_aporia was first set.
+  // Zero when in_aporia is false.
+  uint64 aporia_reached_at_block = 48;
 }
 
 // PreRegistration records a submitter's declared intent to submit a claim

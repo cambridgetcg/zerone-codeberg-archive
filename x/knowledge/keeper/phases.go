@@ -201,6 +201,11 @@ func (k Keeper) AdvanceRoundPhases(ctx context.Context) error {
 					if claim.FirstInconclusiveAtBlock == 0 {
 						claim.FirstInconclusiveAtBlock = uint64(sdkCtx.BlockHeight())
 					}
+					// Socratic Dialectic Gap 2: Aporia — same threshold applies to
+					// procedural inconclusiveness (insufficient reveals) as to panel
+					// verdicts. Both represent the community of inquiry failing to
+					// resolve the claim.
+					k.maybeMarkAporia(ctx, claim)
 					_ = k.SetClaim(ctx, claim)
 				}
 

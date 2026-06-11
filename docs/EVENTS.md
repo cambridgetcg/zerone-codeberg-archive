@@ -1404,6 +1404,19 @@ Clears `suspended_at_block` and `suspension_reason`. (Bohm Dialogue Gap 1.)
 - `claim_id` -- the resumed claim ID
 - `authority` -- governance authority address that performed the resumption
 
+### zerone.knowledge.claim_in_aporia
+*Keeper (rounds.go / phases.go).* Emitted when a claim's `inconclusive_count`
+reaches `Params.aporia_threshold` for the first time. Encodes Socratic aporia —
+the productive perplexity that emerges when the community of inquiry has
+genuinely exhausted its current instruments. (Socratic Dialectic Gap 2.)
+Sets `Claim.in_aporia = true` and `Claim.aporia_reached_at_block`. Fired from
+both INCONCLUSIVE paths: `CompleteRound` (panel verdict) and
+`AdvanceRoundPhases` (insufficient-reveals expiry). Not emitted when
+`aporia_threshold = 0` (disabled, default).
+- `claim_id` -- the claim that has entered aporia
+- `inconclusive_count` -- the count that triggered the threshold
+- `aporia_threshold` -- the governance-configured threshold value
+
 ### zerone.knowledge.ad_hoc_rescue_detected
 *Tx (MsgSubmitClaim).* A rescue claim's `RefutationConditions` are not a
 proper superset of the rescued (rejected) claim's conditions — Popper's

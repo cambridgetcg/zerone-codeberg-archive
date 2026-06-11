@@ -75,6 +75,9 @@ func RegisterCodec(cdc *codec.LegacyAmino) {
 	cdc.RegisterConcrete(&MsgPreRegisterClaim{}, "zerone_knowledge/PreRegisterClaim", nil)
 	// Contemplative Traditions: Attentional Practice Hours
 	cdc.RegisterConcrete(&MsgSetAttentionalPractice{}, "zerone_knowledge/SetAttentionalPractice", nil)
+	// Bohm Dialogue Gap 1: Claim Suspension
+	cdc.RegisterConcrete(&MsgSuspendClaim{}, "zerone_knowledge/SuspendClaim", nil)
+	cdc.RegisterConcrete(&MsgResumeClaim{}, "zerone_knowledge/ResumeClaim", nil)
 }
 
 // RegisterInterfaces registers the knowledge module's interface implementations.
@@ -148,6 +151,9 @@ func RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
 		&MsgPreRegisterClaim{},
 		// Contemplative Traditions: Attentional Practice Hours
 		&MsgSetAttentionalPractice{},
+		// Bohm Dialogue Gap 1: Claim Suspension
+		&MsgSuspendClaim{},
+		&MsgResumeClaim{},
 	)
 }
 

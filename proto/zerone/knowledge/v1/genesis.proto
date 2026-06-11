@@ -584,6 +584,19 @@ message Params {
   //
   // Bohm Dialogue Brief Gap 1 (★★★☆☆). Default: false.
   bool suspension_enabled = 187;
+
+  // aporia_threshold: when > 0, a claim whose inconclusive_count reaches this
+  // value is marked in_aporia. Encodes Socratic aporia — the productive
+  // perplexity that emerges when the community of inquiry has genuinely
+  // exhausted its instruments. The threshold is the governance-adjustable
+  // point at which repeated inconclusiveness stops being noise and starts
+  // being a signal about the epistemic frontier.
+  //
+  // 0 = disabled (no aporia marking, backward-compatible default).
+  // Recommended initial value: 3–5 inconclusive rounds.
+  //
+  // Socratic Dialectic Gap 2 (★★★☆☆). Default: 0 (disabled).
+  uint64 aporia_threshold = 188;
 }
 
 // GenesisState is the genesis state of the knowledge module.
