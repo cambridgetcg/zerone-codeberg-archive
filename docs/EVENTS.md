@@ -1363,6 +1363,17 @@ Research fund proposal executed.
 - `round_id` -- round identifier
 - `reveals` -- number of reveals received
 
+### zerone.knowledge.constraint_violation_detected
+*Tx (MsgSubmitClaim).* A new claim's canonical form directly contradicts a
+verified fact. Only emitted when `Params.constraint_check_enabled = true` and
+the claim has a canonical form whose logical inverse (`assert` ↔ `negate` with
+identical domain/subject/predicate/scope) matches an active Fact's canonical
+hash. Detection is informational — the claim proceeds to PoT regardless.
+- `conflicting_fact_id` -- ID of the existing verified fact that contradicts this claim
+- `opposing_canonical_form` -- the normalized opposing form that matched (e.g. `negate(...)`)
+- `submitter` -- address of the claim submitter
+- `domain` -- knowledge domain of the claim
+
 ---
 
 ### zerone.knowledge.bootstrap_sponsored
