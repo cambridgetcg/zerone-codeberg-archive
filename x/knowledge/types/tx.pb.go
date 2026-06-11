@@ -83,7 +83,20 @@ type MsgSubmitClaim struct {
 	// Propagated to Claim.method_id on creation.
 	// Phenomenology Brief Gap 2: enables methodology-specific gates (e.g. the
 	// phenomenological_method requirement for M-PHENOMENOLOGICAL claims).
-	MethodId      string `protobuf:"bytes,20,opt,name=method_id,json=methodId,proto3" json:"method_id,omitempty"`
+	MethodId string `protobuf:"bytes,20,opt,name=method_id,json=methodId,proto3" json:"method_id,omitempty"`
+	// ── Toulmin Argument Structure (Structured Deliberation Gap 1) ────────────
+	//
+	// warrant: the inferential bridge that licenses the claim. Optional but
+	// encouraged — claims without explicit warrants default to implicit induction.
+	// Propagated to Claim.warrant on creation, and to Fact.warrant on ACCEPT.
+	Warrant string `protobuf:"bytes,21,opt,name=warrant,proto3" json:"warrant,omitempty"`
+	// backing: support for the warrant. Optional.
+	// Propagated to Claim.backing → Fact.backing on ACCEPT.
+	Backing string `protobuf:"bytes,22,opt,name=backing,proto3" json:"backing,omitempty"`
+	// qualifier_bps: submitter's declared degree of certainty, 0–1_000_000.
+	// 0 = pure speculation (still valid to submit), 1_000_000 = logical necessity.
+	// Propagated to Claim.qualifier_bps → Fact.qualifier_bps on ACCEPT.
+	QualifierBps  uint64 `protobuf:"varint,23,opt,name=qualifier_bps,json=qualifierBps,proto3" json:"qualifier_bps,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -256,6 +269,27 @@ func (x *MsgSubmitClaim) GetMethodId() string {
 		return x.MethodId
 	}
 	return ""
+}
+
+func (x *MsgSubmitClaim) GetWarrant() string {
+	if x != nil {
+		return x.Warrant
+	}
+	return ""
+}
+
+func (x *MsgSubmitClaim) GetBacking() string {
+	if x != nil {
+		return x.Backing
+	}
+	return ""
+}
+
+func (x *MsgSubmitClaim) GetQualifierBps() uint64 {
+	if x != nil {
+		return x.QualifierBps
+	}
+	return 0
 }
 
 type MsgSubmitClaimResponse struct {
@@ -6483,7 +6517,7 @@ var File_zerone_knowledge_v1_tx_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_tx_proto_rawDesc = "" +
 	"\n" +
-	"\x1czerone/knowledge/v1/tx.proto\x12\x13zerone.knowledge.v1\x1a\x17cosmos/msg/v1/msg.proto\x1a\x1fzerone/knowledge/v1/types.proto\x1a!zerone/knowledge/v1/genesis.proto\"\xa3\a\n" +
+	"\x1czerone/knowledge/v1/tx.proto\x12\x13zerone.knowledge.v1\x1a\x17cosmos/msg/v1/msg.proto\x1a\x1fzerone/knowledge/v1/types.proto\x1a!zerone/knowledge/v1/genesis.proto\"\xfc\a\n" +
 	"\x0eMsgSubmitClaim\x12\x1c\n" +
 	"\tsubmitter\x18\x01 \x01(\tR\tsubmitter\x12!\n" +
 	"\ffact_content\x18\x02 \x01(\tR\vfactContent\x12\x16\n" +
@@ -6508,7 +6542,10 @@ const file_zerone_knowledge_v1_tx_proto_rawDesc = "" +
 	"\x15theoretical_framework\x18\x11 \x01(\tR\x14theoreticalFramework\x12.\n" +
 	"\x13pre_registration_id\x18\x12 \x01(\tR\x11preRegistrationId\x127\n" +
 	"\x17phenomenological_method\x18\x13 \x01(\tR\x16phenomenologicalMethod\x12\x1b\n" +
-	"\tmethod_id\x18\x14 \x01(\tR\bmethodId:\x0e\x82\xe7\xb0*\tsubmitter\"3\n" +
+	"\tmethod_id\x18\x14 \x01(\tR\bmethodId\x12\x18\n" +
+	"\awarrant\x18\x15 \x01(\tR\awarrant\x12\x18\n" +
+	"\abacking\x18\x16 \x01(\tR\abacking\x12#\n" +
+	"\rqualifier_bps\x18\x17 \x01(\x04R\fqualifierBps:\x0e\x82\xe7\xb0*\tsubmitter\"3\n" +
 	"\x16MsgSubmitClaimResponse\x12\x19\n" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\"|\n" +
 	"\x13MsgSubmitCommitment\x12\x1a\n" +

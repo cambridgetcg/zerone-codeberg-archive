@@ -268,6 +268,10 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 		PreRegisteredAtBlock:    preRegCreatedAtBlock,
 		PhenomenologicalMethod:  msg.PhenomenologicalMethod,
 		MethodId:                msg.MethodId,
+		// Structured Deliberation Gap 1: Toulmin argument structure
+		Warrant:      msg.Warrant,
+		Backing:      msg.Backing,
+		QualifierBps: msg.QualifierBps,
 	}
 
 	if err := m.keeper.SetClaim(ctx, claim); err != nil {

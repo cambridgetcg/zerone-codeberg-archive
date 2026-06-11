@@ -682,6 +682,12 @@ func (k Keeper) createFactFromClaim(ctx context.Context, claim *types.Claim, rou
 		// flows through so Fact corpus can be queried by specific method
 		// (e.g. "which neurophenomenological facts have cross-modal support?").
 		PhenomenologicalMethod: claim.PhenomenologicalMethod,
+		// Structured Deliberation Gap 1: Toulmin argument structure flows
+		// through to the accepted Fact for argument-graph queries and
+		// Dung-style attack targeting at the warrant layer.
+		Warrant:      claim.Warrant,
+		Backing:      claim.Backing,
+		QualifierBps: claim.QualifierBps,
 		// Fitness fields
 		FitnessScore:       params.FitnessInitialScore,
 		FitnessUpdatedBlock: height,

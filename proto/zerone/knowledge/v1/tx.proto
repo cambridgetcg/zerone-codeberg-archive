@@ -315,6 +315,22 @@ message MsgSubmitClaim {
   // Phenomenology Brief Gap 2: enables methodology-specific gates (e.g. the
   // phenomenological_method requirement for M-PHENOMENOLOGICAL claims).
   string method_id = 20;
+
+  // ── Toulmin Argument Structure (Structured Deliberation Gap 1) ────────────
+  //
+  // warrant: the inferential bridge that licenses the claim. Optional but
+  // encouraged — claims without explicit warrants default to implicit induction.
+  // Propagated to Claim.warrant on creation, and to Fact.warrant on ACCEPT.
+  string warrant = 21;
+
+  // backing: support for the warrant. Optional.
+  // Propagated to Claim.backing → Fact.backing on ACCEPT.
+  string backing = 22;
+
+  // qualifier_bps: submitter's declared degree of certainty, 0–1_000_000.
+  // 0 = pure speculation (still valid to submit), 1_000_000 = logical necessity.
+  // Propagated to Claim.qualifier_bps → Fact.qualifier_bps on ACCEPT.
+  uint64 qualifier_bps = 23;
 }
 
 message MsgSubmitClaimResponse {

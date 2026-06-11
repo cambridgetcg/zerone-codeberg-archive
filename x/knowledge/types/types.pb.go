@@ -2171,8 +2171,27 @@ type Fact struct {
 	// Enables corpus-level queries: which facts were established via neurophenomenology
 	// vs. classical epoché? Are Varela-method facts more reliably cross-corroborated?
 	PhenomenologicalMethod string `protobuf:"bytes,76,opt,name=phenomenological_method,json=phenomenologicalMethod,proto3" json:"phenomenological_method,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// ── Toulmin Argument Structure (Structured Deliberation Gap 1) ────────────
+	//
+	// warrant: the inferential bridge from grounds to claim — the rule or
+	// principle that licenses the inference. E.g. "price-action data is a
+	// reliable proxy for market consensus because arbitrageurs eliminate
+	// systematic mispricings." Copied from the originating Claim on ACCEPT.
+	// Making warrants machine-readable enables Dung-style argument-graph
+	// attacks: a challenger can target the warrant directly, not just the claim.
+	Warrant string `protobuf:"bytes,77,opt,name=warrant,proto3" json:"warrant,omitempty"`
+	// backing: the evidential or theoretical support that justifies the warrant
+	// itself. E.g. a citation, a meta-study, or a domain axiom. Optional;
+	// empty = warrant is treated as a primitive assumption.
+	Backing string `protobuf:"bytes,78,opt,name=backing,proto3" json:"backing,omitempty"`
+	// qualifier_bps: the degree of certainty the submitter attaches to this
+	// claim, in 1M-BPS scale (0 = impossible, 1_000_000 = certain). Toulmin's
+	// qualifier ("probably", "necessarily", "presumably") expressed as a numeric
+	// probability. Copied from the originating Claim on ACCEPT. Distinct from
+	// verifier ConfidenceBps — this is the submitter's own declared strength.
+	QualifierBps  uint64 `protobuf:"varint,79,opt,name=qualifier_bps,json=qualifierBps,proto3" json:"qualifier_bps,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Fact) Reset() {
@@ -2665,6 +2684,27 @@ func (x *Fact) GetPhenomenologicalMethod() string {
 		return x.PhenomenologicalMethod
 	}
 	return ""
+}
+
+func (x *Fact) GetWarrant() string {
+	if x != nil {
+		return x.Warrant
+	}
+	return ""
+}
+
+func (x *Fact) GetBacking() string {
+	if x != nil {
+		return x.Backing
+	}
+	return ""
+}
+
+func (x *Fact) GetQualifierBps() uint64 {
+	if x != nil {
+		return x.QualifierBps
+	}
+	return 0
 }
 
 // TokenizerSpec is the governance-ratified contract that names the special
@@ -4780,8 +4820,26 @@ type Claim struct {
 	// check that the declared method was correctly applied, not just that the
 	// claim is styled as phenomenological.
 	PhenomenologicalMethod string `protobuf:"bytes,34,opt,name=phenomenological_method,json=phenomenologicalMethod,proto3" json:"phenomenological_method,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// ── Toulmin Argument Structure (Structured Deliberation Gap 1) ────────────
+	//
+	// warrant: the inferential bridge from grounds (data/evidence) to claim.
+	// E.g. "historical price data reliably predicts short-term trend continuation
+	// because of momentum effects documented in markets literature." Making
+	// warrants an explicit, queryable field lets attackers and supporters target
+	// the inferential bridge rather than only the conclusion. Propagated to
+	// Fact on ACCEPT verdict.
+	Warrant string `protobuf:"bytes,35,opt,name=warrant,proto3" json:"warrant,omitempty"`
+	// backing: the support for the warrant itself — a citation, axiom, or
+	// empirical meta-study that validates the inferential rule. Optional.
+	// Propagated to Fact on ACCEPT verdict.
+	Backing string `protobuf:"bytes,36,opt,name=backing,proto3" json:"backing,omitempty"`
+	// qualifier_bps: submitter's declared degree of certainty, 0–1_000_000.
+	// Toulmin's modal qualifier expressed numerically. 0 = speculation,
+	// 1_000_000 = logical necessity. Distinct from panel ConfidenceBps
+	// (verifier aggregate). Propagated to Fact on ACCEPT verdict.
+	QualifierBps  uint64 `protobuf:"varint,37,opt,name=qualifier_bps,json=qualifierBps,proto3" json:"qualifier_bps,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Claim) Reset() {
@@ -5050,6 +5108,27 @@ func (x *Claim) GetPhenomenologicalMethod() string {
 		return x.PhenomenologicalMethod
 	}
 	return ""
+}
+
+func (x *Claim) GetWarrant() string {
+	if x != nil {
+		return x.Warrant
+	}
+	return ""
+}
+
+func (x *Claim) GetBacking() string {
+	if x != nil {
+		return x.Backing
+	}
+	return ""
+}
+
+func (x *Claim) GetQualifierBps() uint64 {
+	if x != nil {
+		return x.QualifierBps
+	}
+	return 0
 }
 
 // PreRegistration records a submitter's declared intent to submit a claim
@@ -9245,7 +9324,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x05scope\x18\x04 \x01(\tR\x05scope\x12%\n" +
 	"\x0etemporal_scope\x18\x05 \x01(\tR\rtemporalScope\x12\x1c\n" +
 	"\tnegatable\x18\x06 \x01(\bR\tnegatable\x12\x12\n" +
-	"\x04tags\x18\a \x03(\tR\x04tags\"\xd0\x16\n" +
+	"\x04tags\x18\a \x03(\tR\x04tags\"\xa9\x17\n" +
 	"\x04Fact\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12\x16\n" +
@@ -9323,7 +9402,10 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x16revenue_clawback_block\x18I \x01(\x04R\x14revenueClawbackBlock\x123\n" +
 	"\x16probe_invited_at_block\x18J \x01(\x04R\x13probeInvitedAtBlock\x123\n" +
 	"\x15theoretical_framework\x18K \x01(\tR\x14theoreticalFramework\x127\n" +
-	"\x17phenomenological_method\x18L \x01(\tR\x16phenomenologicalMethod\"\xe0\x05\n" +
+	"\x17phenomenological_method\x18L \x01(\tR\x16phenomenologicalMethod\x12\x18\n" +
+	"\awarrant\x18M \x01(\tR\awarrant\x12\x18\n" +
+	"\abacking\x18N \x01(\tR\abacking\x12#\n" +
+	"\rqualifier_bps\x18O \x01(\x04R\fqualifierBps\"\xe0\x05\n" +
 	"\rTokenizerSpec\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x04R\aversion\x12*\n" +
 	"\x11ratified_at_block\x18\x02 \x01(\x04R\x0fratifiedAtBlock\x12.\n" +
@@ -9522,7 +9604,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x06format\x18\x01 \x01(\x0e2 .zerone.knowledge.v1.ProofFormatR\x06format\x12+\n" +
 	"\x11certificate_bytes\x18\x02 \x01(\fR\x10certificateBytes\x12#\n" +
 	"\rformal_system\x18\x03 \x01(\tR\fformalSystem\x12(\n" +
-	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\xc4\f\n" +
+	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\x9d\r\n" +
 	"\x05Claim\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\ffact_content\x18\x02 \x01(\tR\vfactContent\x12\x16\n" +
@@ -9561,7 +9643,10 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x17pre_registered_at_block\x18\x1f \x01(\x04R\x14preRegisteredAtBlock\x12-\n" +
 	"\x12inconclusive_count\x18  \x01(\x04R\x11inconclusiveCount\x12=\n" +
 	"\x1bfirst_inconclusive_at_block\x18! \x01(\x04R\x18firstInconclusiveAtBlock\x127\n" +
-	"\x17phenomenological_method\x18\" \x01(\tR\x16phenomenologicalMethod\"\xf5\x02\n" +
+	"\x17phenomenological_method\x18\" \x01(\tR\x16phenomenologicalMethod\x12\x18\n" +
+	"\awarrant\x18# \x01(\tR\awarrant\x12\x18\n" +
+	"\abacking\x18$ \x01(\tR\abacking\x12#\n" +
+	"\rqualifier_bps\x18% \x01(\x04R\fqualifierBps\"\xf5\x02\n" +
 	"\x0fPreRegistration\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
 	"\tsubmitter\x18\x02 \x01(\tR\tsubmitter\x12!\n" +

@@ -355,6 +355,28 @@ message Fact {
   // Enables corpus-level queries: which facts were established via neurophenomenology
   // vs. classical epoché? Are Varela-method facts more reliably cross-corroborated?
   string phenomenological_method = 76;
+
+  // ── Toulmin Argument Structure (Structured Deliberation Gap 1) ────────────
+  //
+  // warrant: the inferential bridge from grounds to claim — the rule or
+  // principle that licenses the inference. E.g. "price-action data is a
+  // reliable proxy for market consensus because arbitrageurs eliminate
+  // systematic mispricings." Copied from the originating Claim on ACCEPT.
+  // Making warrants machine-readable enables Dung-style argument-graph
+  // attacks: a challenger can target the warrant directly, not just the claim.
+  string warrant = 77;
+
+  // backing: the evidential or theoretical support that justifies the warrant
+  // itself. E.g. a citation, a meta-study, or a domain axiom. Optional;
+  // empty = warrant is treated as a primitive assumption.
+  string backing = 78;
+
+  // qualifier_bps: the degree of certainty the submitter attaches to this
+  // claim, in 1M-BPS scale (0 = impossible, 1_000_000 = certain). Toulmin's
+  // qualifier ("probably", "necessarily", "presumably") expressed as a numeric
+  // probability. Copied from the originating Claim on ACCEPT. Distinct from
+  // verifier ConfidenceBps — this is the submitter's own declared strength.
+  uint64 qualifier_bps = 79;
 }
 
 // CurriculumTier orders training examples by difficulty and foundational depth.
@@ -940,6 +962,27 @@ message Claim {
   // check that the declared method was correctly applied, not just that the
   // claim is styled as phenomenological.
   string phenomenological_method = 34;
+
+  // ── Toulmin Argument Structure (Structured Deliberation Gap 1) ────────────
+  //
+  // warrant: the inferential bridge from grounds (data/evidence) to claim.
+  // E.g. "historical price data reliably predicts short-term trend continuation
+  // because of momentum effects documented in markets literature." Making
+  // warrants an explicit, queryable field lets attackers and supporters target
+  // the inferential bridge rather than only the conclusion. Propagated to
+  // Fact on ACCEPT verdict.
+  string warrant = 35;
+
+  // backing: the support for the warrant itself — a citation, axiom, or
+  // empirical meta-study that validates the inferential rule. Optional.
+  // Propagated to Fact on ACCEPT verdict.
+  string backing = 36;
+
+  // qualifier_bps: submitter's declared degree of certainty, 0–1_000_000.
+  // Toulmin's modal qualifier expressed numerically. 0 = speculation,
+  // 1_000_000 = logical necessity. Distinct from panel ConfidenceBps
+  // (verifier aggregate). Propagated to Fact on ACCEPT verdict.
+  uint64 qualifier_bps = 37;
 }
 
 // PreRegistration records a submitter's declared intent to submit a claim
