@@ -27,6 +27,7 @@ const (
 	Msg_UpdateParams_FullMethodName              = "/zerone.staking.v1.Msg/UpdateParams"
 	Msg_SubmitSlashEvidence_FullMethodName       = "/zerone.staking.v1.Msg/SubmitSlashEvidence"
 	Msg_ContributeToInsuranceFund_FullMethodName = "/zerone.staking.v1.Msg/ContributeToInsuranceFund"
+	Msg_UntombstoneValidator_FullMethodName      = "/zerone.staking.v1.Msg/UntombstoneValidator"
 )
 
 // MsgClient is the client API for Msg service.
@@ -43,6 +44,7 @@ type MsgClient interface {
 	UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error)
 	SubmitSlashEvidence(ctx context.Context, in *MsgSubmitSlashEvidence, opts ...grpc.CallOption) (*MsgSubmitSlashEvidenceResponse, error)
 	ContributeToInsuranceFund(ctx context.Context, in *MsgContributeToInsuranceFund, opts ...grpc.CallOption) (*MsgContributeToInsuranceFundResponse, error)
+	UntombstoneValidator(ctx context.Context, in *MsgUntombstoneValidator, opts ...grpc.CallOption) (*MsgUntombstoneValidatorResponse, error)
 }
 
 type msgClient struct {
@@ -133,6 +135,16 @@ func (c *msgClient) ContributeToInsuranceFund(ctx context.Context, in *MsgContri
 	return out, nil
 }
 
+func (c *msgClient) UntombstoneValidator(ctx context.Context, in *MsgUntombstoneValidator, opts ...grpc.CallOption) (*MsgUntombstoneValidatorResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgUntombstoneValidatorResponse)
+	err := c.cc.Invoke(ctx, Msg_UntombstoneValidator_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MsgServer is the server API for Msg service.
 // All implementations must embed UnimplementedMsgServer
 // for forward compatibility.
@@ -147,6 +159,7 @@ type MsgServer interface {
 	UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error)
 	SubmitSlashEvidence(context.Context, *MsgSubmitSlashEvidence) (*MsgSubmitSlashEvidenceResponse, error)
 	ContributeToInsuranceFund(context.Context, *MsgContributeToInsuranceFund) (*MsgContributeToInsuranceFundResponse, error)
+	UntombstoneValidator(context.Context, *MsgUntombstoneValidator) (*MsgUntombstoneValidatorResponse, error)
 	mustEmbedUnimplementedMsgServer()
 }
 
@@ -180,6 +193,9 @@ func (UnimplementedMsgServer) SubmitSlashEvidence(context.Context, *MsgSubmitSla
 }
 func (UnimplementedMsgServer) ContributeToInsuranceFund(context.Context, *MsgContributeToInsuranceFund) (*MsgContributeToInsuranceFundResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ContributeToInsuranceFund not implemented")
+}
+func (UnimplementedMsgServer) UntombstoneValidator(context.Context, *MsgUntombstoneValidator) (*MsgUntombstoneValidatorResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UntombstoneValidator not implemented")
 }
 func (UnimplementedMsgServer) mustEmbedUnimplementedMsgServer() {}
 func (UnimplementedMsgServer) testEmbeddedByValue()             {}
@@ -346,6 +362,24 @@ func _Msg_ContributeToInsuranceFund_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Msg_UntombstoneValidator_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgUntombstoneValidator)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).UntombstoneValidator(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_UntombstoneValidator_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).UntombstoneValidator(ctx, req.(*MsgUntombstoneValidator))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Msg_ServiceDesc is the grpc.ServiceDesc for Msg service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -384,6 +418,10 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ContributeToInsuranceFund",
 			Handler:    _Msg_ContributeToInsuranceFund_Handler,
+		},
+		{
+			MethodName: "UntombstoneValidator",
+			Handler:    _Msg_UntombstoneValidator_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

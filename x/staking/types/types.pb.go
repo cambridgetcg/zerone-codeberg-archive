@@ -216,8 +216,15 @@ type Validator struct {
 	CommissionBps                 uint64                 `protobuf:"varint,24,opt,name=commission_bps,json=commissionBps,proto3" json:"commission_bps,omitempty"`                                         // up to 10,000 (100%)
 	InsuranceFundBalance          string                 `protobuf:"bytes,25,opt,name=insurance_fund_balance,json=insuranceFundBalance,proto3" json:"insurance_fund_balance,omitempty"`                   // uzrn held in operator's delegator insurance pool
 	DelegatorInsuranceFundBps     uint64                 `protobuf:"varint,26,opt,name=delegator_insurance_fund_bps,json=delegatorInsuranceFundBps,proto3" json:"delegator_insurance_fund_bps,omitempty"` // operator's declared coverage rate (0 = no insurance)
-	unknownFields                 protoimpl.UnknownFields
-	sizeCache                     protoimpl.SizeCache
+	// tombstoned: permanent exclusion from the validator set. Unlike Jailed
+	// (temporary, reversible), a tombstoned validator cannot participate in
+	// verification panels, cannot self-unbond, and requires a governance
+	// MsgUntombstoneValidator proposal to be reinstated. Set when SlashCount
+	// reaches the governance-configurable tombstone_threshold.
+	Tombstoned    bool   `protobuf:"varint,27,opt,name=tombstoned,proto3" json:"tombstoned,omitempty"`
+	TombstonedAt  uint64 `protobuf:"varint,28,opt,name=tombstoned_at,json=tombstonedAt,proto3" json:"tombstoned_at,omitempty"` // block height at which tombstoning occurred
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Validator) Reset() {
@@ -428,6 +435,20 @@ func (x *Validator) GetInsuranceFundBalance() string {
 func (x *Validator) GetDelegatorInsuranceFundBps() uint64 {
 	if x != nil {
 		return x.DelegatorInsuranceFundBps
+	}
+	return 0
+}
+
+func (x *Validator) GetTombstoned() bool {
+	if x != nil {
+		return x.Tombstoned
+	}
+	return false
+}
+
+func (x *Validator) GetTombstonedAt() uint64 {
+	if x != nil {
+		return x.TombstonedAt
 	}
 	return 0
 }
@@ -853,7 +874,7 @@ const file_zerone_staking_v1_types_proto_rawDesc = "" +
 	"\x0fSlashRateConfig\x12;\n" +
 	"\n" +
 	"slash_type\x18\x01 \x01(\x0e2\x1c.zerone.staking.v1.SlashTypeR\tslashType\x12\x19\n" +
-	"\brate_bps\x18\x02 \x01(\x04R\arateBps\"\xb1\b\n" +
+	"\brate_bps\x18\x02 \x01(\x04R\arateBps\"\xf6\b\n" +
 	"\tValidator\x12)\n" +
 	"\x10operator_address\x18\x01 \x01(\tR\x0foperatorAddress\x12)\n" +
 	"\x10consensus_pubkey\x18\x02 \x01(\tR\x0fconsensusPubkey\x12\x10\n" +
@@ -884,7 +905,11 @@ const file_zerone_staking_v1_types_proto_rawDesc = "" +
 	"\adetails\x18\x17 \x01(\tR\adetails\x12%\n" +
 	"\x0ecommission_bps\x18\x18 \x01(\x04R\rcommissionBps\x124\n" +
 	"\x16insurance_fund_balance\x18\x19 \x01(\tR\x14insuranceFundBalance\x12?\n" +
-	"\x1cdelegator_insurance_fund_bps\x18\x1a \x01(\x04R\x19delegatorInsuranceFundBps\"\xa8\x01\n" +
+	"\x1cdelegator_insurance_fund_bps\x18\x1a \x01(\x04R\x19delegatorInsuranceFundBps\x12\x1e\n" +
+	"\n" +
+	"tombstoned\x18\x1b \x01(\bR\n" +
+	"tombstoned\x12#\n" +
+	"\rtombstoned_at\x18\x1c \x01(\x04R\ftombstonedAt\"\xa8\x01\n" +
 	"\n" +
 	"Delegation\x12+\n" +
 	"\x11delegator_address\x18\x01 \x01(\tR\x10delegatorAddress\x12+\n" +

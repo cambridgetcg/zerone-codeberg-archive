@@ -309,6 +309,17 @@ func (p *Params) Validate() error {
 	if p.EvidenceRewardBps > BPSScale {
 		return fmt.Errorf("evidence reward bps exceeds maximum (%d)", BPSScale)
 	}
+	// tombstone_threshold must form a meaningful two-level hierarchy:
+	// the tombstone threshold must be strictly greater than max_slash_count_deactivate
+	// so there is a window in which a validator is deactivated but not yet permanently banned.
+	// 0 = disabled (no automatic tombstoning).
+	if p.TombstoneThreshold > 0 && p.MaxSlashCountDeactivate > 0 &&
+		p.TombstoneThreshold <= p.MaxSlashCountDeactivate {
+		return fmt.Errorf(
+			"tombstone_threshold (%d) must exceed max_slash_count_deactivate (%d) to form a meaningful two-level hierarchy; set tombstone_threshold=0 to disable",
+			p.TombstoneThreshold, p.MaxSlashCountDeactivate,
+		)
+	}
 
 	// Validate slash_rate_configs: each rate must fit within BPS scale.
 	for i, cfg := range p.SlashRateConfigs {
@@ -405,6 +416,27 @@ func (m *MsgSubmitSlashEvidence) ValidateBasic() error {
 	}
 	if len(m.WitnessData) > 512 {
 		return fmt.Errorf("witness_data exceeds maximum length of 512 characters")
+	}
+	return nil
+}
+
+func (m *MsgUntombstoneValidator) GetSigners() []sdk.AccAddress {
+	addr, _ := sdk.AccAddressFromBech32(m.Authority)
+	return []sdk.AccAddress{addr}
+}
+
+func (m *MsgUntombstoneValidator) ValidateBasic() error {
+	if m.Authority == "" {
+		return ErrUnauthorized.Wrap("authority required")
+	}
+	if _, err := sdk.AccAddressFromBech32(m.Authority); err != nil {
+		return ErrInvalidAddress.Wrap("invalid authority address")
+	}
+	if m.ValidatorAddress == "" {
+		return ErrInvalidAddress.Wrap("validator_address required")
+	}
+	if _, err := sdk.AccAddressFromBech32(m.ValidatorAddress); err != nil {
+		return ErrInvalidAddress.Wrap("invalid validator address")
 	}
 	return nil
 }

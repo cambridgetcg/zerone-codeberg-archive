@@ -899,6 +899,106 @@ func (x *MsgContributeToInsuranceFundResponse) GetNewBalance() string {
 	return ""
 }
 
+// MsgUntombstoneValidator lifts a permanent tombstone from a validator.
+// This is a governance-authority-gated operation — only the governance module
+// address may untombstone. Tombstoned validators are permanently excluded from
+// verification panels and self-unbonding until governance reviews and approves.
+type MsgUntombstoneValidator struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Authority        string                 `protobuf:"bytes,1,opt,name=authority,proto3" json:"authority,omitempty"`                                       // governance module address
+	ValidatorAddress string                 `protobuf:"bytes,2,opt,name=validator_address,json=validatorAddress,proto3" json:"validator_address,omitempty"` // validator to untombstone
+	Reason           string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`                                             // rationale recorded on-chain
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *MsgUntombstoneValidator) Reset() {
+	*x = MsgUntombstoneValidator{}
+	mi := &file_zerone_staking_v1_tx_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MsgUntombstoneValidator) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MsgUntombstoneValidator) ProtoMessage() {}
+
+func (x *MsgUntombstoneValidator) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_staking_v1_tx_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MsgUntombstoneValidator.ProtoReflect.Descriptor instead.
+func (*MsgUntombstoneValidator) Descriptor() ([]byte, []int) {
+	return file_zerone_staking_v1_tx_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *MsgUntombstoneValidator) GetAuthority() string {
+	if x != nil {
+		return x.Authority
+	}
+	return ""
+}
+
+func (x *MsgUntombstoneValidator) GetValidatorAddress() string {
+	if x != nil {
+		return x.ValidatorAddress
+	}
+	return ""
+}
+
+func (x *MsgUntombstoneValidator) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type MsgUntombstoneValidatorResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MsgUntombstoneValidatorResponse) Reset() {
+	*x = MsgUntombstoneValidatorResponse{}
+	mi := &file_zerone_staking_v1_tx_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MsgUntombstoneValidatorResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MsgUntombstoneValidatorResponse) ProtoMessage() {}
+
+func (x *MsgUntombstoneValidatorResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_staking_v1_tx_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MsgUntombstoneValidatorResponse.ProtoReflect.Descriptor instead.
+func (*MsgUntombstoneValidatorResponse) Descriptor() ([]byte, []int) {
+	return file_zerone_staking_v1_tx_proto_rawDescGZIP(), []int{17}
+}
+
 var File_zerone_staking_v1_tx_proto protoreflect.FileDescriptor
 
 const file_zerone_staking_v1_tx_proto_rawDesc = "" +
@@ -958,7 +1058,12 @@ const file_zerone_staking_v1_tx_proto_rawDesc = "" +
 	"\x06amount\x18\x02 \x01(\tR\x06amount:\r\x82\xe7\xb0*\boperator\"G\n" +
 	"$MsgContributeToInsuranceFundResponse\x12\x1f\n" +
 	"\vnew_balance\x18\x01 \x01(\tR\n" +
-	"newBalance2\xd8\x06\n" +
+	"newBalance\"\x8c\x01\n" +
+	"\x17MsgUntombstoneValidator\x12\x1c\n" +
+	"\tauthority\x18\x01 \x01(\tR\tauthority\x12+\n" +
+	"\x11validator_address\x18\x02 \x01(\tR\x10validatorAddress\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason:\x0e\x82\xe7\xb0*\tauthority\"!\n" +
+	"\x1fMsgUntombstoneValidatorResponse2\xd0\a\n" +
 	"\x03Msg\x12m\n" +
 	"\x11RegisterValidator\x12'.zerone.staking.v1.MsgRegisterValidator\x1a/.zerone.staking.v1.MsgRegisterValidatorResponse\x12R\n" +
 	"\bDelegate\x12\x1e.zerone.staking.v1.MsgDelegate\x1a&.zerone.staking.v1.MsgDelegateResponse\x12X\n" +
@@ -969,7 +1074,8 @@ const file_zerone_staking_v1_tx_proto_rawDesc = "" +
 	"\x14UpdateValidatorStake\x12*.zerone.staking.v1.MsgUpdateValidatorStake\x1a2.zerone.staking.v1.MsgUpdateValidatorStakeResponse\x12^\n" +
 	"\fUpdateParams\x12\".zerone.staking.v1.MsgUpdateParams\x1a*.zerone.staking.v1.MsgUpdateParamsResponse\x12s\n" +
 	"\x13SubmitSlashEvidence\x12).zerone.staking.v1.MsgSubmitSlashEvidence\x1a1.zerone.staking.v1.MsgSubmitSlashEvidenceResponse\x12\x85\x01\n" +
-	"\x19ContributeToInsuranceFund\x12/.zerone.staking.v1.MsgContributeToInsuranceFund\x1a7.zerone.staking.v1.MsgContributeToInsuranceFundResponse\x1a\x05\x80\xe7\xb0*\x01B0Z.github.com/zerone-chain/zerone/x/staking/typesb\x06proto3"
+	"\x19ContributeToInsuranceFund\x12/.zerone.staking.v1.MsgContributeToInsuranceFund\x1a7.zerone.staking.v1.MsgContributeToInsuranceFundResponse\x12v\n" +
+	"\x14UntombstoneValidator\x12*.zerone.staking.v1.MsgUntombstoneValidator\x1a2.zerone.staking.v1.MsgUntombstoneValidatorResponse\x1a\x05\x80\xe7\xb0*\x01B0Z.github.com/zerone-chain/zerone/x/staking/typesb\x06proto3"
 
 var (
 	file_zerone_staking_v1_tx_proto_rawDescOnce sync.Once
@@ -983,7 +1089,7 @@ func file_zerone_staking_v1_tx_proto_rawDescGZIP() []byte {
 	return file_zerone_staking_v1_tx_proto_rawDescData
 }
 
-var file_zerone_staking_v1_tx_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_zerone_staking_v1_tx_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_zerone_staking_v1_tx_proto_goTypes = []any{
 	(*MsgRegisterValidator)(nil),                 // 0: zerone.staking.v1.MsgRegisterValidator
 	(*MsgRegisterValidatorResponse)(nil),         // 1: zerone.staking.v1.MsgRegisterValidatorResponse
@@ -1001,12 +1107,14 @@ var file_zerone_staking_v1_tx_proto_goTypes = []any{
 	(*MsgSubmitSlashEvidenceResponse)(nil),       // 13: zerone.staking.v1.MsgSubmitSlashEvidenceResponse
 	(*MsgContributeToInsuranceFund)(nil),         // 14: zerone.staking.v1.MsgContributeToInsuranceFund
 	(*MsgContributeToInsuranceFundResponse)(nil), // 15: zerone.staking.v1.MsgContributeToInsuranceFundResponse
-	(*Params)(nil),                               // 16: zerone.staking.v1.Params
-	(SlashType)(0),                               // 17: zerone.staking.v1.SlashType
+	(*MsgUntombstoneValidator)(nil),              // 16: zerone.staking.v1.MsgUntombstoneValidator
+	(*MsgUntombstoneValidatorResponse)(nil),      // 17: zerone.staking.v1.MsgUntombstoneValidatorResponse
+	(*Params)(nil),                               // 18: zerone.staking.v1.Params
+	(SlashType)(0),                               // 19: zerone.staking.v1.SlashType
 }
 var file_zerone_staking_v1_tx_proto_depIdxs = []int32{
-	16, // 0: zerone.staking.v1.MsgUpdateParams.params:type_name -> zerone.staking.v1.Params
-	17, // 1: zerone.staking.v1.MsgSubmitSlashEvidence.slash_type:type_name -> zerone.staking.v1.SlashType
+	18, // 0: zerone.staking.v1.MsgUpdateParams.params:type_name -> zerone.staking.v1.Params
+	19, // 1: zerone.staking.v1.MsgSubmitSlashEvidence.slash_type:type_name -> zerone.staking.v1.SlashType
 	0,  // 2: zerone.staking.v1.Msg.RegisterValidator:input_type -> zerone.staking.v1.MsgRegisterValidator
 	2,  // 3: zerone.staking.v1.Msg.Delegate:input_type -> zerone.staking.v1.MsgDelegate
 	4,  // 4: zerone.staking.v1.Msg.Undelegate:input_type -> zerone.staking.v1.MsgUndelegate
@@ -1015,16 +1123,18 @@ var file_zerone_staking_v1_tx_proto_depIdxs = []int32{
 	10, // 7: zerone.staking.v1.Msg.UpdateParams:input_type -> zerone.staking.v1.MsgUpdateParams
 	12, // 8: zerone.staking.v1.Msg.SubmitSlashEvidence:input_type -> zerone.staking.v1.MsgSubmitSlashEvidence
 	14, // 9: zerone.staking.v1.Msg.ContributeToInsuranceFund:input_type -> zerone.staking.v1.MsgContributeToInsuranceFund
-	1,  // 10: zerone.staking.v1.Msg.RegisterValidator:output_type -> zerone.staking.v1.MsgRegisterValidatorResponse
-	3,  // 11: zerone.staking.v1.Msg.Delegate:output_type -> zerone.staking.v1.MsgDelegateResponse
-	5,  // 12: zerone.staking.v1.Msg.Undelegate:output_type -> zerone.staking.v1.MsgUndelegateResponse
-	7,  // 13: zerone.staking.v1.Msg.Redelegate:output_type -> zerone.staking.v1.MsgRedelegateResponse
-	9,  // 14: zerone.staking.v1.Msg.UpdateValidatorStake:output_type -> zerone.staking.v1.MsgUpdateValidatorStakeResponse
-	11, // 15: zerone.staking.v1.Msg.UpdateParams:output_type -> zerone.staking.v1.MsgUpdateParamsResponse
-	13, // 16: zerone.staking.v1.Msg.SubmitSlashEvidence:output_type -> zerone.staking.v1.MsgSubmitSlashEvidenceResponse
-	15, // 17: zerone.staking.v1.Msg.ContributeToInsuranceFund:output_type -> zerone.staking.v1.MsgContributeToInsuranceFundResponse
-	10, // [10:18] is the sub-list for method output_type
-	2,  // [2:10] is the sub-list for method input_type
+	16, // 10: zerone.staking.v1.Msg.UntombstoneValidator:input_type -> zerone.staking.v1.MsgUntombstoneValidator
+	1,  // 11: zerone.staking.v1.Msg.RegisterValidator:output_type -> zerone.staking.v1.MsgRegisterValidatorResponse
+	3,  // 12: zerone.staking.v1.Msg.Delegate:output_type -> zerone.staking.v1.MsgDelegateResponse
+	5,  // 13: zerone.staking.v1.Msg.Undelegate:output_type -> zerone.staking.v1.MsgUndelegateResponse
+	7,  // 14: zerone.staking.v1.Msg.Redelegate:output_type -> zerone.staking.v1.MsgRedelegateResponse
+	9,  // 15: zerone.staking.v1.Msg.UpdateValidatorStake:output_type -> zerone.staking.v1.MsgUpdateValidatorStakeResponse
+	11, // 16: zerone.staking.v1.Msg.UpdateParams:output_type -> zerone.staking.v1.MsgUpdateParamsResponse
+	13, // 17: zerone.staking.v1.Msg.SubmitSlashEvidence:output_type -> zerone.staking.v1.MsgSubmitSlashEvidenceResponse
+	15, // 18: zerone.staking.v1.Msg.ContributeToInsuranceFund:output_type -> zerone.staking.v1.MsgContributeToInsuranceFundResponse
+	17, // 19: zerone.staking.v1.Msg.UntombstoneValidator:output_type -> zerone.staking.v1.MsgUntombstoneValidatorResponse
+	11, // [11:20] is the sub-list for method output_type
+	2,  // [2:11] is the sub-list for method input_type
 	2,  // [2:2] is the sub-list for extension type_name
 	2,  // [2:2] is the sub-list for extension extendee
 	0,  // [0:2] is the sub-list for field type_name
@@ -1043,7 +1153,7 @@ func file_zerone_staking_v1_tx_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_zerone_staking_v1_tx_proto_rawDesc), len(file_zerone_staking_v1_tx_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   16,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

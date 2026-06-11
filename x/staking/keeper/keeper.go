@@ -641,6 +641,11 @@ func (k Keeper) SlashValidator(ctx sdk.Context, validatorAddr string, amount *bi
 		val.IsActive = false
 	}
 
+	// Tombstone if slash count reaches the permanent-ban threshold.
+	// Tombstoning is stronger than jailing: the validator cannot self-unbond
+	// and requires a governance MsgUntombstoneValidator to be reinstated.
+	k.maybeApplyTombstone(ctx, val, params.TombstoneThreshold)
+
 	// Check tier transition
 	newTier, changed := k.CheckTierTransition(ctx, val)
 	if changed {
@@ -772,6 +777,8 @@ func (k Keeper) SlashValidatorToModule(ctx sdk.Context, validatorAddr string, am
 	if params.MaxSlashCountDeactivate > 0 && val.SlashCount >= params.MaxSlashCountDeactivate {
 		val.IsActive = false
 	}
+
+	k.maybeApplyTombstone(ctx, val, params.TombstoneThreshold)
 
 	// Check tier transition
 	newTier, changed := k.CheckTierTransition(ctx, val)
@@ -998,6 +1005,7 @@ func (k Keeper) SlashValidatorWithReward(ctx sdk.Context, validatorAddr string, 
 	if params.MaxSlashCountDeactivate > 0 && val.SlashCount >= params.MaxSlashCountDeactivate {
 		val.IsActive = false
 	}
+	k.maybeApplyTombstone(ctx, val, params.TombstoneThreshold)
 	newTier, changed := k.CheckTierTransition(ctx, val)
 	if changed {
 		val.Tier = newTier
@@ -1191,4 +1199,25 @@ func (k Keeper) EndBlocker(ctx sdk.Context) {
 		}
 		return false
 	})
+}
+
+// maybeApplyTombstone checks whether the validator's SlashCount has crossed
+// the tombstone threshold and, if so, permanently tombstones them.
+// The tombstone is idempotent — already-tombstoned validators are left unchanged.
+// threshold == 0 disables tombstoning (default — backward compat).
+func (k Keeper) maybeApplyTombstone(ctx sdk.Context, val *types.Validator, threshold uint64) {
+	if threshold == 0 || val.Tombstoned {
+		return
+	}
+	if val.SlashCount >= threshold {
+		val.Tombstoned = true
+		val.TombstonedAt = uint64(ctx.BlockHeight())
+		val.IsActive = false // tombstoned implies inactive
+		ctx.EventManager().EmitEvent(sdk.NewEvent(
+			"zerone.staking.validator_tombstoned",
+			sdk.NewAttribute("validator", val.OperatorAddress),
+			sdk.NewAttribute("slash_count", fmt.Sprintf("%d", val.SlashCount)),
+			sdk.NewAttribute("tombstoned_at", fmt.Sprintf("%d", val.TombstonedAt)),
+		))
+	}
 }

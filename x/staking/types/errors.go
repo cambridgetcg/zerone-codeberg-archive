@@ -28,4 +28,9 @@ var (
 	ErrEvidenceAlreadySubmitted = errors.Register(ModuleName, 24, "slash evidence already submitted by this address for this validator this block")
 	ErrValidatorNotSlashable    = errors.Register(ModuleName, 25, "validator cannot be slashed (no configured rate for slash type)")
 	ErrInvalidInsuranceAmount   = errors.Register(ModuleName, 26, "insurance contribution amount must be positive")
+
+	// ─── Tombstoning (permanent ban) — Slashing Gap 1 ────────────────────
+	ErrValidatorTombstoned              = errors.Register(ModuleName, 27, "validator is tombstoned (permanent exclusion)")
+	ErrTombstonedCannotSelfUnbond       = errors.Register(ModuleName, 28, "tombstoned validator cannot self-unbond until untombstoned by governance")
+	ErrNotTombstoned                    = errors.Register(ModuleName, 29, "validator is not tombstoned")
 )

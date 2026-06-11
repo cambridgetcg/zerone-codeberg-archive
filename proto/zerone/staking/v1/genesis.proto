@@ -40,6 +40,13 @@ message Params {
   // Reward comes out of the slashed pool before the remainder routes to
   // the development fund — analogous to dispute arbiter rewards.
   uint64              evidence_reward_bps           = 17;
+  // tombstone_threshold: number of accumulated slashes that triggers permanent
+  // tombstoning. When SlashCount >= tombstone_threshold (and threshold > 0),
+  // the validator is tombstoned — permanently excluded from panels and
+  // self-unbonding until a governance MsgUntombstoneValidator proposal passes.
+  // 0 = disabled (default — no automatic tombstoning; matches current behaviour).
+  // Typical value: 3–5× max_slash_count_deactivate.
+  uint64              tombstone_threshold           = 18;
 }
 
 // GenesisState defines the staking module genesis state.

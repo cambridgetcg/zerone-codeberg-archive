@@ -19,6 +19,7 @@ service Msg {
   rpc UpdateParams(MsgUpdateParams)           returns (MsgUpdateParamsResponse);
   rpc SubmitSlashEvidence(MsgSubmitSlashEvidence) returns (MsgSubmitSlashEvidenceResponse);
   rpc ContributeToInsuranceFund(MsgContributeToInsuranceFund) returns (MsgContributeToInsuranceFundResponse);
+  rpc UntombstoneValidator(MsgUntombstoneValidator) returns (MsgUntombstoneValidatorResponse);
 }
 
 // MsgRegisterValidator registers a new validator.
@@ -129,3 +130,16 @@ message MsgContributeToInsuranceFund {
 message MsgContributeToInsuranceFundResponse {
   string new_balance = 1; // insurance fund balance after contribution
 }
+
+// MsgUntombstoneValidator lifts a permanent tombstone from a validator.
+// This is a governance-authority-gated operation — only the governance module
+// address may untombstone. Tombstoned validators are permanently excluded from
+// verification panels and self-unbonding until governance reviews and approves.
+message MsgUntombstoneValidator {
+  option (cosmos.msg.v1.signer) = "authority";
+
+  string authority        = 1; // governance module address
+  string validator_address = 2; // validator to untombstone
+  string reason           = 3; // rationale recorded on-chain
+}
+message MsgUntombstoneValidatorResponse {}

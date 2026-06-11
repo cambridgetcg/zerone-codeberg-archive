@@ -57,8 +57,15 @@ type Params struct {
 	// Reward comes out of the slashed pool before the remainder routes to
 	// the development fund — analogous to dispute arbiter rewards.
 	EvidenceRewardBps uint64 `protobuf:"varint,17,opt,name=evidence_reward_bps,json=evidenceRewardBps,proto3" json:"evidence_reward_bps,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// tombstone_threshold: number of accumulated slashes that triggers permanent
+	// tombstoning. When SlashCount >= tombstone_threshold (and threshold > 0),
+	// the validator is tombstoned — permanently excluded from panels and
+	// self-unbonding until a governance MsgUntombstoneValidator proposal passes.
+	// 0 = disabled (default — no automatic tombstoning; matches current behaviour).
+	// Typical value: 3–5× max_slash_count_deactivate.
+	TombstoneThreshold uint64 `protobuf:"varint,18,opt,name=tombstone_threshold,json=tombstoneThreshold,proto3" json:"tombstone_threshold,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -210,6 +217,13 @@ func (x *Params) GetEvidenceRewardBps() uint64 {
 	return 0
 }
 
+func (x *Params) GetTombstoneThreshold() uint64 {
+	if x != nil {
+		return x.TombstoneThreshold
+	}
+	return 0
+}
+
 // GenesisState defines the staking module genesis state.
 type GenesisState struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
@@ -291,7 +305,7 @@ var File_zerone_staking_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_staking_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"\x1fzerone/staking/v1/genesis.proto\x12\x11zerone.staking.v1\x1a\x1dzerone/staking/v1/types.proto\"\xb4\a\n" +
+	"\x1fzerone/staking/v1/genesis.proto\x12\x11zerone.staking.v1\x1a\x1dzerone/staking/v1/types.proto\"\xe5\a\n" +
 	"\x06Params\x12)\n" +
 	"\x10unbonding_period\x18\x01 \x01(\x04R\x0funbondingPeriod\x12#\n" +
 	"\rvirtual_stake\x18\x02 \x01(\tR\fvirtualStake\x12%\n" +
@@ -310,7 +324,8 @@ const file_zerone_staking_v1_genesis_proto_rawDesc = "" +
 	"\ftier_configs\x18\x0e \x03(\v2\x1d.zerone.staking.v1.TierConfigR\vtierConfigs\x125\n" +
 	"\x17slash_burn_fraction_bps\x18\x0f \x01(\x04R\x14slashBurnFractionBps\x12P\n" +
 	"\x12slash_rate_configs\x18\x10 \x03(\v2\".zerone.staking.v1.SlashRateConfigR\x10slashRateConfigs\x12.\n" +
-	"\x13evidence_reward_bps\x18\x11 \x01(\x04R\x11evidenceRewardBps\"\xb5\x02\n" +
+	"\x13evidence_reward_bps\x18\x11 \x01(\x04R\x11evidenceRewardBps\x12/\n" +
+	"\x13tombstone_threshold\x18\x12 \x01(\x04R\x12tombstoneThreshold\"\xb5\x02\n" +
 	"\fGenesisState\x121\n" +
 	"\x06params\x18\x01 \x01(\v2\x19.zerone.staking.v1.ParamsR\x06params\x12<\n" +
 	"\n" +

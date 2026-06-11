@@ -208,6 +208,17 @@ func (ms *msgServer) Delegate(goCtx context.Context, msg *types.MsgDelegate) (*t
 func (ms *msgServer) Undelegate(goCtx context.Context, msg *types.MsgUndelegate) (*types.MsgUndelegateResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
+	// Tombstone gate: a tombstoned validator's operator cannot self-unbond.
+	// External delegators can still exit — only the operator's self-stake is held.
+	// Governance must call MsgUntombstoneValidator before the operator can withdraw.
+	if val, found := ms.GetValidator(ctx, msg.Validator); found && val.Tombstoned {
+		if msg.Delegator == val.OperatorAddress {
+			return nil, types.ErrTombstonedCannotSelfUnbond.Wrapf(
+				"validator %s is tombstoned; operator must obtain governance approval via MsgUntombstoneValidator",
+				msg.Validator)
+		}
+	}
+
 	del, found := ms.GetDelegation(ctx, msg.Delegator, msg.Validator)
 	if !found {
 		return nil, types.ErrDelegationNotFound
@@ -640,4 +651,43 @@ func (ms *msgServer) ContributeToInsuranceFund(goCtx context.Context, msg *types
 	))
 
 	return &types.MsgContributeToInsuranceFundResponse{NewBalance: current.String()}, nil
+}
+
+// UntombstoneValidator lifts a permanent tombstone from a validator.
+// This is governance-gated — only the module authority address can call it.
+// Clearing the tombstone does NOT automatically re-activate the validator;
+// governance must also update the validator's IsActive status separately.
+func (ms *msgServer) UntombstoneValidator(goCtx context.Context, msg *types.MsgUntombstoneValidator) (*types.MsgUntombstoneValidatorResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+
+	// Governance authority gate.
+	if msg.Authority != ms.GetAuthority() {
+		return nil, types.ErrUnauthorized.Wrapf(
+			"only the governance module authority %s may untombstone validators; got %s",
+			ms.GetAuthority(), msg.Authority)
+	}
+
+	val, found := ms.GetValidator(ctx, msg.ValidatorAddress)
+	if !found {
+		return nil, types.ErrValidatorNotFound
+	}
+
+	if !val.Tombstoned {
+		return nil, types.ErrNotTombstoned.Wrapf(
+			"validator %s is not tombstoned", msg.ValidatorAddress)
+	}
+
+	// Clear tombstone.
+	val.Tombstoned = false
+	val.TombstonedAt = 0
+	ms.SetValidator(ctx, val)
+
+	ctx.EventManager().EmitEvent(sdk.NewEvent(
+		"zerone.staking.validator_untombstoned",
+		sdk.NewAttribute("validator", msg.ValidatorAddress),
+		sdk.NewAttribute("authority", msg.Authority),
+		sdk.NewAttribute("reason", msg.Reason),
+	))
+
+	return &types.MsgUntombstoneValidatorResponse{}, nil
 }

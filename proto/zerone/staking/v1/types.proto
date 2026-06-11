@@ -56,6 +56,13 @@ message Validator {
   uint64        commission_bps                 = 24; // up to 10,000 (100%)
   string        insurance_fund_balance         = 25; // uzrn held in operator's delegator insurance pool
   uint64        delegator_insurance_fund_bps   = 26; // operator's declared coverage rate (0 = no insurance)
+  // tombstoned: permanent exclusion from the validator set. Unlike Jailed
+  // (temporary, reversible), a tombstoned validator cannot participate in
+  // verification panels, cannot self-unbond, and requires a governance
+  // MsgUntombstoneValidator proposal to be reinstated. Set when SlashCount
+  // reaches the governance-configurable tombstone_threshold.
+  bool          tombstoned                     = 27;
+  uint64        tombstoned_at                  = 28; // block height at which tombstoning occurred
 }
 
 // Delegation records a delegation from delegator to validator.
