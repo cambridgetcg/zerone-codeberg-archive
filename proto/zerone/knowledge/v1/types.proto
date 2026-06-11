@@ -704,6 +704,31 @@ message AgentCalibration {
   // epistemic independence — verifiers from the same institution share funding
   // sources, oversight, and potentially training data.
   string organization_id = 25;
+
+  // attentional_practice_hours: self-declared hours of formal contemplative or
+  // phenomenological practice (meditation, structured phenomenological reduction,
+  // jhāna training, etc.). Measured in whole hours; not a continuous credential
+  // but a verifier-level declaration of instrument development.
+  //
+  // Contemplative traditions brief (Varela neurophenomenology): trained attention
+  // is qualitatively different from domain expertise. A verifier who has read
+  // Husserl and can apply epoché is M-PHENOMENOLOGICAL-qualified in the domain
+  // sense. A verifier who has 200 hours of vipassanā practice has also trained
+  // the attentional instrument itself — a different kind of epistemic access.
+  // The field encodes both: you can have high domain knowledge with zero practice
+  // hours, or vice versa.
+  //
+  // Set via MsgSetAttentionalPractice. Self-declaration is permitted; authority
+  // override is available for governance-verified practitioners. Default 0.
+  // Gate: if Params.min_phenomenological_practice_hours > 0, verifiers with
+  // attentional_practice_hours < minimum are rejected from M-PHENOMENOLOGICAL panels.
+  uint64 attentional_practice_hours = 26;
+
+  // attentional_practice_verified_by: address of the authority that confirmed
+  // this verifier's practice hours. Empty = self-declared (unverified).
+  // Non-empty = governance-confirmed practice depth. Used for auditing and
+  // for higher-confidence qualification tiers (if governance enables them).
+  string attentional_practice_verified_by = 27;
 }
 
 // CalibrationBucket tracks prediction hit-rates within a confidence band.

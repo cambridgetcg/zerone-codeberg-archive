@@ -217,6 +217,13 @@ service Msg {
   // used to compute panel_diversity_score_bps at CompleteRound.
   rpc SetVerifierOrganization(MsgSetVerifierOrganization) returns (MsgSetVerifierOrganizationResponse);
 
+  // ─── Contemplative Traditions: Attentional Training Metric ───────────────
+  // SetAttentionalPractice declares or updates a verifier's hours of formal
+  // contemplative or phenomenological practice. Self-declaration is permitted;
+  // authority override is available for governance-confirmed practitioners.
+  // Gate: Params.min_phenomenological_practice_hours gates M-PHENOMENOLOGICAL panels.
+  rpc SetAttentionalPractice(MsgSetAttentionalPractice) returns (MsgSetAttentionalPracticeResponse);
+
   // ─── Scientific Method Gap 3: Submission Bias / Pre-registration ─────────
   // PreRegisterClaim anchors a claim intent on-chain before evidence collection.
   // Corrects submission bias (p-hacking): the hypothesis is declared before the
@@ -1027,4 +1034,28 @@ message MsgPreRegisterClaimResponse {
   string pre_registration_id = 1;
   uint64 expiry_block        = 2;  // 0 if no expiry configured
   string bond_amount         = 3;  // "0" if no bond required
+}
+
+// MsgSetAttentionalPractice declares or updates a verifier's formal contemplative
+// or phenomenological practice hours. Used to qualify for M-PHENOMENOLOGICAL panels
+// when Params.min_phenomenological_practice_hours is set.
+//
+// Authorization:
+//   - Self-declaration: sender == verifier_address (anyone may declare their own hours)
+//   - Authority override: sender == governance authority (requires rationale)
+//
+// Self-declaration is unverified but creates an on-chain record that can be
+// audited and disputed via governance. Authority override marks the record as
+// governance-confirmed by setting attentional_practice_verified_by.
+message MsgSetAttentionalPractice {
+  string sender           = 1; // tx signer
+  string verifier_address = 2; // verifier whose practice is being declared
+  uint64 practice_hours   = 3; // total hours of formal contemplative practice
+  string rationale        = 4; // required for authority override; optional for self-declaration
+}
+
+message MsgSetAttentionalPracticeResponse {
+  string verifier_address = 1;
+  uint64 practice_hours   = 2;
+  bool   verified         = 3; // true when set by governance authority, false for self-declaration
 }

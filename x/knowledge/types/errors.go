@@ -100,4 +100,7 @@ var (
 
 	// ─── Methodology-level account type gate (89) — Phenomenology Brief ──
 	ErrMethodologyRequiresAccountType = errors.Register(ModuleName, 89, "verifier account type not permitted by this methodology's required_account_types")
+
+	// ─── Attentional practice gate (90) — Contemplative Traditions Gap ───
+	ErrInsufficientAttentionalPractice = errors.Register(ModuleName, 90, "verifier attentional practice hours below governance minimum for M-PHENOMENOLOGICAL panels")
 )

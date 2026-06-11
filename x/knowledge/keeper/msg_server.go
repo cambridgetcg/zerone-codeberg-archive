@@ -494,6 +494,18 @@ func (m *msgServer) SubmitCommitment(ctx context.Context, msg *types.MsgSubmitCo
 		}
 	}
 
+	// Attentional practice gate (Contemplative Traditions): if the claim uses
+	// M-PHENOMENOLOGICAL methodology and governance has set a minimum practice
+	// hours threshold, reject verifiers who have not cultivated sufficient
+	// attentional depth. Self-declared or authority-verified via MsgSetAttentionalPractice.
+	if apClaim, apFound := m.keeper.GetClaim(ctx, round.ClaimId); apFound {
+		if apParams, apErr := m.keeper.GetParams(ctx); apErr == nil {
+			if err := m.keeper.CheckAttentionalPracticeGate(ctx, apClaim, msg.Verifier, apParams); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	// Delegate storage to the unified helper so the tx path and the vote-extension
 	// path share equivocation detection and SelectedVerifiers tracking.
 	if err := m.keeper.StoreCommitmentInRound(ctx, msg.RoundId, &types.CommitEntry{

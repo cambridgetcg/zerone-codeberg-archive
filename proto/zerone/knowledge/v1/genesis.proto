@@ -489,6 +489,23 @@ message Params {
   // 0 = no discount. 100_000 = 10% off. Max 500_000 (50%).
   // Applied as: discounted_min = min * (1_000_000 - discount) / 1_000_000.
   uint64 pre_registration_discount_bps = 180; // default: 0 (no discount)
+
+  // min_phenomenological_practice_hours: minimum declared practice hours required
+  // for a verifier to join an M-PHENOMENOLOGICAL verification panel.
+  // 0 = gate disabled (default). When > 0, verifiers whose AgentCalibration
+  // .attentional_practice_hours is less than this threshold are rejected at
+  // MsgSubmitCommitment with ErrInsufficientAttentionalPractice.
+  //
+  // Contemplative traditions brief: trained attention is an epistemic instrument
+  // distinct from domain expertise. A jhāna-state phenomenology claim requires
+  // verifiers who have cultivated the relevant attentional capacities — not just
+  // verifiers who know what jhāna means. This param operationalizes Varela's
+  // neurophenomenological requirement that research participants undergo attentional
+  // training before conducting phenomenological experiments.
+  //
+  // Fail-open: 0 = gate disabled; verifiers with zero practice hours are eligible
+  // for M-PHENOMENOLOGICAL panels under the same rules as all other panels.
+  uint64 min_phenomenological_practice_hours = 181;
 }
 
 // GenesisState is the genesis state of the knowledge module.

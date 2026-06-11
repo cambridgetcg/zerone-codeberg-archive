@@ -4153,8 +4153,31 @@ type AgentCalibration struct {
 	// epistemic independence — verifiers from the same institution share funding
 	// sources, oversight, and potentially training data.
 	OrganizationId string `protobuf:"bytes,25,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// attentional_practice_hours: self-declared hours of formal contemplative or
+	// phenomenological practice (meditation, structured phenomenological reduction,
+	// jhāna training, etc.). Measured in whole hours; not a continuous credential
+	// but a verifier-level declaration of instrument development.
+	//
+	// Contemplative traditions brief (Varela neurophenomenology): trained attention
+	// is qualitatively different from domain expertise. A verifier who has read
+	// Husserl and can apply epoché is M-PHENOMENOLOGICAL-qualified in the domain
+	// sense. A verifier who has 200 hours of vipassanā practice has also trained
+	// the attentional instrument itself — a different kind of epistemic access.
+	// The field encodes both: you can have high domain knowledge with zero practice
+	// hours, or vice versa.
+	//
+	// Set via MsgSetAttentionalPractice. Self-declaration is permitted; authority
+	// override is available for governance-verified practitioners. Default 0.
+	// Gate: if Params.min_phenomenological_practice_hours > 0, verifiers with
+	// attentional_practice_hours < minimum are rejected from M-PHENOMENOLOGICAL panels.
+	AttentionalPracticeHours uint64 `protobuf:"varint,26,opt,name=attentional_practice_hours,json=attentionalPracticeHours,proto3" json:"attentional_practice_hours,omitempty"`
+	// attentional_practice_verified_by: address of the authority that confirmed
+	// this verifier's practice hours. Empty = self-declared (unverified).
+	// Non-empty = governance-confirmed practice depth. Used for auditing and
+	// for higher-confidence qualification tiers (if governance enables them).
+	AttentionalPracticeVerifiedBy string `protobuf:"bytes,27,opt,name=attentional_practice_verified_by,json=attentionalPracticeVerifiedBy,proto3" json:"attentional_practice_verified_by,omitempty"`
+	unknownFields                 protoimpl.UnknownFields
+	sizeCache                     protoimpl.SizeCache
 }
 
 func (x *AgentCalibration) Reset() {
@@ -4344,6 +4367,20 @@ func (x *AgentCalibration) GetVerifierResolutionBps() uint64 {
 func (x *AgentCalibration) GetOrganizationId() string {
 	if x != nil {
 		return x.OrganizationId
+	}
+	return ""
+}
+
+func (x *AgentCalibration) GetAttentionalPracticeHours() uint64 {
+	if x != nil {
+		return x.AttentionalPracticeHours
+	}
+	return 0
+}
+
+func (x *AgentCalibration) GetAttentionalPracticeVerifiedBy() string {
+	if x != nil {
+		return x.AttentionalPracticeVerifiedBy
 	}
 	return ""
 }
@@ -9275,7 +9312,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x15corroborations_earned\x18\x04 \x01(\x04R\x14corroborationsEarned\x12\x1c\n" +
 	"\tdisproven\x18\x05 \x01(\x04R\tdisproven\x12'\n" +
 	"\x0fverifier_rounds\x18\x06 \x01(\x04R\x0everifierRounds\x123\n" +
-	"\x16verifier_sum_brier_bps\x18\a \x01(\x04R\x13verifierSumBrierBps\"\xc0\t\n" +
+	"\x16verifier_sum_brier_bps\x18\a \x01(\x04R\x13verifierSumBrierBps\"\xc7\n" +
+	"\n" +
 	"\x10AgentCalibration\x12\x18\n" +
 	"\aaddress\x18\x01 \x01(\tR\aaddress\x12!\n" +
 	"\faccount_type\x18\x02 \x01(\tR\vaccountType\x12+\n" +
@@ -9301,7 +9339,9 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x1everifier_calibration_score_bps\x18\x16 \x01(\x04R\x1bverifierCalibrationScoreBps\x12S\n" +
 	"\x11calibration_curve\x18\x17 \x03(\v2&.zerone.knowledge.v1.CalibrationBucketR\x10calibrationCurve\x126\n" +
 	"\x17verifier_resolution_bps\x18\x18 \x01(\x04R\x15verifierResolutionBps\x12'\n" +
-	"\x0forganization_id\x18\x19 \x01(\tR\x0eorganizationId\x1ac\n" +
+	"\x0forganization_id\x18\x19 \x01(\tR\x0eorganizationId\x12<\n" +
+	"\x1aattentional_practice_hours\x18\x1a \x01(\x04R\x18attentionalPracticeHours\x12G\n" +
+	" attentional_practice_verified_by\x18\x1b \x01(\tR\x1dattentionalPracticeVerifiedBy\x1ac\n" +
 	"\x0ePerMethodEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12;\n" +
 	"\x05value\x18\x02 \x01(\v2%.zerone.knowledge.v1.AgentMethodStatsR\x05value:\x028\x01\"\xb5\x01\n" +

@@ -70,6 +70,7 @@ const (
 	Msg_VetoFactInjection_FullMethodName             = "/zerone.knowledge.v1.Msg/VetoFactInjection"
 	Msg_AddConsequenceInstance_FullMethodName        = "/zerone.knowledge.v1.Msg/AddConsequenceInstance"
 	Msg_SetVerifierOrganization_FullMethodName       = "/zerone.knowledge.v1.Msg/SetVerifierOrganization"
+	Msg_SetAttentionalPractice_FullMethodName        = "/zerone.knowledge.v1.Msg/SetAttentionalPractice"
 	Msg_PreRegisterClaim_FullMethodName              = "/zerone.knowledge.v1.Msg/PreRegisterClaim"
 	Msg_UpdateMethodology_FullMethodName             = "/zerone.knowledge.v1.Msg/UpdateMethodology"
 )
@@ -234,6 +235,12 @@ type MsgClient interface {
 	// The organization_id is stored in the verifier's AgentCalibration record and
 	// used to compute panel_diversity_score_bps at CompleteRound.
 	SetVerifierOrganization(ctx context.Context, in *MsgSetVerifierOrganization, opts ...grpc.CallOption) (*MsgSetVerifierOrganizationResponse, error)
+	// ─── Contemplative Traditions: Attentional Training Metric ───────────────
+	// SetAttentionalPractice declares or updates a verifier's hours of formal
+	// contemplative or phenomenological practice. Self-declaration is permitted;
+	// authority override is available for governance-confirmed practitioners.
+	// Gate: Params.min_phenomenological_practice_hours gates M-PHENOMENOLOGICAL panels.
+	SetAttentionalPractice(ctx context.Context, in *MsgSetAttentionalPractice, opts ...grpc.CallOption) (*MsgSetAttentionalPracticeResponse, error)
 	// ─── Scientific Method Gap 3: Submission Bias / Pre-registration ─────────
 	// PreRegisterClaim anchors a claim intent on-chain before evidence collection.
 	// Corrects submission bias (p-hacking): the hypothesis is declared before the
@@ -771,6 +778,16 @@ func (c *msgClient) SetVerifierOrganization(ctx context.Context, in *MsgSetVerif
 	return out, nil
 }
 
+func (c *msgClient) SetAttentionalPractice(ctx context.Context, in *MsgSetAttentionalPractice, opts ...grpc.CallOption) (*MsgSetAttentionalPracticeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgSetAttentionalPracticeResponse)
+	err := c.cc.Invoke(ctx, Msg_SetAttentionalPractice_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *msgClient) PreRegisterClaim(ctx context.Context, in *MsgPreRegisterClaim, opts ...grpc.CallOption) (*MsgPreRegisterClaimResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MsgPreRegisterClaimResponse)
@@ -951,6 +968,12 @@ type MsgServer interface {
 	// The organization_id is stored in the verifier's AgentCalibration record and
 	// used to compute panel_diversity_score_bps at CompleteRound.
 	SetVerifierOrganization(context.Context, *MsgSetVerifierOrganization) (*MsgSetVerifierOrganizationResponse, error)
+	// ─── Contemplative Traditions: Attentional Training Metric ───────────────
+	// SetAttentionalPractice declares or updates a verifier's hours of formal
+	// contemplative or phenomenological practice. Self-declaration is permitted;
+	// authority override is available for governance-confirmed practitioners.
+	// Gate: Params.min_phenomenological_practice_hours gates M-PHENOMENOLOGICAL panels.
+	SetAttentionalPractice(context.Context, *MsgSetAttentionalPractice) (*MsgSetAttentionalPracticeResponse, error)
 	// ─── Scientific Method Gap 3: Submission Bias / Pre-registration ─────────
 	// PreRegisterClaim anchors a claim intent on-chain before evidence collection.
 	// Corrects submission bias (p-hacking): the hypothesis is declared before the
@@ -1130,6 +1153,9 @@ func (UnimplementedMsgServer) AddConsequenceInstance(context.Context, *MsgAddCon
 }
 func (UnimplementedMsgServer) SetVerifierOrganization(context.Context, *MsgSetVerifierOrganization) (*MsgSetVerifierOrganizationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetVerifierOrganization not implemented")
+}
+func (UnimplementedMsgServer) SetAttentionalPractice(context.Context, *MsgSetAttentionalPractice) (*MsgSetAttentionalPracticeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetAttentionalPractice not implemented")
 }
 func (UnimplementedMsgServer) PreRegisterClaim(context.Context, *MsgPreRegisterClaim) (*MsgPreRegisterClaimResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method PreRegisterClaim not implemented")
@@ -2076,6 +2102,24 @@ func _Msg_SetVerifierOrganization_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Msg_SetAttentionalPractice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgSetAttentionalPractice)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).SetAttentionalPractice(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_SetAttentionalPractice_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).SetAttentionalPractice(ctx, req.(*MsgSetAttentionalPractice))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Msg_PreRegisterClaim_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MsgPreRegisterClaim)
 	if err := dec(in); err != nil {
@@ -2322,6 +2366,10 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetVerifierOrganization",
 			Handler:    _Msg_SetVerifierOrganization_Handler,
+		},
+		{
+			MethodName: "SetAttentionalPractice",
+			Handler:    _Msg_SetAttentionalPractice_Handler,
 		},
 		{
 			MethodName: "PreRegisterClaim",
