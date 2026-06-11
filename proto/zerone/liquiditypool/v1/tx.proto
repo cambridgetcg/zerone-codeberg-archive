@@ -80,6 +80,17 @@ message MsgCreatePool {
   // pool_max_swap_fraction_bps: optional per-pool swap-size cap. 0 = use global default.
   // See Pool.pool_max_swap_fraction_bps for semantics.
   uint64 pool_max_swap_fraction_bps = 7;
+
+  // ── Liquidity Gap 4: Bonding Curve ─────────────────────────────────────────
+  //
+  // pool_type: leave as 0 (POOL_TYPE_CONSTANT_PRODUCT) for a standard AMM.
+  // Set to POOL_TYPE_BONDING_CURVE (1) to create a single-asset bonding-curve pool.
+  PoolType pool_type = 8;
+
+  // constant_reserve_ratio_bps: CRR for bonding-curve pools. Must be 1,000,000
+  // (100%) in v1. Rejected for POOL_TYPE_CONSTANT_PRODUCT pools.
+  // See Pool.constant_reserve_ratio_bps for full documentation.
+  uint64 constant_reserve_ratio_bps = 9;
 }
 message MsgCreatePoolResponse {
   string pool_id = 1;

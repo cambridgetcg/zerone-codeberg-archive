@@ -35,4 +35,10 @@ var (
 	ErrInvalidMEVTip            = errors.Register(ModuleName, 31, "priority_tip_uzrn must be a non-negative integer string")
 	ErrILInsuranceInsufficientFund = errors.Register(ModuleName, 32, "IL insurance fund has insufficient balance")
 	ErrILInsuranceInvalidAmount    = errors.Register(ModuleName, 33, "IL insurance fund amount must be a positive integer")
+
+	// Liquidity Gap 4: Bonding Curve
+	ErrUnsupportedCRR            = errors.Register(ModuleName, 34, "unsupported constant_reserve_ratio_bps: only 1000000 (100%) is supported in v1")
+	ErrBondingCurveRequiresOnlyA = errors.Register(ModuleName, 35, "bonding curve pools must set amount_b = 0 (single-asset: only reserve token at creation)")
+	ErrBondingCurveNoCRR         = errors.Register(ModuleName, 36, "bonding curve pool requires constant_reserve_ratio_bps = 1000000")
+	ErrBondingCurveOutputZero    = errors.Register(ModuleName, 37, "bonding curve: output rounds to zero — deposit or sale too small")
 )

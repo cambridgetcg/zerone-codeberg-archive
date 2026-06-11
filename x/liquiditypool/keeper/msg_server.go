@@ -49,17 +49,6 @@ func (m msgServer) CreatePool(goCtx context.Context, msg *types.MsgCreatePool) (
 	if _, ok := amountA.SetString(msg.AmountA, 10); !ok || amountA.Sign() <= 0 {
 		return nil, types.ErrZeroAmount
 	}
-	amountB := new(big.Int)
-	if _, ok := amountB.SetString(msg.AmountB, 10); !ok || amountB.Sign() <= 0 {
-		return nil, types.ErrZeroAmount
-	}
-
-	// Minimum initial liquidity check
-	minLiq := new(big.Int)
-	minLiq.SetString(params.MinInitialLiquidity, 10)
-	if amountA.Cmp(minLiq) < 0 && amountB.Cmp(minLiq) < 0 {
-		return nil, types.ErrInsufficientLiquidity
-	}
 
 	feeBps := msg.SwapFeeBps
 	if feeBps == 0 {
@@ -70,6 +59,25 @@ func (m msgServer) CreatePool(goCtx context.Context, msg *types.MsgCreatePool) (
 	// 0 = use global default (allowed); 1–1_000_000 = valid override.
 	if msg.PoolMaxSwapFractionBps > 1_000_000 {
 		return nil, types.ErrInvalidPoolSwapFraction
+	}
+
+	// ── Liquidity Gap 4: Bonding Curve pool creation ─────────────────────────
+	// Route BEFORE amountB validation and min-liquidity check — bonding curve
+	// pools are single-asset (amount_b must be 0) and carry their own validation.
+	if msg.PoolType == types.PoolType_POOL_TYPE_BONDING_CURVE {
+		return m.createBondingCurvePool(ctx, msg, amountA, feeBps)
+	}
+
+	amountB := new(big.Int)
+	if _, ok := amountB.SetString(msg.AmountB, 10); !ok || amountB.Sign() <= 0 {
+		return nil, types.ErrZeroAmount
+	}
+
+	// Minimum initial liquidity check (constant-product pools only).
+	minLiq := new(big.Int)
+	minLiq.SetString(params.MinInitialLiquidity, 10)
+	if amountA.Cmp(minLiq) < 0 && amountB.Cmp(minLiq) < 0 {
+		return nil, types.ErrInsufficientLiquidity
 	}
 
 	// Transfer initial liquidity from creator to module
@@ -141,7 +149,96 @@ func (m msgServer) CreatePool(goCtx context.Context, msg *types.MsgCreatePool) (
 	return &types.MsgCreatePoolResponse{PoolId: poolId}, nil
 }
 
-// Swap executes a constant-product swap through a pool.
+// createBondingCurvePool handles CreatePool for POOL_TYPE_BONDING_CURVE.
+// Seeds the pool with amountA of the reserve token (denom_a = ZRN) and
+// mints amountA of the continuous token (denom_b) to the creator — giving
+// a starting price of exactly 1 denom_a per denom_b.
+func (m msgServer) createBondingCurvePool(
+	ctx sdk.Context,
+	msg *types.MsgCreatePool,
+	amountA *big.Int,
+	feeBps uint64,
+) (*types.MsgCreatePoolResponse, error) {
+	// Bonding curve validation.
+	if msg.ConstantReserveRatioBps != CRRLinear {
+		return nil, types.ErrBondingCurveNoCRR
+	}
+	// amount_b must be 0 — bonding curve is single-asset at creation.
+	if msg.AmountB != "" && msg.AmountB != "0" {
+		amtB, ok := new(big.Int).SetString(msg.AmountB, 10)
+		if !ok || amtB.Sign() != 0 {
+			return nil, types.ErrBondingCurveRequiresOnlyA
+		}
+	}
+
+	creatorAddr, _ := sdk.AccAddressFromBech32(msg.Creator)
+
+	// Transfer reserve token (denom_a) from creator to module.
+	if m.Keeper.bankKeeper != nil {
+		coinsA := sdk.NewCoins(sdk.NewCoin(msg.DenomA, sdkmath.NewIntFromBigInt(amountA)))
+		if err := m.Keeper.bankKeeper.SendCoinsFromAccountToModule(ctx, creatorAddr, types.ModuleName, coinsA); err != nil {
+			return nil, fmt.Errorf("bonding curve: transfer reserve token failed: %w", err)
+		}
+	}
+
+	counter := m.Keeper.IncrementPoolCounter(ctx)
+	poolId := fmt.Sprintf("pool-%d", counter)
+
+	// Initial continuous token supply = amountA (price starts at 1:1).
+	initialSupply := new(big.Int).Set(amountA)
+
+	pool := &types.Pool{
+		PoolId:                   poolId,
+		DenomA:                   msg.DenomA,
+		DenomB:                   msg.DenomB,
+		ReserveA:                 amountA.String(),
+		ReserveB:                 "0", // bonding curve does not hold denom_b reserves
+		SwapFeeBps:               feeBps,
+		LpTokenSupply:            initialSupply.String(), // continuous token supply
+		LpDenom:                  types.LPDenom(poolId),  // canonical denom for the LP share token (unused for BC)
+		Creator:                  msg.Creator,
+		CreatedAtBlock:           uint64(ctx.BlockHeight()),
+		PoolMaxSwapFractionBps:   msg.PoolMaxSwapFractionBps,
+		PoolType:                 types.PoolType_POOL_TYPE_BONDING_CURVE,
+		ConstantReserveRatioBps:  msg.ConstantReserveRatioBps,
+	}
+	m.Keeper.SetPool(ctx, pool)
+
+	// Mint initial continuous tokens (denom_b) to creator.
+	if m.Keeper.bankKeeper != nil {
+		ctCoins := sdk.NewCoins(sdk.NewCoin(msg.DenomB, sdkmath.NewIntFromBigInt(initialSupply)))
+		if err := m.Keeper.bankKeeper.MintCoins(ctx, types.ModuleName, ctCoins); err != nil {
+			return nil, fmt.Errorf("bonding curve: mint initial tokens failed: %w", err)
+		}
+		if err := m.Keeper.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, creatorAddr, ctCoins); err != nil {
+			return nil, fmt.Errorf("bonding curve: send initial tokens failed: %w", err)
+		}
+	}
+
+	// Initialize TWAP accumulator.
+	m.Keeper.SetTWAPAccumulator(ctx, &types.TWAPAccumulator{
+		PoolId:       poolId,
+		LastBlock:    uint64(ctx.BlockHeight()),
+		CumPriceAToB: "0",
+		CumPriceBToA: "0",
+	})
+
+	ctx.EventManager().EmitEvent(sdk.NewEvent(
+		"zerone.liquiditypool.bonding_curve_pool_created",
+		sdk.NewAttribute("pool_id", poolId),
+		sdk.NewAttribute("denom_a", msg.DenomA),
+		sdk.NewAttribute("denom_b", msg.DenomB),
+		sdk.NewAttribute("reserve_a", amountA.String()),
+		sdk.NewAttribute("initial_supply", initialSupply.String()),
+		sdk.NewAttribute("constant_reserve_ratio_bps", fmt.Sprintf("%d", msg.ConstantReserveRatioBps)),
+		sdk.NewAttribute("creator", msg.Creator),
+	))
+
+	return &types.MsgCreatePoolResponse{PoolId: poolId}, nil
+}
+
+// Swap executes a swap through a pool. Routes to bonding-curve logic for
+// POOL_TYPE_BONDING_CURVE pools, otherwise uses constant-product AMM.
 func (m msgServer) Swap(goCtx context.Context, msg *types.MsgSwap) (*types.MsgSwapResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
@@ -157,6 +254,11 @@ func (m msgServer) Swap(goCtx context.Context, msg *types.MsgSwap) (*types.MsgSw
 	// Deadline check: if DeadlineBlock is set, the swap must execute at or before that block
 	if msg.DeadlineBlock > 0 && uint64(ctx.BlockHeight()) > msg.DeadlineBlock {
 		return nil, types.ErrSwapExpired
+	}
+
+	// ── Liquidity Gap 4: route bonding-curve pools ────────────────────────────
+	if pool.PoolType == types.PoolType_POOL_TYPE_BONDING_CURVE {
+		return m.swapBondingCurve(ctx, msg, pool)
 	}
 
 	// Determine swap direction
@@ -302,6 +404,163 @@ func (m msgServer) Swap(goCtx context.Context, msg *types.MsgSwap) (*types.MsgSw
 		sdk.NewAttribute("token_out", denomOut),
 		sdk.NewAttribute("amount_out", tokenOut.String()),
 		sdk.NewAttribute("fee", feeAmount.String()),
+	))
+
+	return &types.MsgSwapResponse{
+		TokenOutAmount: tokenOut.String(),
+		FeeAmount:      feeAmount.String(),
+	}, nil
+}
+
+// swapBondingCurve handles Swap for POOL_TYPE_BONDING_CURVE pools.
+//
+// Buy path (token_in = denom_a, reserve token):
+//   tokensOut = BondingCurveBuyOut(reserveA, supply, tokenIn)
+//   reserveA += tokenIn;  supply += tokensOut
+//   Module MINTS tokensOut of denom_b → sends to sender.
+//
+// Sell path (token_in = denom_b, continuous token):
+//   reserveOut = BondingCurveSellOut(reserveA, supply, tokenIn)
+//   reserveA -= reserveOut;  supply -= tokenIn
+//   Sender sends tokenIn of denom_b to module → module BURNS them.
+//   Module sends reserveOut of denom_a to sender.
+func (m msgServer) swapBondingCurve(
+	ctx sdk.Context,
+	msg *types.MsgSwap,
+	pool *types.Pool,
+) (*types.MsgSwapResponse, error) {
+	tokenIn := new(big.Int)
+	if _, ok := tokenIn.SetString(msg.TokenInAmount, 10); !ok || tokenIn.Sign() <= 0 {
+		return nil, types.ErrZeroAmount
+	}
+
+	crr := pool.ConstantReserveRatioBps
+	reserveA := pool.ReserveA
+	supply := pool.LpTokenSupply // continuous token supply
+
+	isBuy := msg.TokenInDenom == pool.DenomA
+
+	var (
+		tokenOutStr string
+		err         error
+	)
+	if isBuy {
+		tokenOutStr, err = BondingCurveBuyOut(reserveA, supply, tokenIn.String(), crr)
+	} else if msg.TokenInDenom == pool.DenomB {
+		tokenOutStr, err = BondingCurveSellOut(reserveA, supply, tokenIn.String(), crr)
+	} else {
+		return nil, types.ErrDenomNotInPool
+	}
+	if err != nil {
+		return nil, types.ErrBondingCurveOutputZero
+	}
+
+	tokenOut := new(big.Int)
+	tokenOut.SetString(tokenOutStr, 10)
+
+	// Slippage check.
+	if msg.MinTokenOut != "" {
+		minOut, ok := new(big.Int).SetString(msg.MinTokenOut, 10)
+		if ok && minOut.Sign() > 0 && tokenOut.Cmp(minOut) < 0 {
+			return nil, types.ErrSlippageExceeded
+		}
+	}
+
+	senderAddr, _ := sdk.AccAddressFromBech32(msg.Sender)
+
+	// Apply fee (deducted from tokenOut).
+	var feeAmount *big.Int
+	if pool.SwapFeeBps > 0 {
+		feeAmount = new(big.Int).Mul(tokenOut, new(big.Int).SetUint64(pool.SwapFeeBps))
+		feeAmount.Div(feeAmount, big.NewInt(1_000_000))
+		tokenOut.Sub(tokenOut, feeAmount)
+	} else {
+		feeAmount = new(big.Int)
+	}
+
+	pool.Locked = true
+	m.Keeper.SetPool(ctx, pool)
+
+	if m.Keeper.bankKeeper != nil {
+		if isBuy {
+			// Sender sends denom_a → module.
+			inCoins := sdk.NewCoins(sdk.NewCoin(msg.TokenInDenom, sdkmath.NewIntFromBigInt(tokenIn)))
+			if err2 := m.Keeper.bankKeeper.SendCoinsFromAccountToModule(ctx, senderAddr, types.ModuleName, inCoins); err2 != nil {
+				pool.Locked = false
+				m.Keeper.SetPool(ctx, pool)
+				return nil, fmt.Errorf("bonding curve buy: reserve transfer failed: %w", err2)
+			}
+			// Module MINTS denom_b → sends to sender.
+			outCoins := sdk.NewCoins(sdk.NewCoin(pool.DenomB, sdkmath.NewIntFromBigInt(tokenOut)))
+			if err2 := m.Keeper.bankKeeper.MintCoins(ctx, types.ModuleName, outCoins); err2 != nil {
+				pool.Locked = false
+				m.Keeper.SetPool(ctx, pool)
+				return nil, fmt.Errorf("bonding curve buy: mint continuous tokens failed: %w", err2)
+			}
+			if err2 := m.Keeper.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, senderAddr, outCoins); err2 != nil {
+				pool.Locked = false
+				m.Keeper.SetPool(ctx, pool)
+				return nil, fmt.Errorf("bonding curve buy: send continuous tokens failed: %w", err2)
+			}
+		} else {
+			// Sender sends denom_b → module.
+			inCoins := sdk.NewCoins(sdk.NewCoin(msg.TokenInDenom, sdkmath.NewIntFromBigInt(tokenIn)))
+			if err2 := m.Keeper.bankKeeper.SendCoinsFromAccountToModule(ctx, senderAddr, types.ModuleName, inCoins); err2 != nil {
+				pool.Locked = false
+				m.Keeper.SetPool(ctx, pool)
+				return nil, fmt.Errorf("bonding curve sell: continuous token transfer failed: %w", err2)
+			}
+			// Module BURNS the continuous tokens.
+			if err2 := m.Keeper.bankKeeper.BurnCoins(ctx, types.ModuleName, inCoins); err2 != nil {
+				pool.Locked = false
+				m.Keeper.SetPool(ctx, pool)
+				return nil, fmt.Errorf("bonding curve sell: burn continuous tokens failed: %w", err2)
+			}
+			// Module sends denom_a → sender.
+			outCoins := sdk.NewCoins(sdk.NewCoin(pool.DenomA, sdkmath.NewIntFromBigInt(tokenOut)))
+			if err2 := m.Keeper.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, senderAddr, outCoins); err2 != nil {
+				pool.Locked = false
+				m.Keeper.SetPool(ctx, pool)
+				return nil, fmt.Errorf("bonding curve sell: reserve transfer failed: %w", err2)
+			}
+		}
+	}
+
+	// Update pool state.
+	rA, _ := new(big.Int).SetString(reserveA, 10)
+	sup, _ := new(big.Int).SetString(supply, 10)
+	if isBuy {
+		rA.Add(rA, tokenIn)
+		sup.Add(sup, tokenOut)
+	} else {
+		rA.Sub(rA, tokenOut)
+		sup.Sub(sup, tokenIn)
+	}
+	pool.ReserveA = rA.String()
+	pool.LpTokenSupply = sup.String()
+	pool.Locked = false
+	m.Keeper.SetPool(ctx, pool)
+
+	var denomOut string
+	if isBuy {
+		denomOut = pool.DenomB
+	} else {
+		denomOut = pool.DenomA
+	}
+
+	ctx.EventManager().EmitEvent(sdk.NewEvent(
+		"zerone.liquiditypool.bonding_curve_swap",
+		sdk.NewAttribute("pool_id", msg.PoolId),
+		sdk.NewAttribute("sender", msg.Sender),
+		sdk.NewAttribute("token_in", msg.TokenInDenom),
+		sdk.NewAttribute("amount_in", tokenIn.String()),
+		sdk.NewAttribute("token_out", denomOut),
+		sdk.NewAttribute("amount_out", tokenOut.String()),
+		sdk.NewAttribute("fee", feeAmount.String()),
+		sdk.NewAttribute("direction", func() string {
+			if isBuy { return "buy" }
+			return "sell"
+		}()),
 	))
 
 	return &types.MsgSwapResponse{

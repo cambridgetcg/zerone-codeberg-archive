@@ -297,8 +297,17 @@ type MsgCreatePool struct {
 	// pool_max_swap_fraction_bps: optional per-pool swap-size cap. 0 = use global default.
 	// See Pool.pool_max_swap_fraction_bps for semantics.
 	PoolMaxSwapFractionBps uint64 `protobuf:"varint,7,opt,name=pool_max_swap_fraction_bps,json=poolMaxSwapFractionBps,proto3" json:"pool_max_swap_fraction_bps,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// ── Liquidity Gap 4: Bonding Curve ─────────────────────────────────────────
+	//
+	// pool_type: leave as 0 (POOL_TYPE_CONSTANT_PRODUCT) for a standard AMM.
+	// Set to POOL_TYPE_BONDING_CURVE (1) to create a single-asset bonding-curve pool.
+	PoolType PoolType `protobuf:"varint,8,opt,name=pool_type,json=poolType,proto3,enum=zerone.liquiditypool.v1.PoolType" json:"pool_type,omitempty"`
+	// constant_reserve_ratio_bps: CRR for bonding-curve pools. Must be 1,000,000
+	// (100%) in v1. Rejected for POOL_TYPE_CONSTANT_PRODUCT pools.
+	// See Pool.constant_reserve_ratio_bps for full documentation.
+	ConstantReserveRatioBps uint64 `protobuf:"varint,9,opt,name=constant_reserve_ratio_bps,json=constantReserveRatioBps,proto3" json:"constant_reserve_ratio_bps,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *MsgCreatePool) Reset() {
@@ -376,6 +385,20 @@ func (x *MsgCreatePool) GetSwapFeeBps() uint64 {
 func (x *MsgCreatePool) GetPoolMaxSwapFractionBps() uint64 {
 	if x != nil {
 		return x.PoolMaxSwapFractionBps
+	}
+	return 0
+}
+
+func (x *MsgCreatePool) GetPoolType() PoolType {
+	if x != nil {
+		return x.PoolType
+	}
+	return PoolType_POOL_TYPE_CONSTANT_PRODUCT
+}
+
+func (x *MsgCreatePool) GetConstantReserveRatioBps() uint64 {
+	if x != nil {
+		return x.ConstantReserveRatioBps
 	}
 	return 0
 }
@@ -1253,7 +1276,7 @@ const file_zerone_liquiditypool_v1_tx_proto_rawDesc = "" +
 	"\n" +
 	"fee_amount\x18\x02 \x01(\tR\tfeeAmount\x12 \n" +
 	"\fmev_lp_share\x18\x03 \x01(\tR\n" +
-	"mevLpShare\"\xef\x01\n" +
+	"mevLpShare\"\xec\x02\n" +
 	"\rMsgCreatePool\x12\x18\n" +
 	"\acreator\x18\x01 \x01(\tR\acreator\x12\x17\n" +
 	"\adenom_a\x18\x02 \x01(\tR\x06denomA\x12\x17\n" +
@@ -1262,7 +1285,9 @@ const file_zerone_liquiditypool_v1_tx_proto_rawDesc = "" +
 	"\bamount_b\x18\x05 \x01(\tR\aamountB\x12 \n" +
 	"\fswap_fee_bps\x18\x06 \x01(\x04R\n" +
 	"swapFeeBps\x12:\n" +
-	"\x1apool_max_swap_fraction_bps\x18\a \x01(\x04R\x16poolMaxSwapFractionBps\"0\n" +
+	"\x1apool_max_swap_fraction_bps\x18\a \x01(\x04R\x16poolMaxSwapFractionBps\x12>\n" +
+	"\tpool_type\x18\b \x01(\x0e2!.zerone.liquiditypool.v1.PoolTypeR\bpoolType\x12;\n" +
+	"\x1aconstant_reserve_ratio_bps\x18\t \x01(\x04R\x17constantReserveRatioBps\"0\n" +
 	"\x15MsgCreatePoolResponse\x12\x17\n" +
 	"\apool_id\x18\x01 \x01(\tR\x06poolId\"\xd3\x01\n" +
 	"\aMsgSwap\x12\x16\n" +
@@ -1370,35 +1395,37 @@ var file_zerone_liquiditypool_v1_tx_proto_goTypes = []any{
 	(*MsgFundILInsuranceResponse)(nil),             // 17: zerone.liquiditypool.v1.MsgFundILInsuranceResponse
 	(*MsgUpdateParams)(nil),                        // 18: zerone.liquiditypool.v1.MsgUpdateParams
 	(*MsgUpdateParamsResponse)(nil),                // 19: zerone.liquiditypool.v1.MsgUpdateParamsResponse
-	(*Params)(nil),                                 // 20: zerone.liquiditypool.v1.Params
+	(PoolType)(0),                                  // 20: zerone.liquiditypool.v1.PoolType
+	(*Params)(nil),                                 // 21: zerone.liquiditypool.v1.Params
 }
 var file_zerone_liquiditypool_v1_tx_proto_depIdxs = []int32{
-	20, // 0: zerone.liquiditypool.v1.MsgUpdateParams.params:type_name -> zerone.liquiditypool.v1.Params
-	4,  // 1: zerone.liquiditypool.v1.Msg.CreatePool:input_type -> zerone.liquiditypool.v1.MsgCreatePool
-	6,  // 2: zerone.liquiditypool.v1.Msg.Swap:input_type -> zerone.liquiditypool.v1.MsgSwap
-	8,  // 3: zerone.liquiditypool.v1.Msg.AddLiquidity:input_type -> zerone.liquiditypool.v1.MsgAddLiquidity
-	10, // 4: zerone.liquiditypool.v1.Msg.RemoveLiquidity:input_type -> zerone.liquiditypool.v1.MsgRemoveLiquidity
-	12, // 5: zerone.liquiditypool.v1.Msg.CreateLiquidityMiningPeriod:input_type -> zerone.liquiditypool.v1.MsgCreateLiquidityMiningPeriod
-	14, // 6: zerone.liquiditypool.v1.Msg.ClaimLiquidityRewards:input_type -> zerone.liquiditypool.v1.MsgClaimLiquidityRewards
-	0,  // 7: zerone.liquiditypool.v1.Msg.CommitSwap:input_type -> zerone.liquiditypool.v1.MsgCommitSwap
-	2,  // 8: zerone.liquiditypool.v1.Msg.RevealSwap:input_type -> zerone.liquiditypool.v1.MsgRevealSwap
-	16, // 9: zerone.liquiditypool.v1.Msg.FundILInsurance:input_type -> zerone.liquiditypool.v1.MsgFundILInsurance
-	18, // 10: zerone.liquiditypool.v1.Msg.UpdateParams:input_type -> zerone.liquiditypool.v1.MsgUpdateParams
-	5,  // 11: zerone.liquiditypool.v1.Msg.CreatePool:output_type -> zerone.liquiditypool.v1.MsgCreatePoolResponse
-	7,  // 12: zerone.liquiditypool.v1.Msg.Swap:output_type -> zerone.liquiditypool.v1.MsgSwapResponse
-	9,  // 13: zerone.liquiditypool.v1.Msg.AddLiquidity:output_type -> zerone.liquiditypool.v1.MsgAddLiquidityResponse
-	11, // 14: zerone.liquiditypool.v1.Msg.RemoveLiquidity:output_type -> zerone.liquiditypool.v1.MsgRemoveLiquidityResponse
-	13, // 15: zerone.liquiditypool.v1.Msg.CreateLiquidityMiningPeriod:output_type -> zerone.liquiditypool.v1.MsgCreateLiquidityMiningPeriodResponse
-	15, // 16: zerone.liquiditypool.v1.Msg.ClaimLiquidityRewards:output_type -> zerone.liquiditypool.v1.MsgClaimLiquidityRewardsResponse
-	1,  // 17: zerone.liquiditypool.v1.Msg.CommitSwap:output_type -> zerone.liquiditypool.v1.MsgCommitSwapResponse
-	3,  // 18: zerone.liquiditypool.v1.Msg.RevealSwap:output_type -> zerone.liquiditypool.v1.MsgRevealSwapResponse
-	17, // 19: zerone.liquiditypool.v1.Msg.FundILInsurance:output_type -> zerone.liquiditypool.v1.MsgFundILInsuranceResponse
-	19, // 20: zerone.liquiditypool.v1.Msg.UpdateParams:output_type -> zerone.liquiditypool.v1.MsgUpdateParamsResponse
-	11, // [11:21] is the sub-list for method output_type
-	1,  // [1:11] is the sub-list for method input_type
-	1,  // [1:1] is the sub-list for extension type_name
-	1,  // [1:1] is the sub-list for extension extendee
-	0,  // [0:1] is the sub-list for field type_name
+	20, // 0: zerone.liquiditypool.v1.MsgCreatePool.pool_type:type_name -> zerone.liquiditypool.v1.PoolType
+	21, // 1: zerone.liquiditypool.v1.MsgUpdateParams.params:type_name -> zerone.liquiditypool.v1.Params
+	4,  // 2: zerone.liquiditypool.v1.Msg.CreatePool:input_type -> zerone.liquiditypool.v1.MsgCreatePool
+	6,  // 3: zerone.liquiditypool.v1.Msg.Swap:input_type -> zerone.liquiditypool.v1.MsgSwap
+	8,  // 4: zerone.liquiditypool.v1.Msg.AddLiquidity:input_type -> zerone.liquiditypool.v1.MsgAddLiquidity
+	10, // 5: zerone.liquiditypool.v1.Msg.RemoveLiquidity:input_type -> zerone.liquiditypool.v1.MsgRemoveLiquidity
+	12, // 6: zerone.liquiditypool.v1.Msg.CreateLiquidityMiningPeriod:input_type -> zerone.liquiditypool.v1.MsgCreateLiquidityMiningPeriod
+	14, // 7: zerone.liquiditypool.v1.Msg.ClaimLiquidityRewards:input_type -> zerone.liquiditypool.v1.MsgClaimLiquidityRewards
+	0,  // 8: zerone.liquiditypool.v1.Msg.CommitSwap:input_type -> zerone.liquiditypool.v1.MsgCommitSwap
+	2,  // 9: zerone.liquiditypool.v1.Msg.RevealSwap:input_type -> zerone.liquiditypool.v1.MsgRevealSwap
+	16, // 10: zerone.liquiditypool.v1.Msg.FundILInsurance:input_type -> zerone.liquiditypool.v1.MsgFundILInsurance
+	18, // 11: zerone.liquiditypool.v1.Msg.UpdateParams:input_type -> zerone.liquiditypool.v1.MsgUpdateParams
+	5,  // 12: zerone.liquiditypool.v1.Msg.CreatePool:output_type -> zerone.liquiditypool.v1.MsgCreatePoolResponse
+	7,  // 13: zerone.liquiditypool.v1.Msg.Swap:output_type -> zerone.liquiditypool.v1.MsgSwapResponse
+	9,  // 14: zerone.liquiditypool.v1.Msg.AddLiquidity:output_type -> zerone.liquiditypool.v1.MsgAddLiquidityResponse
+	11, // 15: zerone.liquiditypool.v1.Msg.RemoveLiquidity:output_type -> zerone.liquiditypool.v1.MsgRemoveLiquidityResponse
+	13, // 16: zerone.liquiditypool.v1.Msg.CreateLiquidityMiningPeriod:output_type -> zerone.liquiditypool.v1.MsgCreateLiquidityMiningPeriodResponse
+	15, // 17: zerone.liquiditypool.v1.Msg.ClaimLiquidityRewards:output_type -> zerone.liquiditypool.v1.MsgClaimLiquidityRewardsResponse
+	1,  // 18: zerone.liquiditypool.v1.Msg.CommitSwap:output_type -> zerone.liquiditypool.v1.MsgCommitSwapResponse
+	3,  // 19: zerone.liquiditypool.v1.Msg.RevealSwap:output_type -> zerone.liquiditypool.v1.MsgRevealSwapResponse
+	17, // 20: zerone.liquiditypool.v1.Msg.FundILInsurance:output_type -> zerone.liquiditypool.v1.MsgFundILInsuranceResponse
+	19, // 21: zerone.liquiditypool.v1.Msg.UpdateParams:output_type -> zerone.liquiditypool.v1.MsgUpdateParamsResponse
+	12, // [12:22] is the sub-list for method output_type
+	2,  // [2:12] is the sub-list for method input_type
+	2,  // [2:2] is the sub-list for extension type_name
+	2,  // [2:2] is the sub-list for extension extendee
+	0,  // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_zerone_liquiditypool_v1_tx_proto_init() }

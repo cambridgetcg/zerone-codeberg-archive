@@ -3,7 +3,14 @@ package zerone.liquiditypool.v1;
 
 option go_package = "github.com/zerone-chain/zerone/x/liquiditypool/types";
 
-// Pool represents a constant-product AMM liquidity pool.
+// PoolType distinguishes constant-product AMM pools from bonding-curve pools.
+// Default (0) is CONSTANT_PRODUCT for backward compatibility.
+enum PoolType {
+  POOL_TYPE_CONSTANT_PRODUCT = 0; // xy=k invariant (standard AMM)
+  POOL_TYPE_BONDING_CURVE    = 1; // Bancor-formula single-asset pool
+}
+
+// Pool represents an AMM liquidity pool. Can be constant-product or bonding-curve.
 message Pool {
   string pool_id         = 1;
   string denom_a         = 2;
@@ -35,6 +42,28 @@ message Pool {
   // Pro-rata distributed to LPs on RemoveLiquidity (proportional to LP tokens burned).
   // "" or "0" = no reserve (backward compatible — all pre-Gap-3 pools have 0).
   string mev_reserve_balance = 14;
+
+  // ── Liquidity Gap 4: Bonding Curve (Single-Asset Pool) ─────────────────────
+  //
+  // pool_type: identifies the AMM formula used by this pool.
+  // Default 0 (POOL_TYPE_CONSTANT_PRODUCT) is backward compatible with all
+  // existing pools; they require no migration.
+  PoolType pool_type = 15;
+
+  // constant_reserve_ratio_bps: the Bancor Connector Weight (CRR) for bonding-
+  // curve pools (field 16). Expressed in BPS (1,000,000 = 100%).
+  //
+  // Bancor price formula: price = reserveA / (supplyB × CRR/1M)
+  // where reserveA = reserve token balance (denom_a, typically uzrn),
+  //       supplyB  = continuous token supply (lp_token_supply),
+  //       CRR      = this field / 1,000,000.
+  //
+  // v1 supports only CRR = 1,000,000 (100%) — linear bonding curve.
+  //   Buy:  tokensOut = supplyB × depositA / reserveA
+  //   Sell: reserveOut = reserveA × tokensSold / supplyB
+  //
+  // Ignored for POOL_TYPE_CONSTANT_PRODUCT pools (leave at 0).
+  uint64 constant_reserve_ratio_bps = 16;
 }
 
 // LiquidityMiningPeriod defines a per-pool emission schedule for LP reward distribution.

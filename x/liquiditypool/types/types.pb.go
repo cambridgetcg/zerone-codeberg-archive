@@ -21,7 +21,55 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Pool represents a constant-product AMM liquidity pool.
+// PoolType distinguishes constant-product AMM pools from bonding-curve pools.
+// Default (0) is CONSTANT_PRODUCT for backward compatibility.
+type PoolType int32
+
+const (
+	PoolType_POOL_TYPE_CONSTANT_PRODUCT PoolType = 0 // xy=k invariant (standard AMM)
+	PoolType_POOL_TYPE_BONDING_CURVE    PoolType = 1 // Bancor-formula single-asset pool
+)
+
+// Enum value maps for PoolType.
+var (
+	PoolType_name = map[int32]string{
+		0: "POOL_TYPE_CONSTANT_PRODUCT",
+		1: "POOL_TYPE_BONDING_CURVE",
+	}
+	PoolType_value = map[string]int32{
+		"POOL_TYPE_CONSTANT_PRODUCT": 0,
+		"POOL_TYPE_BONDING_CURVE":    1,
+	}
+)
+
+func (x PoolType) Enum() *PoolType {
+	p := new(PoolType)
+	*p = x
+	return p
+}
+
+func (x PoolType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PoolType) Descriptor() protoreflect.EnumDescriptor {
+	return file_zerone_liquiditypool_v1_types_proto_enumTypes[0].Descriptor()
+}
+
+func (PoolType) Type() protoreflect.EnumType {
+	return &file_zerone_liquiditypool_v1_types_proto_enumTypes[0]
+}
+
+func (x PoolType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PoolType.Descriptor instead.
+func (PoolType) EnumDescriptor() ([]byte, []int) {
+	return file_zerone_liquiditypool_v1_types_proto_rawDescGZIP(), []int{0}
+}
+
+// Pool represents an AMM liquidity pool. Can be constant-product or bonding-curve.
 type Pool struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	PoolId         string                 `protobuf:"bytes,1,opt,name=pool_id,json=poolId,proto3" json:"pool_id,omitempty"`
@@ -52,8 +100,30 @@ type Pool struct {
 	// Pro-rata distributed to LPs on RemoveLiquidity (proportional to LP tokens burned).
 	// "" or "0" = no reserve (backward compatible — all pre-Gap-3 pools have 0).
 	MevReserveBalance string `protobuf:"bytes,14,opt,name=mev_reserve_balance,json=mevReserveBalance,proto3" json:"mev_reserve_balance,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// ── Liquidity Gap 4: Bonding Curve (Single-Asset Pool) ─────────────────────
+	//
+	// pool_type: identifies the AMM formula used by this pool.
+	// Default 0 (POOL_TYPE_CONSTANT_PRODUCT) is backward compatible with all
+	// existing pools; they require no migration.
+	PoolType PoolType `protobuf:"varint,15,opt,name=pool_type,json=poolType,proto3,enum=zerone.liquiditypool.v1.PoolType" json:"pool_type,omitempty"`
+	// constant_reserve_ratio_bps: the Bancor Connector Weight (CRR) for bonding-
+	// curve pools (field 16). Expressed in BPS (1,000,000 = 100%).
+	//
+	// Bancor price formula: price = reserveA / (supplyB × CRR/1M)
+	// where reserveA = reserve token balance (denom_a, typically uzrn),
+	//
+	//	supplyB  = continuous token supply (lp_token_supply),
+	//	CRR      = this field / 1,000,000.
+	//
+	// v1 supports only CRR = 1,000,000 (100%) — linear bonding curve.
+	//
+	//	Buy:  tokensOut = supplyB × depositA / reserveA
+	//	Sell: reserveOut = reserveA × tokensSold / supplyB
+	//
+	// Ignored for POOL_TYPE_CONSTANT_PRODUCT pools (leave at 0).
+	ConstantReserveRatioBps uint64 `protobuf:"varint,16,opt,name=constant_reserve_ratio_bps,json=constantReserveRatioBps,proto3" json:"constant_reserve_ratio_bps,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *Pool) Reset() {
@@ -182,6 +252,20 @@ func (x *Pool) GetMevReserveBalance() string {
 		return x.MevReserveBalance
 	}
 	return ""
+}
+
+func (x *Pool) GetPoolType() PoolType {
+	if x != nil {
+		return x.PoolType
+	}
+	return PoolType_POOL_TYPE_CONSTANT_PRODUCT
+}
+
+func (x *Pool) GetConstantReserveRatioBps() uint64 {
+	if x != nil {
+		return x.ConstantReserveRatioBps
+	}
+	return 0
 }
 
 // LiquidityMiningPeriod defines a per-pool emission schedule for LP reward distribution.
@@ -703,7 +787,7 @@ var File_zerone_liquiditypool_v1_types_proto protoreflect.FileDescriptor
 
 const file_zerone_liquiditypool_v1_types_proto_rawDesc = "" +
 	"\n" +
-	"#zerone/liquiditypool/v1/types.proto\x12\x17zerone.liquiditypool.v1\"\xf3\x03\n" +
+	"#zerone/liquiditypool/v1/types.proto\x12\x17zerone.liquiditypool.v1\"\xf0\x04\n" +
 	"\x04Pool\x12\x17\n" +
 	"\apool_id\x18\x01 \x01(\tR\x06poolId\x12\x17\n" +
 	"\adenom_a\x18\x02 \x01(\tR\x06denomA\x12\x17\n" +
@@ -720,7 +804,9 @@ const file_zerone_liquiditypool_v1_types_proto_rawDesc = "" +
 	"\x06locked\x18\v \x01(\bR\x06locked\x129\n" +
 	"\x19accumulated_reward_per_lp\x18\f \x01(\tR\x16accumulatedRewardPerLp\x12:\n" +
 	"\x1apool_max_swap_fraction_bps\x18\r \x01(\x04R\x16poolMaxSwapFractionBps\x12.\n" +
-	"\x13mev_reserve_balance\x18\x0e \x01(\tR\x11mevReserveBalance\"\xfb\x01\n" +
+	"\x13mev_reserve_balance\x18\x0e \x01(\tR\x11mevReserveBalance\x12>\n" +
+	"\tpool_type\x18\x0f \x01(\x0e2!.zerone.liquiditypool.v1.PoolTypeR\bpoolType\x12;\n" +
+	"\x1aconstant_reserve_ratio_bps\x18\x10 \x01(\x04R\x17constantReserveRatioBps\"\xfb\x01\n" +
 	"\x15LiquidityMiningPeriod\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\apool_id\x18\x02 \x01(\tR\x06poolId\x12(\n" +
@@ -768,7 +854,10 @@ const file_zerone_liquiditypool_v1_types_proto_rawDesc = "" +
 	"\rmin_token_out\x18\x05 \x01(\tR\vminTokenOut\x12%\n" +
 	"\x0edeadline_block\x18\x06 \x01(\x04R\rdeadlineBlock\x12!\n" +
 	"\fcommit_block\x18\a \x01(\x04R\vcommitBlock\x12*\n" +
-	"\x11priority_tip_uzrn\x18\b \x01(\tR\x0fpriorityTipUzrnB6Z4github.com/zerone-chain/zerone/x/liquiditypool/typesb\x06proto3"
+	"\x11priority_tip_uzrn\x18\b \x01(\tR\x0fpriorityTipUzrn*G\n" +
+	"\bPoolType\x12\x1e\n" +
+	"\x1aPOOL_TYPE_CONSTANT_PRODUCT\x10\x00\x12\x1b\n" +
+	"\x17POOL_TYPE_BONDING_CURVE\x10\x01B6Z4github.com/zerone-chain/zerone/x/liquiditypool/typesb\x06proto3"
 
 var (
 	file_zerone_liquiditypool_v1_types_proto_rawDescOnce sync.Once
@@ -782,22 +871,25 @@ func file_zerone_liquiditypool_v1_types_proto_rawDescGZIP() []byte {
 	return file_zerone_liquiditypool_v1_types_proto_rawDescData
 }
 
+var file_zerone_liquiditypool_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_zerone_liquiditypool_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_zerone_liquiditypool_v1_types_proto_goTypes = []any{
-	(*Pool)(nil),                  // 0: zerone.liquiditypool.v1.Pool
-	(*LiquidityMiningPeriod)(nil), // 1: zerone.liquiditypool.v1.LiquidityMiningPeriod
-	(*LpMinerPosition)(nil),       // 2: zerone.liquiditypool.v1.LpMinerPosition
-	(*TWAPAccumulator)(nil),       // 3: zerone.liquiditypool.v1.TWAPAccumulator
-	(*SwapResult)(nil),            // 4: zerone.liquiditypool.v1.SwapResult
-	(*SwapCommitment)(nil),        // 5: zerone.liquiditypool.v1.SwapCommitment
-	(*PendingSwapReveal)(nil),     // 6: zerone.liquiditypool.v1.PendingSwapReveal
+	(PoolType)(0),                 // 0: zerone.liquiditypool.v1.PoolType
+	(*Pool)(nil),                  // 1: zerone.liquiditypool.v1.Pool
+	(*LiquidityMiningPeriod)(nil), // 2: zerone.liquiditypool.v1.LiquidityMiningPeriod
+	(*LpMinerPosition)(nil),       // 3: zerone.liquiditypool.v1.LpMinerPosition
+	(*TWAPAccumulator)(nil),       // 4: zerone.liquiditypool.v1.TWAPAccumulator
+	(*SwapResult)(nil),            // 5: zerone.liquiditypool.v1.SwapResult
+	(*SwapCommitment)(nil),        // 6: zerone.liquiditypool.v1.SwapCommitment
+	(*PendingSwapReveal)(nil),     // 7: zerone.liquiditypool.v1.PendingSwapReveal
 }
 var file_zerone_liquiditypool_v1_types_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0, // 0: zerone.liquiditypool.v1.Pool.pool_type:type_name -> zerone.liquiditypool.v1.PoolType
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_zerone_liquiditypool_v1_types_proto_init() }
@@ -810,13 +902,14 @@ func file_zerone_liquiditypool_v1_types_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_zerone_liquiditypool_v1_types_proto_rawDesc), len(file_zerone_liquiditypool_v1_types_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_zerone_liquiditypool_v1_types_proto_goTypes,
 		DependencyIndexes: file_zerone_liquiditypool_v1_types_proto_depIdxs,
+		EnumInfos:         file_zerone_liquiditypool_v1_types_proto_enumTypes,
 		MessageInfos:      file_zerone_liquiditypool_v1_types_proto_msgTypes,
 	}.Build()
 	File_zerone_liquiditypool_v1_types_proto = out.File
