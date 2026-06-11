@@ -144,6 +144,15 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 		}
 	}
 
+	// Phenomenology Brief Gap 2: require phenomenological_method for M-PHENOMENOLOGICAL claims.
+	// The method name makes structural validation possible: verifiers can check that the
+	// declared method was correctly applied (epoché, hermeneutic reduction, neurophenomenology).
+	if msg.MethodId == types.MethodologyPhenomenologic && msg.PhenomenologicalMethod == "" {
+		return nil, types.ErrMissingPhenomenologicalMethod.Wrapf(
+			"claim with method_id %q must declare phenomenological_method (e.g. husserl-classical, varela-neurophenomenological)",
+			msg.MethodId)
+	}
+
 	// Auto-derive or normalize canonical form
 	canonicalForm := msg.CanonicalForm
 	if canonicalForm == "" && msg.Structure != nil {
@@ -254,9 +263,11 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 		RefutationConditions:   msg.RefutationConditions,
 		ProofCertificate:       msg.ProofCertificate,
 		CertificateVerified:    certVerified,
-		TheoreticalFramework:   msg.TheoreticalFramework,
-		PreRegistrationId:      msg.PreRegistrationId,
-		PreRegisteredAtBlock:   preRegCreatedAtBlock,
+		TheoreticalFramework:    msg.TheoreticalFramework,
+		PreRegistrationId:       msg.PreRegistrationId,
+		PreRegisteredAtBlock:    preRegCreatedAtBlock,
+		PhenomenologicalMethod:  msg.PhenomenologicalMethod,
+		MethodId:                msg.MethodId,
 	}
 
 	if err := m.keeper.SetClaim(ctx, claim); err != nil {

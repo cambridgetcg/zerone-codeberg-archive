@@ -110,6 +110,15 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 				result.Verdict = types.Verdict_VERDICT_INCONCLUSIVE
 			}
 		}
+		// Phenomenology Brief Gap 3: cross-modal corroboration gate.
+		// High-confidence M-PHENOMENOLOGICAL claims require at least one
+		// M-EMPIRICAL relation. Varela's neurophenomenological principle:
+		// first-person description + third-person data must mutually constrain.
+		if result.Verdict == types.Verdict_VERDICT_ACCEPT {
+			if !k.CheckPhenomenologicalCorroborationGate(ctx, claim, result.Confidence, *methodologyGateParams) {
+				result.Verdict = types.Verdict_VERDICT_INCONCLUSIVE
+			}
+		}
 	}
 
 	// Always compute and store the panel diversity score so governance can audit
@@ -638,6 +647,10 @@ func (k Keeper) createFactFromClaim(ctx context.Context, claim *types.Claim, rou
 		// Theory-ladenness (Scientific Method Gap 4): theoretical paradigm
 		// flows through to the Fact for inter-paradigm corpus analysis.
 		TheoreticalFramework: claim.TheoreticalFramework,
+		// Phenomenological method (Phenomenology Brief Gap 2): method name
+		// flows through so Fact corpus can be queried by specific method
+		// (e.g. "which neurophenomenological facts have cross-modal support?").
+		PhenomenologicalMethod: claim.PhenomenologicalMethod,
 		// Fitness fields
 		FitnessScore:       params.FitnessInitialScore,
 		FitnessUpdatedBlock: height,

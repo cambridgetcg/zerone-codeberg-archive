@@ -373,6 +373,15 @@ func DefaultParams() Params {
 		// creating rounds so short that stake can cycle faster than manipulation
 		// becomes uneconomical.
 		MinRoundDurationBlocks: 0, // disabled — governance enables via MsgUpdateParams
+
+		// Phenomenology Brief Gap 3: cross-modal corroboration gate. Default 0 =
+		// disabled (no M-EMPIRICAL triangulation required). When set > 0, any
+		// M-PHENOMENOLOGICAL ACCEPT verdict at confidence >= this value is
+		// downgraded to INCONCLUSIVE unless the claim cites at least one
+		// M-EMPIRICAL fact via any ClaimRelation. Operationalizes Varela's
+		// neurophenomenological principle: first-person + third-person mutual
+		// constraint is the epistemic gold standard for consciousness claims.
+		PhenomenologicalCorroborationConfidenceBps: 0, // disabled — governance enables via MsgUpdateParams
 	}
 }
 
@@ -894,6 +903,15 @@ func (p *Params) Validate() error {
 	// effective minimum negligible and could be gamed for mass pre-registration.
 	if p.PreRegistrationDiscountBps > 500_000 {
 		return fmt.Errorf("pre_registration_discount_bps must be ≤ 500000 (50%%); got %d", p.PreRegistrationDiscountBps)
+	}
+
+	// ─── Phenomenological corroboration confidence threshold (Phenomenology Gap 3) ──
+	// 0 = disabled. When non-zero, must be a valid BPS value (1–1,000,000).
+	// Values above MaxConfidence (880k) would never fire since verdicts are
+	// capped at MaxConfidence — warn rather than error to allow forward-compatible
+	// governance proposals that lower MaxConfidence later.
+	if p.PhenomenologicalCorroborationConfidenceBps > 1_000_000 {
+		return fmt.Errorf("phenomenological_corroboration_confidence_bps must be ≤ 1000000; got %d", p.PhenomenologicalCorroborationConfidenceBps)
 	}
 
 	return nil

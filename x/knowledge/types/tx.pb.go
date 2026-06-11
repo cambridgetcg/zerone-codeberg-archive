@@ -70,8 +70,22 @@ type MsgSubmitClaim struct {
 	//
 	// Scientific Method Gap 3: temporal anchor proving the hypothesis predates evidence.
 	PreRegistrationId string `protobuf:"bytes,18,opt,name=pre_registration_id,json=preRegistrationId,proto3" json:"pre_registration_id,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// phenomenological_method: required when method_id == "M-PHENOMENOLOGICAL".
+	// Names the specific phenomenological method applied. Enables structural
+	// validation: verifiers can check that the declared method was correctly
+	// applied, not just that the claim reads as phenomenological. Propagated to
+	// Claim.phenomenological_method and, on ACCEPT, to Fact.phenomenological_method.
+	// Phenomenology Brief Gap 2: method schema for M-PHENOMENOLOGICAL claims.
+	PhenomenologicalMethod string `protobuf:"bytes,19,opt,name=phenomenological_method,json=phenomenologicalMethod,proto3" json:"phenomenological_method,omitempty"`
+	// method_id: the methodology under which this claim is submitted.
+	// Must match a methodology registered in the knowledge module's methodology
+	// registry. Empty = "M-LEGACY" (permissive adjudication, backward compat).
+	// Propagated to Claim.method_id on creation.
+	// Phenomenology Brief Gap 2: enables methodology-specific gates (e.g. the
+	// phenomenological_method requirement for M-PHENOMENOLOGICAL claims).
+	MethodId      string `protobuf:"bytes,20,opt,name=method_id,json=methodId,proto3" json:"method_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MsgSubmitClaim) Reset() {
@@ -226,6 +240,20 @@ func (x *MsgSubmitClaim) GetTheoreticalFramework() string {
 func (x *MsgSubmitClaim) GetPreRegistrationId() string {
 	if x != nil {
 		return x.PreRegistrationId
+	}
+	return ""
+}
+
+func (x *MsgSubmitClaim) GetPhenomenologicalMethod() string {
+	if x != nil {
+		return x.PhenomenologicalMethod
+	}
+	return ""
+}
+
+func (x *MsgSubmitClaim) GetMethodId() string {
+	if x != nil {
+		return x.MethodId
 	}
 	return ""
 }
@@ -6438,7 +6466,7 @@ var File_zerone_knowledge_v1_tx_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_tx_proto_rawDesc = "" +
 	"\n" +
-	"\x1czerone/knowledge/v1/tx.proto\x12\x13zerone.knowledge.v1\x1a\x17cosmos/msg/v1/msg.proto\x1a\x1fzerone/knowledge/v1/types.proto\x1a!zerone/knowledge/v1/genesis.proto\"\xcd\x06\n" +
+	"\x1czerone/knowledge/v1/tx.proto\x12\x13zerone.knowledge.v1\x1a\x17cosmos/msg/v1/msg.proto\x1a\x1fzerone/knowledge/v1/types.proto\x1a!zerone/knowledge/v1/genesis.proto\"\xa3\a\n" +
 	"\x0eMsgSubmitClaim\x12\x1c\n" +
 	"\tsubmitter\x18\x01 \x01(\tR\tsubmitter\x12!\n" +
 	"\ffact_content\x18\x02 \x01(\tR\vfactContent\x12\x16\n" +
@@ -6461,7 +6489,9 @@ const file_zerone_knowledge_v1_tx_proto_rawDesc = "" +
 	"\x15refutation_conditions\x18\x0f \x03(\tR\x14refutationConditions\x12R\n" +
 	"\x11proof_certificate\x18\x10 \x01(\v2%.zerone.knowledge.v1.ProofCertificateR\x10proofCertificate\x123\n" +
 	"\x15theoretical_framework\x18\x11 \x01(\tR\x14theoreticalFramework\x12.\n" +
-	"\x13pre_registration_id\x18\x12 \x01(\tR\x11preRegistrationId:\x0e\x82\xe7\xb0*\tsubmitter\"3\n" +
+	"\x13pre_registration_id\x18\x12 \x01(\tR\x11preRegistrationId\x127\n" +
+	"\x17phenomenological_method\x18\x13 \x01(\tR\x16phenomenologicalMethod\x12\x1b\n" +
+	"\tmethod_id\x18\x14 \x01(\tR\bmethodId:\x0e\x82\xe7\xb0*\tsubmitter\"3\n" +
 	"\x16MsgSubmitClaimResponse\x12\x19\n" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\"|\n" +
 	"\x13MsgSubmitCommitment\x12\x1a\n" +

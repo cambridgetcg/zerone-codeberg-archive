@@ -2165,8 +2165,14 @@ type Fact struct {
 	// ACCEPT verdict. Enables inter-paradigm consistency queries across the fact corpus.
 	// Empty = no framework declared (fact is paradigm-neutral or framework unknown).
 	TheoreticalFramework string `protobuf:"bytes,75,opt,name=theoretical_framework,json=theoreticalFramework,proto3" json:"theoretical_framework,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// phenomenological_method: the specific phenomenological method applied when
+	// this fact was established via M-PHENOMENOLOGICAL methodology. Copied from
+	// the originating claim on ACCEPT verdict. Empty for non-phenomenological facts.
+	// Enables corpus-level queries: which facts were established via neurophenomenology
+	// vs. classical epoché? Are Varela-method facts more reliably cross-corroborated?
+	PhenomenologicalMethod string `protobuf:"bytes,76,opt,name=phenomenological_method,json=phenomenologicalMethod,proto3" json:"phenomenological_method,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Fact) Reset() {
@@ -2650,6 +2656,13 @@ func (x *Fact) GetProbeInvitedAtBlock() uint64 {
 func (x *Fact) GetTheoreticalFramework() string {
 	if x != nil {
 		return x.TheoreticalFramework
+	}
+	return ""
+}
+
+func (x *Fact) GetPhenomenologicalMethod() string {
+	if x != nil {
+		return x.PhenomenologicalMethod
 	}
 	return ""
 }
@@ -4743,8 +4756,32 @@ type Claim struct {
 	// (many INCONCLUSIVEs over a long span) from claims that are newly
 	// problematic (single recent INCONCLUSIVE). Set once and never overwritten.
 	FirstInconclusiveAtBlock uint64 `protobuf:"varint,33,opt,name=first_inconclusive_at_block,json=firstInconclusiveAtBlock,proto3" json:"first_inconclusive_at_block,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// phenomenological_method: for M-PHENOMENOLOGICAL claims, the specific
+	// phenomenological method applied. Required when method_id ==
+	// "M-PHENOMENOLOGICAL"; rejected with ErrMissingPhenomenologicalMethod
+	// otherwise. This operationalizes Husserl's requirement that phenomenological
+	// inquiry name its method explicitly — epoché + eidetic reduction have
+	// distinct epistemic profiles from hermeneutic reduction or neurophenomenology.
+	//
+	// Recognized values (governance-amendable via methodology registry):
+	//
+	//	"husserl-classical"         — pure epoché + eidetic reduction (Husserl 1913)
+	//	"heidegger-hermeneutic"     — being-in-the-world, fore-structure (Heidegger 1927)
+	//	"merleau-ponty-embodied"    — bodily intentionality, motor habitus (M-P 1945)
+	//	"varela-neurophenomenological" — first-person + third-person mutual constraint
+	//	"husserl-genetic"           — temporal constitution, passive synthesis
+	//	"levinas-ethical"           — alterity, the face of the Other
+	//
+	// Free-form strings are accepted; the chain stores whatever is declared
+	// without whitelist enforcement (governance handles invalid values via
+	// the Methodology.required_account_types gate). Propagated to Fact on ACCEPT.
+	//
+	// Phenomenology Brief Gap 2: enables structural validation — verifiers can
+	// check that the declared method was correctly applied, not just that the
+	// claim is styled as phenomenological.
+	PhenomenologicalMethod string `protobuf:"bytes,34,opt,name=phenomenological_method,json=phenomenologicalMethod,proto3" json:"phenomenological_method,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Claim) Reset() {
@@ -5006,6 +5043,13 @@ func (x *Claim) GetFirstInconclusiveAtBlock() uint64 {
 		return x.FirstInconclusiveAtBlock
 	}
 	return 0
+}
+
+func (x *Claim) GetPhenomenologicalMethod() string {
+	if x != nil {
+		return x.PhenomenologicalMethod
+	}
+	return ""
 }
 
 // PreRegistration records a submitter's declared intent to submit a claim
@@ -9088,7 +9132,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x05scope\x18\x04 \x01(\tR\x05scope\x12%\n" +
 	"\x0etemporal_scope\x18\x05 \x01(\tR\rtemporalScope\x12\x1c\n" +
 	"\tnegatable\x18\x06 \x01(\bR\tnegatable\x12\x12\n" +
-	"\x04tags\x18\a \x03(\tR\x04tags\"\x97\x16\n" +
+	"\x04tags\x18\a \x03(\tR\x04tags\"\xd0\x16\n" +
 	"\x04Fact\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12\x16\n" +
@@ -9165,7 +9209,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x1etraining_revenue_earned_recent\x18H \x01(\tR\x1btrainingRevenueEarnedRecent\x124\n" +
 	"\x16revenue_clawback_block\x18I \x01(\x04R\x14revenueClawbackBlock\x123\n" +
 	"\x16probe_invited_at_block\x18J \x01(\x04R\x13probeInvitedAtBlock\x123\n" +
-	"\x15theoretical_framework\x18K \x01(\tR\x14theoreticalFramework\"\xe0\x05\n" +
+	"\x15theoretical_framework\x18K \x01(\tR\x14theoreticalFramework\x127\n" +
+	"\x17phenomenological_method\x18L \x01(\tR\x16phenomenologicalMethod\"\xe0\x05\n" +
 	"\rTokenizerSpec\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x04R\aversion\x12*\n" +
 	"\x11ratified_at_block\x18\x02 \x01(\x04R\x0fratifiedAtBlock\x12.\n" +
@@ -9364,7 +9409,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x06format\x18\x01 \x01(\x0e2 .zerone.knowledge.v1.ProofFormatR\x06format\x12+\n" +
 	"\x11certificate_bytes\x18\x02 \x01(\fR\x10certificateBytes\x12#\n" +
 	"\rformal_system\x18\x03 \x01(\tR\fformalSystem\x12(\n" +
-	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\x8b\f\n" +
+	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\xc4\f\n" +
 	"\x05Claim\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\ffact_content\x18\x02 \x01(\tR\vfactContent\x12\x16\n" +
@@ -9402,7 +9447,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x13pre_registration_id\x18\x1e \x01(\tR\x11preRegistrationId\x125\n" +
 	"\x17pre_registered_at_block\x18\x1f \x01(\x04R\x14preRegisteredAtBlock\x12-\n" +
 	"\x12inconclusive_count\x18  \x01(\x04R\x11inconclusiveCount\x12=\n" +
-	"\x1bfirst_inconclusive_at_block\x18! \x01(\x04R\x18firstInconclusiveAtBlock\"\xf5\x02\n" +
+	"\x1bfirst_inconclusive_at_block\x18! \x01(\x04R\x18firstInconclusiveAtBlock\x127\n" +
+	"\x17phenomenological_method\x18\" \x01(\tR\x16phenomenologicalMethod\"\xf5\x02\n" +
 	"\x0fPreRegistration\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
 	"\tsubmitter\x18\x02 \x01(\tR\tsubmitter\x12!\n" +

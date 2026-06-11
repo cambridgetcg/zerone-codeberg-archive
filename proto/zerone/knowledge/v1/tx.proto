@@ -299,6 +299,22 @@ message MsgSubmitClaim {
   //   5. The pre-registration is marked as fulfilled.
   // Scientific Method Gap 3: temporal anchor proving the hypothesis predates evidence.
   string pre_registration_id = 18;
+
+  // phenomenological_method: required when method_id == "M-PHENOMENOLOGICAL".
+  // Names the specific phenomenological method applied. Enables structural
+  // validation: verifiers can check that the declared method was correctly
+  // applied, not just that the claim reads as phenomenological. Propagated to
+  // Claim.phenomenological_method and, on ACCEPT, to Fact.phenomenological_method.
+  // Phenomenology Brief Gap 2: method schema for M-PHENOMENOLOGICAL claims.
+  string phenomenological_method = 19;
+
+  // method_id: the methodology under which this claim is submitted.
+  // Must match a methodology registered in the knowledge module's methodology
+  // registry. Empty = "M-LEGACY" (permissive adjudication, backward compat).
+  // Propagated to Claim.method_id on creation.
+  // Phenomenology Brief Gap 2: enables methodology-specific gates (e.g. the
+  // phenomenological_method requirement for M-PHENOMENOLOGICAL claims).
+  string method_id = 20;
 }
 
 message MsgSubmitClaimResponse {

@@ -475,8 +475,22 @@ type Params struct {
 	// Fail-open: 0 = gate disabled; verifiers with zero practice hours are eligible
 	// for M-PHENOMENOLOGICAL panels under the same rules as all other panels.
 	MinPhenomenologicalPracticeHours uint64 `protobuf:"varint,181,opt,name=min_phenomenological_practice_hours,json=minPhenomenologicalPracticeHours,proto3" json:"min_phenomenological_practice_hours,omitempty"`
-	unknownFields                    protoimpl.UnknownFields
-	sizeCache                        protoimpl.SizeCache
+	// phenomenological_corroboration_confidence_bps: cross-modal corroboration gate
+	// for M-PHENOMENOLOGICAL claims. When non-zero, an M-PHENOMENOLOGICAL ACCEPT
+	// verdict at confidence >= this threshold is downgraded to INCONCLUSIVE unless
+	// the claim has at least one ClaimRelation whose target fact carries method_id
+	// "M-EMPIRICAL" (or any M-EMPIRICAL-family methodology). Operationalizes
+	// Varela's neurophenomenological principle: high-confidence first-person claims
+	// require third-person empirical grounding. The mutual constraint between
+	// first-person description and third-person neural/behavioral data is the
+	// chain's answer to the hard problem of verification (phenomenology-brief.md
+	// Gap 3: cross-modal corroboration requirement, ★★★☆☆).
+	//
+	// Fail-open: 0 = gate disabled; M-PHENOMENOLOGICAL claims are accepted at any
+	// confidence without requiring M-EMPIRICAL corroboration.
+	PhenomenologicalCorroborationConfidenceBps uint64 `protobuf:"varint,182,opt,name=phenomenological_corroboration_confidence_bps,json=phenomenologicalCorroborationConfidenceBps,proto3" json:"phenomenological_corroboration_confidence_bps,omitempty"`
+	unknownFields                              protoimpl.UnknownFields
+	sizeCache                                  protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -1776,6 +1790,13 @@ func (x *Params) GetMinPhenomenologicalPracticeHours() uint64 {
 	return 0
 }
 
+func (x *Params) GetPhenomenologicalCorroborationConfidenceBps() uint64 {
+	if x != nil {
+		return x.PhenomenologicalCorroborationConfidenceBps
+	}
+	return 0
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -2023,7 +2044,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xfaY\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xdeZ\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2206,7 +2227,8 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\x1apre_registration_bond_uzrn\x18\xb2\x01 \x01(\tR\x17preRegistrationBondUzrn\x12D\n" +
 	"\x1epre_registration_expiry_blocks\x18\xb3\x01 \x01(\x04R\x1bpreRegistrationExpiryBlocks\x12B\n" +
 	"\x1dpre_registration_discount_bps\x18\xb4\x01 \x01(\x04R\x1apreRegistrationDiscountBps\x12N\n" +
-	"#min_phenomenological_practice_hours\x18\xb5\x01 \x01(\x04R minPhenomenologicalPracticeHours\x1aN\n" +
+	"#min_phenomenological_practice_hours\x18\xb5\x01 \x01(\x04R minPhenomenologicalPracticeHours\x12b\n" +
+	"-phenomenological_corroboration_confidence_bps\x18\xb6\x01 \x01(\x04R*phenomenologicalCorroborationConfidenceBps\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xb8\x0f\n" +

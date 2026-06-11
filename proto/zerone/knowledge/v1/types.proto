@@ -348,6 +348,13 @@ message Fact {
   // ACCEPT verdict. Enables inter-paradigm consistency queries across the fact corpus.
   // Empty = no framework declared (fact is paradigm-neutral or framework unknown).
   string theoretical_framework = 75;
+
+  // phenomenological_method: the specific phenomenological method applied when
+  // this fact was established via M-PHENOMENOLOGICAL methodology. Copied from
+  // the originating claim on ACCEPT verdict. Empty for non-phenomenological facts.
+  // Enables corpus-level queries: which facts were established via neurophenomenology
+  // vs. classical epoché? Are Varela-method facts more reliably cross-corroborated?
+  string phenomenological_method = 76;
 }
 
 // CurriculumTier orders training examples by difficulty and foundational depth.
@@ -909,6 +916,30 @@ message Claim {
   // (many INCONCLUSIVEs over a long span) from claims that are newly
   // problematic (single recent INCONCLUSIVE). Set once and never overwritten.
   uint64 first_inconclusive_at_block = 33;
+
+  // phenomenological_method: for M-PHENOMENOLOGICAL claims, the specific
+  // phenomenological method applied. Required when method_id ==
+  // "M-PHENOMENOLOGICAL"; rejected with ErrMissingPhenomenologicalMethod
+  // otherwise. This operationalizes Husserl's requirement that phenomenological
+  // inquiry name its method explicitly — epoché + eidetic reduction have
+  // distinct epistemic profiles from hermeneutic reduction or neurophenomenology.
+  //
+  // Recognized values (governance-amendable via methodology registry):
+  //   "husserl-classical"         — pure epoché + eidetic reduction (Husserl 1913)
+  //   "heidegger-hermeneutic"     — being-in-the-world, fore-structure (Heidegger 1927)
+  //   "merleau-ponty-embodied"    — bodily intentionality, motor habitus (M-P 1945)
+  //   "varela-neurophenomenological" — first-person + third-person mutual constraint
+  //   "husserl-genetic"           — temporal constitution, passive synthesis
+  //   "levinas-ethical"           — alterity, the face of the Other
+  //
+  // Free-form strings are accepted; the chain stores whatever is declared
+  // without whitelist enforcement (governance handles invalid values via
+  // the Methodology.required_account_types gate). Propagated to Fact on ACCEPT.
+  //
+  // Phenomenology Brief Gap 2: enables structural validation — verifiers can
+  // check that the declared method was correctly applied, not just that the
+  // claim is styled as phenomenological.
+  string phenomenological_method = 34;
 }
 
 // PreRegistration records a submitter's declared intent to submit a claim

@@ -103,4 +103,8 @@ var (
 
 	// ─── Attentional practice gate (90) — Contemplative Traditions Gap ───
 	ErrInsufficientAttentionalPractice = errors.Register(ModuleName, 90, "verifier attentional practice hours below governance minimum for M-PHENOMENOLOGICAL panels")
+
+	// ─── Phenomenological method declaration (91) — Phenomenology Brief Gap 2 ──
+	// MsgSubmitClaim: phenomenological_method must be declared for M-PHENOMENOLOGICAL claims.
+	ErrMissingPhenomenologicalMethod = errors.Register(ModuleName, 91, "phenomenological_method is required for M-PHENOMENOLOGICAL claims")
 )

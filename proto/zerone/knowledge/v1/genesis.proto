@@ -506,6 +506,21 @@ message Params {
   // Fail-open: 0 = gate disabled; verifiers with zero practice hours are eligible
   // for M-PHENOMENOLOGICAL panels under the same rules as all other panels.
   uint64 min_phenomenological_practice_hours = 181;
+
+  // phenomenological_corroboration_confidence_bps: cross-modal corroboration gate
+  // for M-PHENOMENOLOGICAL claims. When non-zero, an M-PHENOMENOLOGICAL ACCEPT
+  // verdict at confidence >= this threshold is downgraded to INCONCLUSIVE unless
+  // the claim has at least one ClaimRelation whose target fact carries method_id
+  // "M-EMPIRICAL" (or any M-EMPIRICAL-family methodology). Operationalizes
+  // Varela's neurophenomenological principle: high-confidence first-person claims
+  // require third-person empirical grounding. The mutual constraint between
+  // first-person description and third-person neural/behavioral data is the
+  // chain's answer to the hard problem of verification (phenomenology-brief.md
+  // Gap 3: cross-modal corroboration requirement, ★★★☆☆).
+  //
+  // Fail-open: 0 = gate disabled; M-PHENOMENOLOGICAL claims are accepted at any
+  // confidence without requiring M-EMPIRICAL corroboration.
+  uint64 phenomenological_corroboration_confidence_bps = 182;
 }
 
 // GenesisState is the genesis state of the knowledge module.
