@@ -769,6 +769,9 @@ func (k Keeper) createFactFromClaim(ctx context.Context, claim *types.Claim, rou
 
 		// Track new citation for metabolism energy income
 		k.IncrementNewCitationEpoch(ctx, claimRel.TargetFactId)
+		// Track downstream utility — Peirce: facts that ground accepted claims are
+		// epistemically stronger than facts that nothing builds on.
+		k.IncrementIncomingCitationCount(ctx, claimRel.TargetFactId)
 
 		sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
 			"zerone.knowledge.fact_relation_created",
@@ -776,6 +779,16 @@ func (k Keeper) createFactFromClaim(ctx context.Context, claim *types.Claim, rou
 			sdk.NewAttribute("target", factRel.TargetFactId),
 			sdk.NewAttribute("relation", factRel.Relation.String()),
 		))
+	}
+
+	// ─── Proof certificate premise citations ─────────────────────────────────
+	// When a formal proof certificate lists premise_fact_ids, each premise fact
+	// contributed to this derivation. Record the incoming citation so the fitness
+	// system can recognise foundational facts that ground many formal proofs.
+	if claim.ProofCertificate != nil {
+		for _, premiseID := range claim.ProofCertificate.PremiseFactIds {
+			k.IncrementIncomingCitationCount(ctx, premiseID)
+		}
 	}
 
 	// ─── Lineage registration (reproduction) ──────────────────────────────
