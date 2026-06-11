@@ -19,12 +19,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Query_Provider_FullMethodName    = "/zerone.billing.v1.Query/Provider"
-	Query_Providers_FullMethodName   = "/zerone.billing.v1.Query/Providers"
-	Query_Quote_FullMethodName       = "/zerone.billing.v1.Query/Quote"
-	Query_BatchQuote_FullMethodName  = "/zerone.billing.v1.Query/BatchQuote"
-	Query_Params_FullMethodName      = "/zerone.billing.v1.Query/Params"
-	Query_ZRNPriceUSD_FullMethodName = "/zerone.billing.v1.Query/ZRNPriceUSD"
+	Query_Provider_FullMethodName         = "/zerone.billing.v1.Query/Provider"
+	Query_Providers_FullMethodName        = "/zerone.billing.v1.Query/Providers"
+	Query_Quote_FullMethodName            = "/zerone.billing.v1.Query/Quote"
+	Query_BatchQuote_FullMethodName       = "/zerone.billing.v1.Query/BatchQuote"
+	Query_Params_FullMethodName           = "/zerone.billing.v1.Query/Params"
+	Query_ZRNPriceUSD_FullMethodName      = "/zerone.billing.v1.Query/ZRNPriceUSD"
+	Query_ProtocolReserves_FullMethodName = "/zerone.billing.v1.Query/ProtocolReserves"
 )
 
 // QueryClient is the client API for Query service.
@@ -39,6 +40,10 @@ type QueryClient interface {
 	BatchQuote(ctx context.Context, in *QueryBatchQuoteRequest, opts ...grpc.CallOption) (*QueryBatchQuoteResponse, error)
 	Params(ctx context.Context, in *QueryParamsRequest, opts ...grpc.CallOption) (*QueryParamsResponse, error)
 	ZRNPriceUSD(ctx context.Context, in *QueryZRNPriceUSDRequest, opts ...grpc.CallOption) (*QueryZRNPriceUSDResponse, error)
+	// ProtocolReserves returns a unified snapshot of all protocol fund balances.
+	// Governance participants use this to assess the protocol's financial health
+	// before making spending or emission decisions. Treasury Gap 5.
+	ProtocolReserves(ctx context.Context, in *QueryProtocolReservesRequest, opts ...grpc.CallOption) (*QueryProtocolReservesResponse, error)
 }
 
 type queryClient struct {
@@ -109,6 +114,16 @@ func (c *queryClient) ZRNPriceUSD(ctx context.Context, in *QueryZRNPriceUSDReque
 	return out, nil
 }
 
+func (c *queryClient) ProtocolReserves(ctx context.Context, in *QueryProtocolReservesRequest, opts ...grpc.CallOption) (*QueryProtocolReservesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(QueryProtocolReservesResponse)
+	err := c.cc.Invoke(ctx, Query_ProtocolReserves_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // QueryServer is the server API for Query service.
 // All implementations must embed UnimplementedQueryServer
 // for forward compatibility.
@@ -121,6 +136,10 @@ type QueryServer interface {
 	BatchQuote(context.Context, *QueryBatchQuoteRequest) (*QueryBatchQuoteResponse, error)
 	Params(context.Context, *QueryParamsRequest) (*QueryParamsResponse, error)
 	ZRNPriceUSD(context.Context, *QueryZRNPriceUSDRequest) (*QueryZRNPriceUSDResponse, error)
+	// ProtocolReserves returns a unified snapshot of all protocol fund balances.
+	// Governance participants use this to assess the protocol's financial health
+	// before making spending or emission decisions. Treasury Gap 5.
+	ProtocolReserves(context.Context, *QueryProtocolReservesRequest) (*QueryProtocolReservesResponse, error)
 	mustEmbedUnimplementedQueryServer()
 }
 
@@ -148,6 +167,9 @@ func (UnimplementedQueryServer) Params(context.Context, *QueryParamsRequest) (*Q
 }
 func (UnimplementedQueryServer) ZRNPriceUSD(context.Context, *QueryZRNPriceUSDRequest) (*QueryZRNPriceUSDResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ZRNPriceUSD not implemented")
+}
+func (UnimplementedQueryServer) ProtocolReserves(context.Context, *QueryProtocolReservesRequest) (*QueryProtocolReservesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ProtocolReserves not implemented")
 }
 func (UnimplementedQueryServer) mustEmbedUnimplementedQueryServer() {}
 func (UnimplementedQueryServer) testEmbeddedByValue()               {}
@@ -278,6 +300,24 @@ func _Query_ZRNPriceUSD_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Query_ProtocolReserves_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryProtocolReservesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).ProtocolReserves(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Query_ProtocolReserves_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).ProtocolReserves(ctx, req.(*QueryProtocolReservesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Query_ServiceDesc is the grpc.ServiceDesc for Query service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -308,6 +348,10 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ZRNPriceUSD",
 			Handler:    _Query_ZRNPriceUSD_Handler,
+		},
+		{
+			MethodName: "ProtocolReserves",
+			Handler:    _Query_ProtocolReserves_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

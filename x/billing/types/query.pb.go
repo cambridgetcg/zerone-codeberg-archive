@@ -542,6 +542,162 @@ func (x *QueryZRNPriceUSDResponse) GetSource() string {
 	return ""
 }
 
+// QueryProtocolReservesRequest has no parameters — returns current live balances.
+type QueryProtocolReservesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *QueryProtocolReservesRequest) Reset() {
+	*x = QueryProtocolReservesRequest{}
+	mi := &file_zerone_billing_v1_query_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QueryProtocolReservesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QueryProtocolReservesRequest) ProtoMessage() {}
+
+func (x *QueryProtocolReservesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_billing_v1_query_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QueryProtocolReservesRequest.ProtoReflect.Descriptor instead.
+func (*QueryProtocolReservesRequest) Descriptor() ([]byte, []int) {
+	return file_zerone_billing_v1_query_proto_rawDescGZIP(), []int{12}
+}
+
+// QueryProtocolReservesResponse aggregates all protocol fund balances.
+// All amounts are in uzrn (bigint strings). 0 means the account is empty or not yet seeded.
+type QueryProtocolReservesResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// treasury_protocol_uzrn: billing module's protocol treasury ("treasury_protocol" account).
+	// Primary destination for billing revenue split protocol share.
+	TreasuryProtocolUzrn string `protobuf:"bytes,1,opt,name=treasury_protocol_uzrn,json=treasuryProtocolUzrn,proto3" json:"treasury_protocol_uzrn,omitempty"`
+	// protocol_treasury_uzrn: knowledge/toolbox protocol treasury ("protocol_treasury" account).
+	// Secondary protocol treasury receiving knowledge review fee splits.
+	// NOTE: "treasury_protocol" and "protocol_treasury" are distinct accounts — this is a
+	// known naming inconsistency in the billing vs. knowledge routing paths.
+	ProtocolTreasuryUzrn string `protobuf:"bytes,2,opt,name=protocol_treasury_uzrn,json=protocolTreasuryUzrn,proto3" json:"protocol_treasury_uzrn,omitempty"`
+	// research_fund_uzrn: research fund module account ("research_fund").
+	// Funded by billing distribution and vesting_rewards research allocation.
+	ResearchFundUzrn string `protobuf:"bytes,3,opt,name=research_fund_uzrn,json=researchFundUzrn,proto3" json:"research_fund_uzrn,omitempty"`
+	// development_fund_uzrn: development fund ("development_fund").
+	// Primary discretionary spending pool; gated by MsgDevelopmentFundSpend governance proposals.
+	DevelopmentFundUzrn string `protobuf:"bytes,4,opt,name=development_fund_uzrn,json=developmentFundUzrn,proto3" json:"development_fund_uzrn,omitempty"`
+	// vindication_escrow_uzrn: knowledge module vindication escrow ("vindication_escrow").
+	// Holds slashed verifier tokens that may be returned if their minority verdict is later correct.
+	VindicationEscrowUzrn string `protobuf:"bytes,5,opt,name=vindication_escrow_uzrn,json=vindicationEscrowUzrn,proto3" json:"vindication_escrow_uzrn,omitempty"`
+	// knowledge_pool_uzrn: knowledge module account ("knowledge").
+	// Probe bounty pool and round fee accumulator.
+	KnowledgePoolUzrn string `protobuf:"bytes,6,opt,name=knowledge_pool_uzrn,json=knowledgePoolUzrn,proto3" json:"knowledge_pool_uzrn,omitempty"`
+	// disputes_escrow_uzrn: disputes module account ("disputes").
+	// Holds challenger and defender bonds locked during active dispute proceedings.
+	DisputesEscrowUzrn string `protobuf:"bytes,7,opt,name=disputes_escrow_uzrn,json=disputesEscrowUzrn,proto3" json:"disputes_escrow_uzrn,omitempty"`
+	// snapshot_block_height: chain height at which all balances were read.
+	SnapshotBlockHeight uint64 `protobuf:"varint,8,opt,name=snapshot_block_height,json=snapshotBlockHeight,proto3" json:"snapshot_block_height,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *QueryProtocolReservesResponse) Reset() {
+	*x = QueryProtocolReservesResponse{}
+	mi := &file_zerone_billing_v1_query_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QueryProtocolReservesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QueryProtocolReservesResponse) ProtoMessage() {}
+
+func (x *QueryProtocolReservesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_billing_v1_query_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QueryProtocolReservesResponse.ProtoReflect.Descriptor instead.
+func (*QueryProtocolReservesResponse) Descriptor() ([]byte, []int) {
+	return file_zerone_billing_v1_query_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *QueryProtocolReservesResponse) GetTreasuryProtocolUzrn() string {
+	if x != nil {
+		return x.TreasuryProtocolUzrn
+	}
+	return ""
+}
+
+func (x *QueryProtocolReservesResponse) GetProtocolTreasuryUzrn() string {
+	if x != nil {
+		return x.ProtocolTreasuryUzrn
+	}
+	return ""
+}
+
+func (x *QueryProtocolReservesResponse) GetResearchFundUzrn() string {
+	if x != nil {
+		return x.ResearchFundUzrn
+	}
+	return ""
+}
+
+func (x *QueryProtocolReservesResponse) GetDevelopmentFundUzrn() string {
+	if x != nil {
+		return x.DevelopmentFundUzrn
+	}
+	return ""
+}
+
+func (x *QueryProtocolReservesResponse) GetVindicationEscrowUzrn() string {
+	if x != nil {
+		return x.VindicationEscrowUzrn
+	}
+	return ""
+}
+
+func (x *QueryProtocolReservesResponse) GetKnowledgePoolUzrn() string {
+	if x != nil {
+		return x.KnowledgePoolUzrn
+	}
+	return ""
+}
+
+func (x *QueryProtocolReservesResponse) GetDisputesEscrowUzrn() string {
+	if x != nil {
+		return x.DisputesEscrowUzrn
+	}
+	return ""
+}
+
+func (x *QueryProtocolReservesResponse) GetSnapshotBlockHeight() uint64 {
+	if x != nil {
+		return x.SnapshotBlockHeight
+	}
+	return 0
+}
+
 var File_zerone_billing_v1_query_proto protoreflect.FileDescriptor
 
 const file_zerone_billing_v1_query_proto_rawDesc = "" +
@@ -570,7 +726,17 @@ const file_zerone_billing_v1_query_proto_rawDesc = "" +
 	"\x17QueryZRNPriceUSDRequest\"O\n" +
 	"\x18QueryZRNPriceUSDResponse\x12\x1b\n" +
 	"\tprice_usd\x18\x01 \x01(\tR\bpriceUsd\x12\x16\n" +
-	"\x06source\x18\x02 \x01(\tR\x06source2\xba\x06\n" +
+	"\x06source\x18\x02 \x01(\tR\x06source\"\x1e\n" +
+	"\x1cQueryProtocolReservesRequest\"\xbb\x03\n" +
+	"\x1dQueryProtocolReservesResponse\x124\n" +
+	"\x16treasury_protocol_uzrn\x18\x01 \x01(\tR\x14treasuryProtocolUzrn\x124\n" +
+	"\x16protocol_treasury_uzrn\x18\x02 \x01(\tR\x14protocolTreasuryUzrn\x12,\n" +
+	"\x12research_fund_uzrn\x18\x03 \x01(\tR\x10researchFundUzrn\x122\n" +
+	"\x15development_fund_uzrn\x18\x04 \x01(\tR\x13developmentFundUzrn\x126\n" +
+	"\x17vindication_escrow_uzrn\x18\x05 \x01(\tR\x15vindicationEscrowUzrn\x12.\n" +
+	"\x13knowledge_pool_uzrn\x18\x06 \x01(\tR\x11knowledgePoolUzrn\x120\n" +
+	"\x14disputes_escrow_uzrn\x18\a \x01(\tR\x12disputesEscrowUzrn\x122\n" +
+	"\x15snapshot_block_height\x18\b \x01(\x04R\x13snapshotBlockHeight2\xd7\a\n" +
 	"\x05Query\x12\x8d\x01\n" +
 	"\bProvider\x12'.zerone.billing.v1.QueryProviderRequest\x1a(.zerone.billing.v1.QueryProviderResponse\".\x82\xd3\xe4\x93\x02(\x12&/zerone/billing/v1/providers/{address}\x12\x86\x01\n" +
 	"\tProviders\x12(.zerone.billing.v1.QueryProvidersRequest\x1a).zerone.billing.v1.QueryProvidersResponse\"$\x82\xd3\xe4\x93\x02\x1e\x12\x1c/zerone/billing/v1/providers\x12\x81\x01\n" +
@@ -578,7 +744,8 @@ const file_zerone_billing_v1_query_proto_rawDesc = "" +
 	"\n" +
 	"BatchQuote\x12).zerone.billing.v1.QueryBatchQuoteRequest\x1a*.zerone.billing.v1.QueryBatchQuoteResponse\"'\x82\xd3\xe4\x93\x02!\x12\x1f/zerone/billing/v1/quotes/batch\x12z\n" +
 	"\x06Params\x12%.zerone.billing.v1.QueryParamsRequest\x1a&.zerone.billing.v1.QueryParamsResponse\"!\x82\xd3\xe4\x93\x02\x1b\x12\x19/zerone/billing/v1/params\x12\x88\x01\n" +
-	"\vZRNPriceUSD\x12*.zerone.billing.v1.QueryZRNPriceUSDRequest\x1a+.zerone.billing.v1.QueryZRNPriceUSDResponse\" \x82\xd3\xe4\x93\x02\x1a\x12\x18/zerone/billing/v1/priceB0Z.github.com/zerone-chain/zerone/x/billing/typesb\x06proto3"
+	"\vZRNPriceUSD\x12*.zerone.billing.v1.QueryZRNPriceUSDRequest\x1a+.zerone.billing.v1.QueryZRNPriceUSDResponse\" \x82\xd3\xe4\x93\x02\x1a\x12\x18/zerone/billing/v1/price\x12\x9a\x01\n" +
+	"\x10ProtocolReserves\x12/.zerone.billing.v1.QueryProtocolReservesRequest\x1a0.zerone.billing.v1.QueryProtocolReservesResponse\"#\x82\xd3\xe4\x93\x02\x1d\x12\x1b/zerone/billing/v1/reservesB0Z.github.com/zerone-chain/zerone/x/billing/typesb\x06proto3"
 
 var (
 	file_zerone_billing_v1_query_proto_rawDescOnce sync.Once
@@ -592,44 +759,48 @@ func file_zerone_billing_v1_query_proto_rawDescGZIP() []byte {
 	return file_zerone_billing_v1_query_proto_rawDescData
 }
 
-var file_zerone_billing_v1_query_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_zerone_billing_v1_query_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_zerone_billing_v1_query_proto_goTypes = []any{
-	(*QueryProviderRequest)(nil),     // 0: zerone.billing.v1.QueryProviderRequest
-	(*QueryProviderResponse)(nil),    // 1: zerone.billing.v1.QueryProviderResponse
-	(*QueryProvidersRequest)(nil),    // 2: zerone.billing.v1.QueryProvidersRequest
-	(*QueryProvidersResponse)(nil),   // 3: zerone.billing.v1.QueryProvidersResponse
-	(*QueryQuoteRequest)(nil),        // 4: zerone.billing.v1.QueryQuoteRequest
-	(*QueryQuoteResponse)(nil),       // 5: zerone.billing.v1.QueryQuoteResponse
-	(*QueryBatchQuoteRequest)(nil),   // 6: zerone.billing.v1.QueryBatchQuoteRequest
-	(*QueryBatchQuoteResponse)(nil),  // 7: zerone.billing.v1.QueryBatchQuoteResponse
-	(*QueryParamsRequest)(nil),       // 8: zerone.billing.v1.QueryParamsRequest
-	(*QueryParamsResponse)(nil),      // 9: zerone.billing.v1.QueryParamsResponse
-	(*QueryZRNPriceUSDRequest)(nil),  // 10: zerone.billing.v1.QueryZRNPriceUSDRequest
-	(*QueryZRNPriceUSDResponse)(nil), // 11: zerone.billing.v1.QueryZRNPriceUSDResponse
-	(*Provider)(nil),                 // 12: zerone.billing.v1.Provider
-	(*QueryQuote)(nil),               // 13: zerone.billing.v1.QueryQuote
-	(*Params)(nil),                   // 14: zerone.billing.v1.Params
+	(*QueryProviderRequest)(nil),          // 0: zerone.billing.v1.QueryProviderRequest
+	(*QueryProviderResponse)(nil),         // 1: zerone.billing.v1.QueryProviderResponse
+	(*QueryProvidersRequest)(nil),         // 2: zerone.billing.v1.QueryProvidersRequest
+	(*QueryProvidersResponse)(nil),        // 3: zerone.billing.v1.QueryProvidersResponse
+	(*QueryQuoteRequest)(nil),             // 4: zerone.billing.v1.QueryQuoteRequest
+	(*QueryQuoteResponse)(nil),            // 5: zerone.billing.v1.QueryQuoteResponse
+	(*QueryBatchQuoteRequest)(nil),        // 6: zerone.billing.v1.QueryBatchQuoteRequest
+	(*QueryBatchQuoteResponse)(nil),       // 7: zerone.billing.v1.QueryBatchQuoteResponse
+	(*QueryParamsRequest)(nil),            // 8: zerone.billing.v1.QueryParamsRequest
+	(*QueryParamsResponse)(nil),           // 9: zerone.billing.v1.QueryParamsResponse
+	(*QueryZRNPriceUSDRequest)(nil),       // 10: zerone.billing.v1.QueryZRNPriceUSDRequest
+	(*QueryZRNPriceUSDResponse)(nil),      // 11: zerone.billing.v1.QueryZRNPriceUSDResponse
+	(*QueryProtocolReservesRequest)(nil),  // 12: zerone.billing.v1.QueryProtocolReservesRequest
+	(*QueryProtocolReservesResponse)(nil), // 13: zerone.billing.v1.QueryProtocolReservesResponse
+	(*Provider)(nil),                      // 14: zerone.billing.v1.Provider
+	(*QueryQuote)(nil),                    // 15: zerone.billing.v1.QueryQuote
+	(*Params)(nil),                        // 16: zerone.billing.v1.Params
 }
 var file_zerone_billing_v1_query_proto_depIdxs = []int32{
-	12, // 0: zerone.billing.v1.QueryProviderResponse.provider:type_name -> zerone.billing.v1.Provider
-	12, // 1: zerone.billing.v1.QueryProvidersResponse.providers:type_name -> zerone.billing.v1.Provider
-	13, // 2: zerone.billing.v1.QueryQuoteResponse.quote:type_name -> zerone.billing.v1.QueryQuote
-	13, // 3: zerone.billing.v1.QueryBatchQuoteResponse.quotes:type_name -> zerone.billing.v1.QueryQuote
-	14, // 4: zerone.billing.v1.QueryParamsResponse.params:type_name -> zerone.billing.v1.Params
+	14, // 0: zerone.billing.v1.QueryProviderResponse.provider:type_name -> zerone.billing.v1.Provider
+	14, // 1: zerone.billing.v1.QueryProvidersResponse.providers:type_name -> zerone.billing.v1.Provider
+	15, // 2: zerone.billing.v1.QueryQuoteResponse.quote:type_name -> zerone.billing.v1.QueryQuote
+	15, // 3: zerone.billing.v1.QueryBatchQuoteResponse.quotes:type_name -> zerone.billing.v1.QueryQuote
+	16, // 4: zerone.billing.v1.QueryParamsResponse.params:type_name -> zerone.billing.v1.Params
 	0,  // 5: zerone.billing.v1.Query.Provider:input_type -> zerone.billing.v1.QueryProviderRequest
 	2,  // 6: zerone.billing.v1.Query.Providers:input_type -> zerone.billing.v1.QueryProvidersRequest
 	4,  // 7: zerone.billing.v1.Query.Quote:input_type -> zerone.billing.v1.QueryQuoteRequest
 	6,  // 8: zerone.billing.v1.Query.BatchQuote:input_type -> zerone.billing.v1.QueryBatchQuoteRequest
 	8,  // 9: zerone.billing.v1.Query.Params:input_type -> zerone.billing.v1.QueryParamsRequest
 	10, // 10: zerone.billing.v1.Query.ZRNPriceUSD:input_type -> zerone.billing.v1.QueryZRNPriceUSDRequest
-	1,  // 11: zerone.billing.v1.Query.Provider:output_type -> zerone.billing.v1.QueryProviderResponse
-	3,  // 12: zerone.billing.v1.Query.Providers:output_type -> zerone.billing.v1.QueryProvidersResponse
-	5,  // 13: zerone.billing.v1.Query.Quote:output_type -> zerone.billing.v1.QueryQuoteResponse
-	7,  // 14: zerone.billing.v1.Query.BatchQuote:output_type -> zerone.billing.v1.QueryBatchQuoteResponse
-	9,  // 15: zerone.billing.v1.Query.Params:output_type -> zerone.billing.v1.QueryParamsResponse
-	11, // 16: zerone.billing.v1.Query.ZRNPriceUSD:output_type -> zerone.billing.v1.QueryZRNPriceUSDResponse
-	11, // [11:17] is the sub-list for method output_type
-	5,  // [5:11] is the sub-list for method input_type
+	12, // 11: zerone.billing.v1.Query.ProtocolReserves:input_type -> zerone.billing.v1.QueryProtocolReservesRequest
+	1,  // 12: zerone.billing.v1.Query.Provider:output_type -> zerone.billing.v1.QueryProviderResponse
+	3,  // 13: zerone.billing.v1.Query.Providers:output_type -> zerone.billing.v1.QueryProvidersResponse
+	5,  // 14: zerone.billing.v1.Query.Quote:output_type -> zerone.billing.v1.QueryQuoteResponse
+	7,  // 15: zerone.billing.v1.Query.BatchQuote:output_type -> zerone.billing.v1.QueryBatchQuoteResponse
+	9,  // 16: zerone.billing.v1.Query.Params:output_type -> zerone.billing.v1.QueryParamsResponse
+	11, // 17: zerone.billing.v1.Query.ZRNPriceUSD:output_type -> zerone.billing.v1.QueryZRNPriceUSDResponse
+	13, // 18: zerone.billing.v1.Query.ProtocolReserves:output_type -> zerone.billing.v1.QueryProtocolReservesResponse
+	12, // [12:19] is the sub-list for method output_type
+	5,  // [5:12] is the sub-list for method input_type
 	5,  // [5:5] is the sub-list for extension type_name
 	5,  // [5:5] is the sub-list for extension extendee
 	0,  // [0:5] is the sub-list for field type_name
@@ -648,7 +819,7 @@ func file_zerone_billing_v1_query_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_zerone_billing_v1_query_proto_rawDesc), len(file_zerone_billing_v1_query_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

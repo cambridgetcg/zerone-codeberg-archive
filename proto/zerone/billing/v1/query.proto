@@ -27,6 +27,12 @@ service Query {
   rpc ZRNPriceUSD(QueryZRNPriceUSDRequest) returns (QueryZRNPriceUSDResponse) {
     option (google.api.http).get = "/zerone/billing/v1/price";
   }
+  // ProtocolReserves returns a unified snapshot of all protocol fund balances.
+  // Governance participants use this to assess the protocol's financial health
+  // before making spending or emission decisions. Treasury Gap 5.
+  rpc ProtocolReserves(QueryProtocolReservesRequest) returns (QueryProtocolReservesResponse) {
+    option (google.api.http).get = "/zerone/billing/v1/reserves";
+  }
 }
 
 message QueryProviderRequest {
@@ -65,4 +71,44 @@ message QueryZRNPriceUSDRequest {}
 message QueryZRNPriceUSDResponse {
   string price_usd = 1;  // 6-decimal USD string
   string source    = 2;  // "manual", "twap", or "unavailable"
+}
+
+// QueryProtocolReservesRequest has no parameters — returns current live balances.
+message QueryProtocolReservesRequest {}
+
+// QueryProtocolReservesResponse aggregates all protocol fund balances.
+// All amounts are in uzrn (bigint strings). 0 means the account is empty or not yet seeded.
+message QueryProtocolReservesResponse {
+  // treasury_protocol_uzrn: billing module's protocol treasury ("treasury_protocol" account).
+  // Primary destination for billing revenue split protocol share.
+  string treasury_protocol_uzrn  = 1;
+
+  // protocol_treasury_uzrn: knowledge/toolbox protocol treasury ("protocol_treasury" account).
+  // Secondary protocol treasury receiving knowledge review fee splits.
+  // NOTE: "treasury_protocol" and "protocol_treasury" are distinct accounts — this is a
+  // known naming inconsistency in the billing vs. knowledge routing paths.
+  string protocol_treasury_uzrn  = 2;
+
+  // research_fund_uzrn: research fund module account ("research_fund").
+  // Funded by billing distribution and vesting_rewards research allocation.
+  string research_fund_uzrn      = 3;
+
+  // development_fund_uzrn: development fund ("development_fund").
+  // Primary discretionary spending pool; gated by MsgDevelopmentFundSpend governance proposals.
+  string development_fund_uzrn   = 4;
+
+  // vindication_escrow_uzrn: knowledge module vindication escrow ("vindication_escrow").
+  // Holds slashed verifier tokens that may be returned if their minority verdict is later correct.
+  string vindication_escrow_uzrn = 5;
+
+  // knowledge_pool_uzrn: knowledge module account ("knowledge").
+  // Probe bounty pool and round fee accumulator.
+  string knowledge_pool_uzrn     = 6;
+
+  // disputes_escrow_uzrn: disputes module account ("disputes").
+  // Holds challenger and defender bonds locked during active dispute proceedings.
+  string disputes_escrow_uzrn    = 7;
+
+  // snapshot_block_height: chain height at which all balances were read.
+  uint64 snapshot_block_height   = 8;
 }

@@ -135,3 +135,35 @@ func (k queryServer) ZRNPriceUSD(goCtx context.Context, req *types.QueryZRNPrice
 		Source:   source,
 	}, nil
 }
+
+// ProtocolReserves returns a unified snapshot of all protocol fund balances.
+// All amounts are in uzrn. This endpoint is governance-facing: it aggregates
+// the seven main protocol fund accounts into a single response so governance
+// participants can assess the full financial picture without issuing seven
+// separate balance queries.
+//
+// NOTE: "treasury_protocol" and "protocol_treasury" are distinct module accounts
+// due to an existing naming inconsistency between the billing and knowledge routing
+// paths. Both are included so governance can see the complete picture.
+func (k queryServer) ProtocolReserves(goCtx context.Context, req *types.QueryProtocolReservesRequest) (*types.QueryProtocolReservesResponse, error) {
+	if req == nil {
+		return nil, fmt.Errorf("request cannot be nil")
+	}
+	ctx := sdk.UnwrapSDKContext(goCtx)
+	denom := "uzrn"
+
+	get := func(module string) string {
+		return k.bankKeeper.GetModuleBalance(ctx, module, denom).Amount.String()
+	}
+
+	return &types.QueryProtocolReservesResponse{
+		TreasuryProtocolUzrn:  get("treasury_protocol"),
+		ProtocolTreasuryUzrn:  get("protocol_treasury"),
+		ResearchFundUzrn:      get("research_fund"),
+		DevelopmentFundUzrn:   get("development_fund"),
+		VindicationEscrowUzrn: get("vindication_escrow"),
+		KnowledgePoolUzrn:     get("knowledge"),
+		DisputesEscrowUzrn:    get("disputes"),
+		SnapshotBlockHeight:   uint64(ctx.BlockHeight()),
+	}, nil
+}
