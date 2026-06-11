@@ -33,4 +33,6 @@ var (
 	ErrWithdrawalTooEarly       = errors.Register(ModuleName, 29, "LP withdrawal blocked: min_liquidity_duration_blocks not elapsed since last deposit")
 	ErrTWAPDeviationExceeded    = errors.Register(ModuleName, 30, "swap blocked: spot/TWAP price deviation exceeds max_twap_deviation_bps threshold")
 	ErrInvalidMEVTip            = errors.Register(ModuleName, 31, "priority_tip_uzrn must be a non-negative integer string")
+	ErrILInsuranceInsufficientFund = errors.Register(ModuleName, 32, "IL insurance fund has insufficient balance")
+	ErrILInsuranceInvalidAmount    = errors.Register(ModuleName, 33, "IL insurance fund amount must be a positive integer")
 )

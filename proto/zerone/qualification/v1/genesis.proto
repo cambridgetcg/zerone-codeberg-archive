@@ -55,4 +55,10 @@ message Params {
   uint64 decay_probation_bps         = 16; // default: 600,000 (60%) — ACTIVE → PROBATIONARY
   uint64 decay_suspension_bps        = 17; // default: 400,000 (40%) — PROBATIONARY → SUSPENDED
   uint64 decay_recovery_bps          = 18; // default: 750,000 (75%) — PROBATIONARY → ACTIVE
+
+  // ─── Scientific Method Gap 5: domain-specific decay timescales ───────
+  // Fast-moving domains (technology, economics) should decay faster;
+  // stable domains (mathematics, formal logic) should decay slower.
+  // Any zero field in a DomainDecayOverride falls back to the global value above.
+  repeated DomainDecayOverride domain_decay_overrides = 19;
 }

@@ -458,6 +458,89 @@ func (x *QualificationEndorsement) GetExpiresAt() uint64 {
 	return 0
 }
 
+// DomainDecayOverride allows governance to configure domain-specific accuracy
+// decay thresholds, reflecting that different domains have different natural
+// inquiry timescales. Fast-moving domains (technology, economics) should decay
+// faster; stable domains (mathematics, formal logic) should decay slower.
+//
+// Any field set to 0 falls back to the corresponding global Params value.
+// Empty domain_decay_overrides in Params = all domains use global thresholds.
+type DomainDecayOverride struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Domain             string                 `protobuf:"bytes,1,opt,name=domain,proto3" json:"domain,omitempty"`                                                      // domain name (e.g. "physics", "economics")
+	DecayProbationBps  uint64                 `protobuf:"varint,2,opt,name=decay_probation_bps,json=decayProbationBps,proto3" json:"decay_probation_bps,omitempty"`    // 0 = use global Params.decay_probation_bps
+	DecaySuspensionBps uint64                 `protobuf:"varint,3,opt,name=decay_suspension_bps,json=decaySuspensionBps,proto3" json:"decay_suspension_bps,omitempty"` // 0 = use global Params.decay_suspension_bps
+	DecayRecoveryBps   uint64                 `protobuf:"varint,4,opt,name=decay_recovery_bps,json=decayRecoveryBps,proto3" json:"decay_recovery_bps,omitempty"`       // 0 = use global Params.decay_recovery_bps
+	DecayMinSamples    uint64                 `protobuf:"varint,5,opt,name=decay_min_samples,json=decayMinSamples,proto3" json:"decay_min_samples,omitempty"`          // 0 = use global Params.decay_min_samples
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *DomainDecayOverride) Reset() {
+	*x = DomainDecayOverride{}
+	mi := &file_zerone_qualification_v1_types_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DomainDecayOverride) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DomainDecayOverride) ProtoMessage() {}
+
+func (x *DomainDecayOverride) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_qualification_v1_types_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DomainDecayOverride.ProtoReflect.Descriptor instead.
+func (*DomainDecayOverride) Descriptor() ([]byte, []int) {
+	return file_zerone_qualification_v1_types_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *DomainDecayOverride) GetDomain() string {
+	if x != nil {
+		return x.Domain
+	}
+	return ""
+}
+
+func (x *DomainDecayOverride) GetDecayProbationBps() uint64 {
+	if x != nil {
+		return x.DecayProbationBps
+	}
+	return 0
+}
+
+func (x *DomainDecayOverride) GetDecaySuspensionBps() uint64 {
+	if x != nil {
+		return x.DecaySuspensionBps
+	}
+	return 0
+}
+
+func (x *DomainDecayOverride) GetDecayRecoveryBps() uint64 {
+	if x != nil {
+		return x.DecayRecoveryBps
+	}
+	return 0
+}
+
+func (x *DomainDecayOverride) GetDecayMinSamples() uint64 {
+	if x != nil {
+		return x.DecayMinSamples
+	}
+	return 0
+}
+
 var File_zerone_qualification_v1_types_proto protoreflect.FileDescriptor
 
 const file_zerone_qualification_v1_types_proto_rawDesc = "" +
@@ -498,7 +581,13 @@ const file_zerone_qualification_v1_types_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\a \x01(\x04R\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"expires_at\x18\b \x01(\x04R\texpiresAt*\xd8\x01\n" +
+	"expires_at\x18\b \x01(\x04R\texpiresAt\"\xe9\x01\n" +
+	"\x13DomainDecayOverride\x12\x16\n" +
+	"\x06domain\x18\x01 \x01(\tR\x06domain\x12.\n" +
+	"\x13decay_probation_bps\x18\x02 \x01(\x04R\x11decayProbationBps\x120\n" +
+	"\x14decay_suspension_bps\x18\x03 \x01(\x04R\x12decaySuspensionBps\x12,\n" +
+	"\x12decay_recovery_bps\x18\x04 \x01(\x04R\x10decayRecoveryBps\x12*\n" +
+	"\x11decay_min_samples\x18\x05 \x01(\x04R\x0fdecayMinSamples*\xd8\x01\n" +
 	"\x14QualificationPathway\x12%\n" +
 	"!QUALIFICATION_PATHWAY_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bQUALIFICATION_PATHWAY_STAKE\x10\x01\x12&\n" +
@@ -526,13 +615,14 @@ func file_zerone_qualification_v1_types_proto_rawDescGZIP() []byte {
 }
 
 var file_zerone_qualification_v1_types_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_zerone_qualification_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_zerone_qualification_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_zerone_qualification_v1_types_proto_goTypes = []any{
 	(QualificationPathway)(0),        // 0: zerone.qualification.v1.QualificationPathway
 	(QualificationStatus)(0),         // 1: zerone.qualification.v1.QualificationStatus
 	(*QualificationMetrics)(nil),     // 2: zerone.qualification.v1.QualificationMetrics
 	(*DomainQualification)(nil),      // 3: zerone.qualification.v1.DomainQualification
 	(*QualificationEndorsement)(nil), // 4: zerone.qualification.v1.QualificationEndorsement
+	(*DomainDecayOverride)(nil),      // 5: zerone.qualification.v1.DomainDecayOverride
 }
 var file_zerone_qualification_v1_types_proto_depIdxs = []int32{
 	0, // 0: zerone.qualification.v1.DomainQualification.pathway:type_name -> zerone.qualification.v1.QualificationPathway
@@ -556,7 +646,7 @@ func file_zerone_qualification_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_zerone_qualification_v1_types_proto_rawDesc), len(file_zerone_qualification_v1_types_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

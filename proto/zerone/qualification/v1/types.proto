@@ -38,6 +38,21 @@ message QualificationEndorsement {
   uint64 expires_at = 8;            // 0 = no expiry
 }
 
+// DomainDecayOverride allows governance to configure domain-specific accuracy
+// decay thresholds, reflecting that different domains have different natural
+// inquiry timescales. Fast-moving domains (technology, economics) should decay
+// faster; stable domains (mathematics, formal logic) should decay slower.
+//
+// Any field set to 0 falls back to the corresponding global Params value.
+// Empty domain_decay_overrides in Params = all domains use global thresholds.
+message DomainDecayOverride {
+  string domain                  = 1;  // domain name (e.g. "physics", "economics")
+  uint64 decay_probation_bps     = 2;  // 0 = use global Params.decay_probation_bps
+  uint64 decay_suspension_bps    = 3;  // 0 = use global Params.decay_suspension_bps
+  uint64 decay_recovery_bps      = 4;  // 0 = use global Params.decay_recovery_bps
+  uint64 decay_min_samples       = 5;  // 0 = use global Params.decay_min_samples
+}
+
 enum QualificationPathway {
   QUALIFICATION_PATHWAY_UNSPECIFIED = 0;
   QUALIFICATION_PATHWAY_STAKE = 1;

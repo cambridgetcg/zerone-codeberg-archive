@@ -27,6 +27,7 @@ const (
 	Msg_ClaimLiquidityRewards_FullMethodName       = "/zerone.liquiditypool.v1.Msg/ClaimLiquidityRewards"
 	Msg_CommitSwap_FullMethodName                  = "/zerone.liquiditypool.v1.Msg/CommitSwap"
 	Msg_RevealSwap_FullMethodName                  = "/zerone.liquiditypool.v1.Msg/RevealSwap"
+	Msg_FundILInsurance_FullMethodName             = "/zerone.liquiditypool.v1.Msg/FundILInsurance"
 	Msg_UpdateParams_FullMethodName                = "/zerone.liquiditypool.v1.Msg/UpdateParams"
 )
 
@@ -49,6 +50,8 @@ type MsgClient interface {
 	// Commit-reveal swap (MEV protection — Gap 1)
 	CommitSwap(ctx context.Context, in *MsgCommitSwap, opts ...grpc.CallOption) (*MsgCommitSwapResponse, error)
 	RevealSwap(ctx context.Context, in *MsgRevealSwap, opts ...grpc.CallOption) (*MsgRevealSwapResponse, error)
+	// IL insurance fund management (Liquidity Gap 3)
+	FundILInsurance(ctx context.Context, in *MsgFundILInsurance, opts ...grpc.CallOption) (*MsgFundILInsuranceResponse, error)
 	// Governance
 	UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error)
 }
@@ -141,6 +144,16 @@ func (c *msgClient) RevealSwap(ctx context.Context, in *MsgRevealSwap, opts ...g
 	return out, nil
 }
 
+func (c *msgClient) FundILInsurance(ctx context.Context, in *MsgFundILInsurance, opts ...grpc.CallOption) (*MsgFundILInsuranceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgFundILInsuranceResponse)
+	err := c.cc.Invoke(ctx, Msg_FundILInsurance_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *msgClient) UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MsgUpdateParamsResponse)
@@ -170,6 +183,8 @@ type MsgServer interface {
 	// Commit-reveal swap (MEV protection — Gap 1)
 	CommitSwap(context.Context, *MsgCommitSwap) (*MsgCommitSwapResponse, error)
 	RevealSwap(context.Context, *MsgRevealSwap) (*MsgRevealSwapResponse, error)
+	// IL insurance fund management (Liquidity Gap 3)
+	FundILInsurance(context.Context, *MsgFundILInsurance) (*MsgFundILInsuranceResponse, error)
 	// Governance
 	UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error)
 	mustEmbedUnimplementedMsgServer()
@@ -205,6 +220,9 @@ func (UnimplementedMsgServer) CommitSwap(context.Context, *MsgCommitSwap) (*MsgC
 }
 func (UnimplementedMsgServer) RevealSwap(context.Context, *MsgRevealSwap) (*MsgRevealSwapResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RevealSwap not implemented")
+}
+func (UnimplementedMsgServer) FundILInsurance(context.Context, *MsgFundILInsurance) (*MsgFundILInsuranceResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method FundILInsurance not implemented")
 }
 func (UnimplementedMsgServer) UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateParams not implemented")
@@ -374,6 +392,24 @@ func _Msg_RevealSwap_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Msg_FundILInsurance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgFundILInsurance)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).FundILInsurance(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_FundILInsurance_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).FundILInsurance(ctx, req.(*MsgFundILInsurance))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Msg_UpdateParams_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MsgUpdateParams)
 	if err := dec(in); err != nil {
@@ -430,6 +466,10 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RevealSwap",
 			Handler:    _Msg_RevealSwap_Handler,
+		},
+		{
+			MethodName: "FundILInsurance",
+			Handler:    _Msg_FundILInsurance_Handler,
 		},
 		{
 			MethodName: "UpdateParams",

@@ -60,6 +60,15 @@ message LpMinerPosition {
   string reward_debt    = 3;
   // settled but unclaimed uzrn (bigint string)
   string pending_rewards = 4;
+
+  // deposit_price_a_per_b: price of pool.DenomA in pool.DenomB terms at first deposit
+  // (bigint string, 1e12 scale: reserveB * 1e12 / reserveA).
+  // Set once on the user's first AddLiquidity; subsequent deposits do not update it.
+  // Only meaningful for pools that contain "uzrn" as one of their denoms.
+  // Empty string means not yet recorded (pre-dates IL insurance or non-uzrn pool).
+  // Used by IL insurance at RemoveLiquidity to compute impermanent loss compensation.
+  // Liquidity Gap 3.
+  string deposit_price_a_per_b = 5;
 }
 
 // TWAPAccumulator stores cumulative price data for TWAP oracle.

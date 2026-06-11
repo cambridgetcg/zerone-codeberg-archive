@@ -20,6 +20,7 @@ var (
 	SwapCommitmentKeyPrefix    = []byte{0x08} // SwapCommitment by sender+"/"+pool_id
 	LPDepositBlockKeyPrefix    = []byte{0x09} // LP deposit block by pool_id+"/"+addr (anti-JIT cooldown)
 	PendingSwapRevealKeyPrefix = []byte{0x0A} // PendingSwapReveal by bigEndian(commitBlock)+"/"+sender+"/"+poolId
+	ILInsuranceFundKey         = []byte{0x0B} // singleton: total IL insurance fund balance in uzrn (bigint string)
 )
 
 func PoolKey(poolId string) []byte {

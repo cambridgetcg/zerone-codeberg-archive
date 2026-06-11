@@ -297,8 +297,16 @@ type LpMinerPosition struct {
 	RewardDebt string `protobuf:"bytes,3,opt,name=reward_debt,json=rewardDebt,proto3" json:"reward_debt,omitempty"`
 	// settled but unclaimed uzrn (bigint string)
 	PendingRewards string `protobuf:"bytes,4,opt,name=pending_rewards,json=pendingRewards,proto3" json:"pending_rewards,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// deposit_price_a_per_b: price of pool.DenomA in pool.DenomB terms at first deposit
+	// (bigint string, 1e12 scale: reserveB * 1e12 / reserveA).
+	// Set once on the user's first AddLiquidity; subsequent deposits do not update it.
+	// Only meaningful for pools that contain "uzrn" as one of their denoms.
+	// Empty string means not yet recorded (pre-dates IL insurance or non-uzrn pool).
+	// Used by IL insurance at RemoveLiquidity to compute impermanent loss compensation.
+	// Liquidity Gap 3.
+	DepositPriceAPerB string `protobuf:"bytes,5,opt,name=deposit_price_a_per_b,json=depositPriceAPerB,proto3" json:"deposit_price_a_per_b,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *LpMinerPosition) Reset() {
@@ -355,6 +363,13 @@ func (x *LpMinerPosition) GetRewardDebt() string {
 func (x *LpMinerPosition) GetPendingRewards() string {
 	if x != nil {
 		return x.PendingRewards
+	}
+	return ""
+}
+
+func (x *LpMinerPosition) GetDepositPriceAPerB() string {
+	if x != nil {
+		return x.DepositPriceAPerB
 	}
 	return ""
 }
@@ -716,14 +731,15 @@ const file_zerone_liquiditypool_v1_types_proto_rawDesc = "" +
 	"\x06active\x18\x06 \x01(\bR\x06active\x12\x1f\n" +
 	"\vtotal_mined\x18\a \x01(\tR\n" +
 	"totalMined\x12\x18\n" +
-	"\acreator\x18\b \x01(\tR\acreator\"\x93\x01\n" +
+	"\acreator\x18\b \x01(\tR\acreator\"\xc5\x01\n" +
 	"\x0fLpMinerPosition\x12\x17\n" +
 	"\apool_id\x18\x01 \x01(\tR\x06poolId\x12\x1d\n" +
 	"\n" +
 	"miner_addr\x18\x02 \x01(\tR\tminerAddr\x12\x1f\n" +
 	"\vreward_debt\x18\x03 \x01(\tR\n" +
 	"rewardDebt\x12'\n" +
-	"\x0fpending_rewards\x18\x04 \x01(\tR\x0ependingRewards\"\x99\x01\n" +
+	"\x0fpending_rewards\x18\x04 \x01(\tR\x0ependingRewards\x120\n" +
+	"\x15deposit_price_a_per_b\x18\x05 \x01(\tR\x11depositPriceAPerB\"\x99\x01\n" +
 	"\x0fTWAPAccumulator\x12\x17\n" +
 	"\apool_id\x18\x01 \x01(\tR\x06poolId\x12\x1d\n" +
 	"\n" +

@@ -10,8 +10,10 @@ func DefaultParams() *Params {
 		TwapWindowBlocks:        1000,          // ~42 minutes at 2.521s blocks
 		ProtocolFeeBps:          450_000,       // 45% of swap fees go to protocol
 		MinReserve:              "1",           // minimum reserve after swap
-		MaxSwapFractionBps:      100_000,       // 10% of reserve per swap; 0 = disabled
-		CommitRevealDelayBlocks: 0,             // 0 = commit-reveal disabled (opt-in)
+		MaxSwapFractionBps:        100_000,   // 10% of reserve per swap; 0 = disabled
+		CommitRevealDelayBlocks:   0,         // 0 = commit-reveal disabled (opt-in)
+		IlInsuranceThresholdBps:   0,         // 0 = IL insurance disabled (opt-in)
+		IlInsuranceMaxCoverageBps: 1_000_000, // 100% coverage when enabled
 	}
 }
 
@@ -46,6 +48,12 @@ func (p *Params) Validate() error {
 	}
 	if p.MevFeeShareBps > 1_000_000 {
 		return fmt.Errorf("mev_fee_share_bps cannot exceed 1000000")
+	}
+	if p.IlInsuranceMaxCoverageBps > 1_000_000 {
+		return fmt.Errorf("il_insurance_max_coverage_bps cannot exceed 1000000")
+	}
+	if p.IlInsuranceThresholdBps > 1_000_000 {
+		return fmt.Errorf("il_insurance_threshold_bps cannot exceed 1000000")
 	}
 	return nil
 }

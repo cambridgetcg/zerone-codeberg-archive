@@ -128,8 +128,13 @@ type Params struct {
 	DecayProbationBps        uint64 `protobuf:"varint,16,opt,name=decay_probation_bps,json=decayProbationBps,proto3" json:"decay_probation_bps,omitempty"`                        // default: 600,000 (60%) — ACTIVE → PROBATIONARY
 	DecaySuspensionBps       uint64 `protobuf:"varint,17,opt,name=decay_suspension_bps,json=decaySuspensionBps,proto3" json:"decay_suspension_bps,omitempty"`                     // default: 400,000 (40%) — PROBATIONARY → SUSPENDED
 	DecayRecoveryBps         uint64 `protobuf:"varint,18,opt,name=decay_recovery_bps,json=decayRecoveryBps,proto3" json:"decay_recovery_bps,omitempty"`                           // default: 750,000 (75%) — PROBATIONARY → ACTIVE
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// ─── Scientific Method Gap 5: domain-specific decay timescales ───────
+	// Fast-moving domains (technology, economics) should decay faster;
+	// stable domains (mathematics, formal logic) should decay slower.
+	// Any zero field in a DomainDecayOverride falls back to the global value above.
+	DomainDecayOverrides []*DomainDecayOverride `protobuf:"bytes,19,rep,name=domain_decay_overrides,json=domainDecayOverrides,proto3" json:"domain_decay_overrides,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -288,6 +293,13 @@ func (x *Params) GetDecayRecoveryBps() uint64 {
 	return 0
 }
 
+func (x *Params) GetDomainDecayOverrides() []*DomainDecayOverride {
+	if x != nil {
+		return x.DomainDecayOverrides
+	}
+	return nil
+}
+
 var File_zerone_qualification_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_qualification_v1_genesis_proto_rawDesc = "" +
@@ -297,7 +309,7 @@ const file_zerone_qualification_v1_genesis_proto_rawDesc = "" +
 	"\x06params\x18\x01 \x01(\v2\x1f.zerone.qualification.v1.ParamsR\x06params\x12T\n" +
 	"\x0equalifications\x18\x02 \x03(\v2,.zerone.qualification.v1.DomainQualificationR\x0equalifications\x12U\n" +
 	"\fendorsements\x18\x03 \x03(\v21.zerone.qualification.v1.QualificationEndorsementR\fendorsements\x12.\n" +
-	"\x13next_endorsement_id\x18\x04 \x01(\x04R\x11nextEndorsementId\"\x8b\a\n" +
+	"\x13next_endorsement_id\x18\x04 \x01(\x04R\x11nextEndorsementId\"\xef\a\n" +
 	"\x06Params\x12(\n" +
 	"\x10min_stake_amount\x18\x01 \x01(\tR\x0eminStakeAmount\x12*\n" +
 	"\x11stake_lock_period\x18\x02 \x01(\x04R\x0fstakeLockPeriod\x12+\n" +
@@ -317,7 +329,8 @@ const file_zerone_qualification_v1_genesis_proto_rawDesc = "" +
 	"\x11decay_min_samples\x18\x0f \x01(\x04R\x0fdecayMinSamples\x12.\n" +
 	"\x13decay_probation_bps\x18\x10 \x01(\x04R\x11decayProbationBps\x120\n" +
 	"\x14decay_suspension_bps\x18\x11 \x01(\x04R\x12decaySuspensionBps\x12,\n" +
-	"\x12decay_recovery_bps\x18\x12 \x01(\x04R\x10decayRecoveryBpsB6Z4github.com/zerone-chain/zerone/x/qualification/typesb\x06proto3"
+	"\x12decay_recovery_bps\x18\x12 \x01(\x04R\x10decayRecoveryBps\x12b\n" +
+	"\x16domain_decay_overrides\x18\x13 \x03(\v2,.zerone.qualification.v1.DomainDecayOverrideR\x14domainDecayOverridesB6Z4github.com/zerone-chain/zerone/x/qualification/typesb\x06proto3"
 
 var (
 	file_zerone_qualification_v1_genesis_proto_rawDescOnce sync.Once
@@ -337,16 +350,18 @@ var file_zerone_qualification_v1_genesis_proto_goTypes = []any{
 	(*Params)(nil),                   // 1: zerone.qualification.v1.Params
 	(*DomainQualification)(nil),      // 2: zerone.qualification.v1.DomainQualification
 	(*QualificationEndorsement)(nil), // 3: zerone.qualification.v1.QualificationEndorsement
+	(*DomainDecayOverride)(nil),      // 4: zerone.qualification.v1.DomainDecayOverride
 }
 var file_zerone_qualification_v1_genesis_proto_depIdxs = []int32{
 	1, // 0: zerone.qualification.v1.GenesisState.params:type_name -> zerone.qualification.v1.Params
 	2, // 1: zerone.qualification.v1.GenesisState.qualifications:type_name -> zerone.qualification.v1.DomainQualification
 	3, // 2: zerone.qualification.v1.GenesisState.endorsements:type_name -> zerone.qualification.v1.QualificationEndorsement
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	4, // 3: zerone.qualification.v1.Params.domain_decay_overrides:type_name -> zerone.qualification.v1.DomainDecayOverride
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_zerone_qualification_v1_genesis_proto_init() }

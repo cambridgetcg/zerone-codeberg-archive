@@ -31,6 +31,18 @@ message Params {
   // Default: false (RevealSwap executes immediately — no behaviour change).
   // Market Microstructure Gap 5.
   bool fair_sequencing_enabled = 12;
+
+  // il_insurance_threshold_bps: minimum impermanent loss (in 1M-BPS scale) before
+  // the IL insurance fund pays out.  0 = insurance disabled (default).
+  // Example: 50_000 = 5% IL threshold before any compensation is paid.
+  // Liquidity Gap 3.
+  uint64 il_insurance_threshold_bps = 13;
+
+  // il_insurance_max_coverage_bps: maximum fraction of the calculated IL that the
+  // fund will cover (1M-BPS scale).  1_000_000 = 100% coverage up to fund balance.
+  // Default: 1_000_000.  Governance can lower this to cap per-withdrawal payouts.
+  // Liquidity Gap 3.
+  uint64 il_insurance_max_coverage_bps = 14;
 }
 
 // GenesisState defines the liquiditypool module genesis state.

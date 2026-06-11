@@ -358,6 +358,20 @@ func (m msgServer) AddLiquidity(goCtx context.Context, msg *types.MsgAddLiquidit
 	// Updated on every AddLiquidity call — the clock resets to the latest deposit.
 	m.Keeper.SetLPDepositBlock(ctx, pool.PoolId, msg.Sender, uint64(ctx.BlockHeight()))
 
+	// Record deposit price for IL insurance on the FIRST AddLiquidity only (Liquidity Gap 3).
+	// Price = reserveB * 1e12 / reserveA using pre-deposit reserves.
+	// Only set for pools containing uzrn; only set once (subsequent deposits do not change it).
+	if (pool.DenomA == "uzrn" || pool.DenomB == "uzrn") && reserveA.Sign() > 0 {
+		pos := m.Keeper.GetLpMinerPosition(ctx, pool.PoolId, msg.Sender)
+		if pos.DepositPriceAPerB == "" {
+			scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(12), nil)
+			depositPrice := new(big.Int).Mul(reserveB, scale)
+			depositPrice.Div(depositPrice, reserveA)
+			pos.DepositPriceAPerB = depositPrice.String()
+			m.Keeper.SetLpMinerPosition(ctx, pos)
+		}
+	}
+
 	// Transfer tokens
 	if m.Keeper.bankKeeper != nil {
 		if actualA.Sign() > 0 {
@@ -529,6 +543,12 @@ func (m msgServer) RemoveLiquidity(goCtx context.Context, msg *types.MsgRemoveLi
 		}
 	}
 
+	// IL insurance payout — computed from pre-withdrawal pool reserves (Liquidity Gap 3).
+	// MaybePayILInsurance reads pool.ReserveA/B for the current price, so it must be
+	// called BEFORE the pool state is updated below.  Fail-silent: insurance failure
+	// never aborts a valid withdrawal.
+	ilPayout := m.Keeper.MaybePayILInsurance(ctx, pool, senderAddr, amountA, amountB)
+
 	// Update pool state
 	newReserveA := new(big.Int).Sub(reserveA, amountA)
 	newReserveB := new(big.Int).Sub(reserveB, amountB)
@@ -547,12 +567,49 @@ func (m msgServer) RemoveLiquidity(goCtx context.Context, msg *types.MsgRemoveLi
 		sdk.NewAttribute("amount_a", amountA.String()),
 		sdk.NewAttribute("amount_b", amountB.String()),
 		sdk.NewAttribute("mev_reserve_payout", mevShare.String()),
+		sdk.NewAttribute("il_insurance_payout", ilPayout.String()),
 	))
 
 	return &types.MsgRemoveLiquidityResponse{
 		AmountA: amountA.String(),
 		AmountB: amountB.String(),
 	}, nil
+}
+
+// FundILInsurance deposits uzrn into the IL insurance fund. Any address may top up.
+// Liquidity Gap 3.
+func (m msgServer) FundILInsurance(goCtx context.Context, msg *types.MsgFundILInsurance) (*types.MsgFundILInsuranceResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+
+	amount := new(big.Int)
+	if _, ok := amount.SetString(msg.Amount, 10); !ok || amount.Sign() <= 0 {
+		return nil, types.ErrILInsuranceInvalidAmount
+	}
+
+	senderAddr, err := sdk.AccAddressFromBech32(msg.Sender)
+	if err != nil {
+		return nil, fmt.Errorf("invalid sender address: %w", err)
+	}
+
+	// Transfer amount from sender to module account
+	coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(amount)))
+	if err := m.Keeper.bankKeeper.SendCoinsFromAccountToModule(ctx, senderAddr, types.ModuleName, coins); err != nil {
+		return nil, fmt.Errorf("failed to fund IL insurance: %w", err)
+	}
+
+	// Increase fund balance
+	current := m.Keeper.GetILInsuranceFundBalance(ctx)
+	newBalance := new(big.Int).Add(current, amount)
+	m.Keeper.SetILInsuranceFundBalance(ctx, newBalance)
+
+	ctx.EventManager().EmitEvent(sdk.NewEvent(
+		"zerone.liquiditypool.il_insurance_funded",
+		sdk.NewAttribute("sender", msg.Sender),
+		sdk.NewAttribute("amount", amount.String()),
+		sdk.NewAttribute("new_balance", newBalance.String()),
+	))
+
+	return &types.MsgFundILInsuranceResponse{NewBalance: newBalance.String()}, nil
 }
 
 // UpdateParams updates module parameters. Only governance can call.

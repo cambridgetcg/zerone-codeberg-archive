@@ -91,6 +91,35 @@ func (p *Params) Validate() error {
 	if p.InheritanceWeightDiscountBps > 1000000 {
 		return fmt.Errorf("inheritance_weight_discount_bps cannot exceed 1000000, got %d", p.InheritanceWeightDiscountBps)
 	}
+	// Validate domain-specific decay overrides (Scientific Method Gap 5).
+	seenDomains := make(map[string]struct{})
+	for i, ov := range p.DomainDecayOverrides {
+		if ov == nil {
+			return fmt.Errorf("domain_decay_overrides[%d]: nil entry", i)
+		}
+		if ov.Domain == "" {
+			return fmt.Errorf("domain_decay_overrides[%d]: domain must not be empty", i)
+		}
+		if _, dup := seenDomains[ov.Domain]; dup {
+			return fmt.Errorf("domain_decay_overrides[%d]: duplicate domain %q", i, ov.Domain)
+		}
+		seenDomains[ov.Domain] = struct{}{}
+		// Threshold ordering must hold when both sides are non-zero.
+		if ov.DecaySuspensionBps > 0 && ov.DecayProbationBps > 0 &&
+			ov.DecaySuspensionBps > ov.DecayProbationBps {
+			return fmt.Errorf("domain_decay_overrides[%d] (%q): decay_suspension_bps (%d) must be <= decay_probation_bps (%d)",
+				i, ov.Domain, ov.DecaySuspensionBps, ov.DecayProbationBps)
+		}
+		if ov.DecayProbationBps > 0 && ov.DecayRecoveryBps > 0 &&
+			ov.DecayProbationBps > ov.DecayRecoveryBps {
+			return fmt.Errorf("domain_decay_overrides[%d] (%q): decay_probation_bps (%d) must be <= decay_recovery_bps (%d)",
+				i, ov.Domain, ov.DecayProbationBps, ov.DecayRecoveryBps)
+		}
+		if ov.DecayRecoveryBps > 1_000_000 {
+			return fmt.Errorf("domain_decay_overrides[%d] (%q): decay_recovery_bps cannot exceed 1,000,000, got %d",
+				i, ov.Domain, ov.DecayRecoveryBps)
+		}
+	}
 	return nil
 }
 

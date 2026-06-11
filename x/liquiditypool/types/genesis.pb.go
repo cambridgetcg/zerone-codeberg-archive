@@ -46,8 +46,18 @@ type Params struct {
 	// Default: false (RevealSwap executes immediately — no behaviour change).
 	// Market Microstructure Gap 5.
 	FairSequencingEnabled bool `protobuf:"varint,12,opt,name=fair_sequencing_enabled,json=fairSequencingEnabled,proto3" json:"fair_sequencing_enabled,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// il_insurance_threshold_bps: minimum impermanent loss (in 1M-BPS scale) before
+	// the IL insurance fund pays out.  0 = insurance disabled (default).
+	// Example: 50_000 = 5% IL threshold before any compensation is paid.
+	// Liquidity Gap 3.
+	IlInsuranceThresholdBps uint64 `protobuf:"varint,13,opt,name=il_insurance_threshold_bps,json=ilInsuranceThresholdBps,proto3" json:"il_insurance_threshold_bps,omitempty"`
+	// il_insurance_max_coverage_bps: maximum fraction of the calculated IL that the
+	// fund will cover (1M-BPS scale).  1_000_000 = 100% coverage up to fund balance.
+	// Default: 1_000_000.  Governance can lower this to cap per-withdrawal payouts.
+	// Liquidity Gap 3.
+	IlInsuranceMaxCoverageBps uint64 `protobuf:"varint,14,opt,name=il_insurance_max_coverage_bps,json=ilInsuranceMaxCoverageBps,proto3" json:"il_insurance_max_coverage_bps,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -164,6 +174,20 @@ func (x *Params) GetFairSequencingEnabled() bool {
 	return false
 }
 
+func (x *Params) GetIlInsuranceThresholdBps() uint64 {
+	if x != nil {
+		return x.IlInsuranceThresholdBps
+	}
+	return 0
+}
+
+func (x *Params) GetIlInsuranceMaxCoverageBps() uint64 {
+	if x != nil {
+		return x.IlInsuranceMaxCoverageBps
+	}
+	return 0
+}
+
 // GenesisState defines the liquiditypool module genesis state.
 type GenesisState struct {
 	state              protoimpl.MessageState   `protogen:"open.v1"`
@@ -261,7 +285,7 @@ var File_zerone_liquiditypool_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_liquiditypool_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"%zerone/liquiditypool/v1/genesis.proto\x12\x17zerone.liquiditypool.v1\x1a#zerone/liquiditypool/v1/types.proto\"\xce\x04\n" +
+	"%zerone/liquiditypool/v1/genesis.proto\x12\x17zerone.liquiditypool.v1\x1a#zerone/liquiditypool/v1/types.proto\"\xcd\x05\n" +
 	"\x06Params\x12/\n" +
 	"\x14default_swap_fee_bps\x18\x01 \x01(\x04R\x11defaultSwapFeeBps\x12\x1b\n" +
 	"\tmax_pools\x18\x02 \x01(\x04R\bmaxPools\x122\n" +
@@ -276,7 +300,9 @@ const file_zerone_liquiditypool_v1_genesis_proto_rawDesc = "" +
 	"\x16max_twap_deviation_bps\x18\n" +
 	" \x01(\x04R\x13maxTwapDeviationBps\x12)\n" +
 	"\x11mev_fee_share_bps\x18\v \x01(\x04R\x0emevFeeShareBps\x126\n" +
-	"\x17fair_sequencing_enabled\x18\f \x01(\bR\x15fairSequencingEnabled\"\xaf\x04\n" +
+	"\x17fair_sequencing_enabled\x18\f \x01(\bR\x15fairSequencingEnabled\x12;\n" +
+	"\x1ail_insurance_threshold_bps\x18\r \x01(\x04R\x17ilInsuranceThresholdBps\x12@\n" +
+	"\x1dil_insurance_max_coverage_bps\x18\x0e \x01(\x04R\x19ilInsuranceMaxCoverageBps\"\xaf\x04\n" +
 	"\fGenesisState\x127\n" +
 	"\x06params\x18\x01 \x01(\v2\x1f.zerone.liquiditypool.v1.ParamsR\x06params\x123\n" +
 	"\x05pools\x18\x02 \x03(\v2\x1d.zerone.liquiditypool.v1.PoolR\x05pools\x12U\n" +

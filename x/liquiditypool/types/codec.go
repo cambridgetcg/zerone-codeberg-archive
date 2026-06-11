@@ -16,6 +16,7 @@ func RegisterCodec(cdc *codec.LegacyAmino) {
 	cdc.RegisterConcrete(&MsgClaimLiquidityRewards{}, "liquiditypool/ClaimLiquidityRewards", nil)
 	cdc.RegisterConcrete(&MsgCommitSwap{}, "liquiditypool/CommitSwap", nil)
 	cdc.RegisterConcrete(&MsgRevealSwap{}, "liquiditypool/RevealSwap", nil)
+	cdc.RegisterConcrete(&MsgFundILInsurance{}, "liquiditypool/FundILInsurance", nil)
 }
 
 func RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
@@ -29,6 +30,7 @@ func RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
 		&MsgClaimLiquidityRewards{},
 		&MsgCommitSwap{},
 		&MsgRevealSwap{},
+		&MsgFundILInsurance{},
 	)
 }
 

@@ -26,6 +26,9 @@ service Msg {
   rpc CommitSwap(MsgCommitSwap) returns (MsgCommitSwapResponse);
   rpc RevealSwap(MsgRevealSwap) returns (MsgRevealSwapResponse);
 
+  // IL insurance fund management (Liquidity Gap 3)
+  rpc FundILInsurance(MsgFundILInsurance) returns (MsgFundILInsuranceResponse);
+
   // Governance
   rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
 }
@@ -147,6 +150,19 @@ message MsgClaimLiquidityRewards {
 }
 message MsgClaimLiquidityRewardsResponse {
   string claimed_amount = 1; // uzrn bigint string
+}
+
+// --- FundILInsurance ---
+
+// MsgFundILInsurance deposits uzrn into the IL insurance fund.
+// Any address may top up the fund; governance authority is NOT required.
+// Liquidity Gap 3.
+message MsgFundILInsurance {
+  string sender = 1;
+  string amount = 2; // uzrn bigint string
+}
+message MsgFundILInsuranceResponse {
+  string new_balance = 1; // total fund balance after deposit (uzrn bigint string)
 }
 
 // --- UpdateParams ---

@@ -9,6 +9,37 @@ import (
 	"github.com/zerone-chain/zerone/x/qualification/types"
 )
 
+// effectiveDecayParams returns the decay thresholds applicable to domain d.
+// It checks Params.DomainDecayOverrides for an exact match; any zero field
+// in the override falls back to the corresponding global Params value.
+// Returns (probationBps, suspensionBps, recoveryBps, minSamples).
+func effectiveDecayParams(params *types.Params, domain string) (uint64, uint64, uint64, uint64) {
+	prob := params.DecayProbationBps
+	susp := params.DecaySuspensionBps
+	rec := params.DecayRecoveryBps
+	min := params.DecayMinSamples
+
+	for _, ov := range params.DomainDecayOverrides {
+		if ov == nil || ov.Domain != domain {
+			continue
+		}
+		if ov.DecayProbationBps > 0 {
+			prob = ov.DecayProbationBps
+		}
+		if ov.DecaySuspensionBps > 0 {
+			susp = ov.DecaySuspensionBps
+		}
+		if ov.DecayRecoveryBps > 0 {
+			rec = ov.DecayRecoveryBps
+		}
+		if ov.DecayMinSamples > 0 {
+			min = ov.DecayMinSamples
+		}
+		break
+	}
+	return prob, susp, rec, min
+}
+
 // RunAccuracyDecay scans every qualification with sufficient sample
 // size and transitions state based on the current AccuracyBps. The
 // transitions form a self-correcting feedback loop on top of the
@@ -18,31 +49,30 @@ import (
 //	PROBATIONARY + accuracy <  decay_suspension_bps → SUSPENDED
 //	PROBATIONARY + accuracy >= decay_recovery_bps   → ACTIVE
 //
-// The chain stops issuing diplomas (one-time grants) and starts
-// running an ongoing competency assessment. A voter who consistently
-// votes against verified consensus loses weight; one who recovers
-// gets it back.
+// Domain-specific thresholds are applied when DomainDecayOverrides
+// contains an entry for the qualification's domain (Scientific Method
+// Gap 5). Fast-moving domains (technology, economics) decay faster;
+// stable domains (mathematics, formal logic) decay slower.
 //
 // Skipped qualifications:
-//   - TotalVerifications < DecayMinSamples (insufficient signal yet)
+//   - TotalVerifications < minSamples (insufficient signal yet)
 //   - Status not in {ACTIVE, PROBATIONARY} (already EXPIRED / SUSPENDED /
 //     REVOKED — those have their own paths back)
 //
-// Cost: O(n) on qualifications. Caller (BeginBlocker) gates the scan
-// to once per DecayCheckIntervalBlocks so per-block work stays low.
+// Cost: O(n × |domain_decay_overrides|) on qualifications. Caller
+// (BeginBlocker) gates the scan to once per DecayCheckIntervalBlocks.
 func (k Keeper) RunAccuracyDecay(ctx context.Context, currentBlock uint64, params *types.Params) {
 	if params == nil {
 		return
 	}
-	minSamples := params.DecayMinSamples
-	if minSamples == 0 {
+	if params.DecayMinSamples == 0 {
 		return
 	}
-	probationBps := params.DecayProbationBps
-	suspensionBps := params.DecaySuspensionBps
-	recoveryBps := params.DecayRecoveryBps
-	if probationBps == 0 && suspensionBps == 0 && recoveryBps == 0 {
-		return // decay disabled
+	// Fast-path: decay fully disabled when all global thresholds are zero
+	// and there are no per-domain overrides.
+	if params.DecayProbationBps == 0 && params.DecaySuspensionBps == 0 &&
+		params.DecayRecoveryBps == 0 && len(params.DomainDecayOverrides) == 0 {
+		return
 	}
 
 	sdkCtx := sdk.UnwrapSDKContext(ctx)
@@ -51,6 +81,9 @@ func (k Keeper) RunAccuracyDecay(ctx context.Context, currentBlock uint64, param
 		if q == nil || q.Metrics == nil {
 			return false
 		}
+
+		probationBps, suspensionBps, recoveryBps, minSamples := effectiveDecayParams(params, q.Domain)
+
 		if q.Metrics.TotalVerifications < minSamples {
 			return false
 		}
