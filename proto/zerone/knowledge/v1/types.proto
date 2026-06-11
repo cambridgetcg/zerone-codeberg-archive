@@ -35,6 +35,22 @@ enum ClaimStatus {
   CLAIM_STATUS_INSUFFICIENT       = 10;
   CLAIM_STATUS_CONTESTED          = 11;
   CLAIM_STATUS_MALFORMED          = 12; // Rejected as not truth-apt
+
+  // CLAIM_STATUS_SUSPENDED: the claim is held in a "mirror" state — visible
+  // and queryable (all relations, canonical form, and contradiction flags
+  // remain accessible), but no verification round is opened on it. Encodes
+  // David Bohm's practice of suspension: "hold the assumption before oneself
+  // like an object in a mirror — visible, examined, but not acted upon."
+  // (*On Dialogue*, 1996.)
+  //
+  // A suspended claim is neither suppressed (REJECTED) nor asserted (ACCEPTED).
+  // It is held in an examined state: submitter, verifiers, and governance can
+  // inspect it, create relations to it, and deliberate about it — but no
+  // PoT panel convenes until the claim is explicitly RESUMED.
+  //
+  // Lifecycle: IN_VERIFICATION → suspended (MsgSuspendClaim) → IN_VERIFICATION
+  // (MsgResumeClaim). Only governance authority may suspend/resume.
+  CLAIM_STATUS_SUSPENDED          = 13;
 }
 
 // VerificationPhase tracks progress of a commit-reveal verification round.
@@ -1108,6 +1124,19 @@ message Claim {
   // submitter) whose canonical form opposes the new claim's canonical form.
   // Empty when is_self_contradictory = false. Non-empty ↔ is_self_contradictory.
   string self_contradiction_fact_id = 42;
+
+  // ── Bohmian Dialogue: Suspension (Bohm Gap 1) ─────────────────────────────
+  //
+  // suspended_at_block: the block height at which this claim was suspended by
+  // governance. Zero when status != CLAIM_STATUS_SUSPENDED.
+  // Set by MsgSuspendClaim; cleared by MsgResumeClaim.
+  uint64 suspended_at_block = 43;
+
+  // suspension_reason: the explicit reason governance provided for suspending
+  // this claim. Encodes Bohm's "making the implicate order visible" — the
+  // reason for suspension names the assumption being held in mirror-state.
+  // Required non-empty when suspending; cleared on resume.
+  string suspension_reason = 44;
 }
 
 // PreRegistration records a submitter's declared intent to submit a claim
@@ -1168,6 +1197,30 @@ message ConsequenceInstance {
   string submitted_by        = 6;
 }
 
+// DeterminateNegationType encodes the specific character of a REJECT verdict
+// (Hegelian Dialectic Brief — determinate negation). Hegel's principle: the
+// negation is not empty ("just no") but determinate — shaped by the specific
+// inadequacy of what was negated, pointing toward the more adequate claim that
+// should follow. "The negation is a determinate negation; it has a content."
+// (*Science of Logic* §54).
+//
+// Verifiers declare their diagnosis of the claim's failure mode in
+// RevealEntry.negation_type (field 6) and MsgSubmitReveal.negation_type
+// (field 7). CompleteRound aggregates REJECT votes and stores the plurality
+// type on VerificationRound.determinate_negation_type (field 17). The result
+// guides submitters toward what kind of more adequate successor claim to build.
+//
+// Only semantically meaningful when Verdict = VERDICT_REJECT.
+// For non-REJECT verdicts the field is UNSPECIFIED.
+enum DeterminateNegationType {
+  DETERMINATE_NEGATION_UNSPECIFIED          = 0; // general rejection; failure mode not diagnosed
+  DETERMINATE_NEGATION_INTERNAL_INCONSISTENCY = 1; // claim contradicts itself; successor must resolve the contradiction
+  DETERMINATE_NEGATION_INSUFFICIENT_EVIDENCE  = 2; // lacks empirical grounding; successor must supply evidence
+  DETERMINATE_NEGATION_SCOPE_EXCEEDED         = 3; // generalizes beyond evidence; successor must narrow scope
+  DETERMINATE_NEGATION_PRESUPPOSITIONAL_FAILURE = 4; // foundational assumption is false; successor must revise foundations
+  DETERMINATE_NEGATION_METHODOLOGICAL_MISMATCH = 5; // wrong methodology for domain; successor must apply correct method
+}
+
 // VerificationRound tracks one commit-reveal verification cycle.
 message VerificationRound {
   string id                       = 1;
@@ -1213,6 +1266,12 @@ message VerificationRound {
   //
   // Settlement Finality Gap 4 (settlement-finality-brief.md).
   bytes finality_receipt_hash = 16;
+
+  // determinate_negation_type: the plurality diagnosis of the claim's failure,
+  // aggregated from REJECT-voting verifiers' RevealEntry.negation_type declarations.
+  // Set by CompleteRound when Verdict = VERDICT_REJECT. UNSPECIFIED otherwise.
+  // Hegelian Dialectic Brief — determinate negation.
+  DeterminateNegationType determinate_negation_type = 17;
 }
 
 // CommitEntry records a validator's blinded commitment (SHA-256(vote || salt)).
@@ -1233,6 +1292,10 @@ message RevealEntry {
   // Used for Brier-score verifier calibration; NOT part of the commitment hash
   // preimage (confidence was already verified against the commitment in StoreRevealInRound).
   uint64 confidence_bps    = 5;
+  // Hegelian determinate negation: the verifier's diagnosis of the claim's
+  // failure mode when voting REJECT. UNSPECIFIED = general rejection without
+  // specific diagnosis. Only meaningful when vote = "reject".
+  DeterminateNegationType negation_type = 6;
 }
 
 // VRFProof captures a Verifiable Random Function output for validator selection.

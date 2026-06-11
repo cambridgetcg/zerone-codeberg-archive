@@ -536,8 +536,19 @@ type Params struct {
 	//
 	// Socratic Dialectic Brief Gap 1 (★★★☆☆). Default: false.
 	SocraticCheckEnabled bool `protobuf:"varint,186,opt,name=socratic_check_enabled,json=socraticCheckEnabled,proto3" json:"socratic_check_enabled,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// suspension_enabled: when true, governance may suspend claims via MsgSuspendClaim.
+	// A SUSPENDED claim is held in a Bohmian "mirror-state" — visible and queryable,
+	// but no verification round may be opened on it. Suspension encodes David Bohm's
+	// practice of holding assumptions visible without acting on them: "neither carry
+	// them out nor suppress them." (*On Dialogue*, 1996.)
+	//
+	// When false (default), MsgSuspendClaim returns ErrSuspensionDisabled.
+	// When true, only the governance authority address may suspend or resume claims.
+	//
+	// Bohm Dialogue Brief Gap 1 (★★★☆☆). Default: false.
+	SuspensionEnabled bool `protobuf:"varint,187,opt,name=suspension_enabled,json=suspensionEnabled,proto3" json:"suspension_enabled,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -1872,6 +1883,13 @@ func (x *Params) GetSocraticCheckEnabled() bool {
 	return false
 }
 
+func (x *Params) GetSuspensionEnabled() bool {
+	if x != nil {
+		return x.SuspensionEnabled
+	}
+	return false
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -2119,7 +2137,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xd3\\\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\x83]\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2307,7 +2325,8 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\x1eoracle_freshness_window_blocks\x18\xb7\x01 \x01(\x04R\x1boracleFreshnessWindowBlocks\x12;\n" +
 	"\x19transitive_relation_verbs\x18\xb8\x01 \x03(\tR\x17transitiveRelationVerbs\x129\n" +
 	"\x18constraint_check_enabled\x18\xb9\x01 \x01(\bR\x16constraintCheckEnabled\x125\n" +
-	"\x16socratic_check_enabled\x18\xba\x01 \x01(\bR\x14socraticCheckEnabled\x1aN\n" +
+	"\x16socratic_check_enabled\x18\xba\x01 \x01(\bR\x14socraticCheckEnabled\x12.\n" +
+	"\x12suspension_enabled\x18\xbb\x01 \x01(\bR\x11suspensionEnabled\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xb8\x0f\n" +

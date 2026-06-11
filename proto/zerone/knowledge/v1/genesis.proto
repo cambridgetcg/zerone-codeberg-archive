@@ -572,6 +572,18 @@ message Params {
   //
   // Socratic Dialectic Brief Gap 1 (★★★☆☆). Default: false.
   bool socratic_check_enabled = 186;
+
+  // suspension_enabled: when true, governance may suspend claims via MsgSuspendClaim.
+  // A SUSPENDED claim is held in a Bohmian "mirror-state" — visible and queryable,
+  // but no verification round may be opened on it. Suspension encodes David Bohm's
+  // practice of holding assumptions visible without acting on them: "neither carry
+  // them out nor suppress them." (*On Dialogue*, 1996.)
+  //
+  // When false (default), MsgSuspendClaim returns ErrSuspensionDisabled.
+  // When true, only the governance authority address may suspend or resume claims.
+  //
+  // Bohm Dialogue Brief Gap 1 (★★★☆☆). Default: false.
+  bool suspension_enabled = 187;
 }
 
 // GenesisState is the genesis state of the knowledge module.

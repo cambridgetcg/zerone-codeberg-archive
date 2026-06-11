@@ -1376,6 +1376,22 @@ hash. Detection is informational — the claim proceeds to PoT regardless.
 
 ---
 
+### zerone.knowledge.claim_suspended
+*Tx (MsgSuspendClaim).* Governance places a claim into CLAIM_STATUS_SUSPENDED —
+a Bohmian mirror-state where the claim is held visible without being acted upon.
+No verification round may be opened on a SUSPENDED claim. Emitted only when
+`Params.suspension_enabled = true`. (Bohm Dialogue Gap 1.)
+- `claim_id` -- the suspended claim ID
+- `authority` -- governance authority address that performed the suspension
+- `reason` -- the assumption being held in mirror-state (required non-empty)
+
+### zerone.knowledge.claim_resumed
+*Tx (MsgResumeClaim).* Governance lifts a SUSPENDED claim back to
+CLAIM_STATUS_IN_VERIFICATION, allowing a new verification round to be opened.
+Clears `suspended_at_block` and `suspension_reason`. (Bohm Dialogue Gap 1.)
+- `claim_id` -- the resumed claim ID
+- `authority` -- governance authority address that performed the resumption
+
 ### zerone.knowledge.ad_hoc_rescue_detected
 *Tx (MsgSubmitClaim).* A rescue claim's `RefutationConditions` are not a
 proper superset of the rescued (rejected) claim's conditions — Popper's

@@ -112,4 +112,14 @@ var (
 	// MsgSubmitReveal: oracle_request_id does not match any recent block hash.
 	// The oracle was queried using a block hash older than oracle_freshness_window_blocks.
 	ErrStaleOracleRequest = errors.Register(ModuleName, 92, "oracle_request_id does not match any recent block hash (oracle response may be stale)")
+
+	// ─── Bohmian suspension (93–96) — Bohm Dialogue Gap 1 ────────────────────
+	// 93: suspension disabled globally by governance.
+	ErrSuspensionDisabled = errors.Register(ModuleName, 93, "claim suspension is not enabled; set Params.suspension_enabled = true to enable")
+	// 94: claim is already in SUSPENDED status.
+	ErrClaimAlreadySuspended = errors.Register(ModuleName, 94, "claim is already in SUSPENDED status")
+	// 95: claim is not in a state from which it can be suspended (terminal states: ACCEPTED, REJECTED, EXPIRED, MALFORMED).
+	ErrClaimNotSuspendable = errors.Register(ModuleName, 95, "claim status does not allow suspension (terminal states cannot be suspended)")
+	// 96: MsgResumeClaim targets a claim that is not SUSPENDED.
+	ErrClaimNotSuspended = errors.Register(ModuleName, 96, "claim is not in SUSPENDED status; only SUSPENDED claims may be resumed")
 )

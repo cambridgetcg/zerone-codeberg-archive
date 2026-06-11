@@ -73,6 +73,8 @@ const (
 	Msg_SetAttentionalPractice_FullMethodName        = "/zerone.knowledge.v1.Msg/SetAttentionalPractice"
 	Msg_PreRegisterClaim_FullMethodName              = "/zerone.knowledge.v1.Msg/PreRegisterClaim"
 	Msg_UpdateMethodology_FullMethodName             = "/zerone.knowledge.v1.Msg/UpdateMethodology"
+	Msg_SuspendClaim_FullMethodName                  = "/zerone.knowledge.v1.Msg/SuspendClaim"
+	Msg_ResumeClaim_FullMethodName                   = "/zerone.knowledge.v1.Msg/ResumeClaim"
 )
 
 // MsgClient is the client API for Msg service.
@@ -258,6 +260,13 @@ type MsgClient interface {
 	// version is auto-incremented so every amendment is auditable.
 	// Authority-gated — requires the module's governance authority address.
 	UpdateMethodology(ctx context.Context, in *MsgUpdateMethodology, opts ...grpc.CallOption) (*MsgUpdateMethodologyResponse, error)
+	// SuspendClaim places a claim into CLAIM_STATUS_SUSPENDED — the Bohmian
+	// mirror-state where the claim is visible and queryable but no verification
+	// round may be opened on it. Authority-gated. Requires suspension_enabled=true.
+	SuspendClaim(ctx context.Context, in *MsgSuspendClaim, opts ...grpc.CallOption) (*MsgSuspendClaimResponse, error)
+	// ResumeClaim lifts a SUSPENDED claim back to IN_VERIFICATION, allowing
+	// a verification round to be opened. Authority-gated.
+	ResumeClaim(ctx context.Context, in *MsgResumeClaim, opts ...grpc.CallOption) (*MsgResumeClaimResponse, error)
 }
 
 type msgClient struct {
@@ -808,6 +817,26 @@ func (c *msgClient) UpdateMethodology(ctx context.Context, in *MsgUpdateMethodol
 	return out, nil
 }
 
+func (c *msgClient) SuspendClaim(ctx context.Context, in *MsgSuspendClaim, opts ...grpc.CallOption) (*MsgSuspendClaimResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgSuspendClaimResponse)
+	err := c.cc.Invoke(ctx, Msg_SuspendClaim_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) ResumeClaim(ctx context.Context, in *MsgResumeClaim, opts ...grpc.CallOption) (*MsgResumeClaimResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgResumeClaimResponse)
+	err := c.cc.Invoke(ctx, Msg_ResumeClaim_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MsgServer is the server API for Msg service.
 // All implementations must embed UnimplementedMsgServer
 // for forward compatibility.
@@ -991,6 +1020,13 @@ type MsgServer interface {
 	// version is auto-incremented so every amendment is auditable.
 	// Authority-gated — requires the module's governance authority address.
 	UpdateMethodology(context.Context, *MsgUpdateMethodology) (*MsgUpdateMethodologyResponse, error)
+	// SuspendClaim places a claim into CLAIM_STATUS_SUSPENDED — the Bohmian
+	// mirror-state where the claim is visible and queryable but no verification
+	// round may be opened on it. Authority-gated. Requires suspension_enabled=true.
+	SuspendClaim(context.Context, *MsgSuspendClaim) (*MsgSuspendClaimResponse, error)
+	// ResumeClaim lifts a SUSPENDED claim back to IN_VERIFICATION, allowing
+	// a verification round to be opened. Authority-gated.
+	ResumeClaim(context.Context, *MsgResumeClaim) (*MsgResumeClaimResponse, error)
 	mustEmbedUnimplementedMsgServer()
 }
 
@@ -1162,6 +1198,12 @@ func (UnimplementedMsgServer) PreRegisterClaim(context.Context, *MsgPreRegisterC
 }
 func (UnimplementedMsgServer) UpdateMethodology(context.Context, *MsgUpdateMethodology) (*MsgUpdateMethodologyResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateMethodology not implemented")
+}
+func (UnimplementedMsgServer) SuspendClaim(context.Context, *MsgSuspendClaim) (*MsgSuspendClaimResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SuspendClaim not implemented")
+}
+func (UnimplementedMsgServer) ResumeClaim(context.Context, *MsgResumeClaim) (*MsgResumeClaimResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResumeClaim not implemented")
 }
 func (UnimplementedMsgServer) mustEmbedUnimplementedMsgServer() {}
 func (UnimplementedMsgServer) testEmbeddedByValue()             {}
@@ -2156,6 +2198,42 @@ func _Msg_UpdateMethodology_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Msg_SuspendClaim_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgSuspendClaim)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).SuspendClaim(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_SuspendClaim_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).SuspendClaim(ctx, req.(*MsgSuspendClaim))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_ResumeClaim_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgResumeClaim)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).ResumeClaim(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_ResumeClaim_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).ResumeClaim(ctx, req.(*MsgResumeClaim))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Msg_ServiceDesc is the grpc.ServiceDesc for Msg service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -2378,6 +2456,14 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateMethodology",
 			Handler:    _Msg_UpdateMethodology_Handler,
+		},
+		{
+			MethodName: "SuspendClaim",
+			Handler:    _Msg_SuspendClaim_Handler,
+		},
+		{
+			MethodName: "ResumeClaim",
+			Handler:    _Msg_ResumeClaim_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -242,6 +242,15 @@ service Msg {
   // version is auto-incremented so every amendment is auditable.
   // Authority-gated — requires the module's governance authority address.
   rpc UpdateMethodology(MsgUpdateMethodology) returns (MsgUpdateMethodologyResponse);
+
+  // SuspendClaim places a claim into CLAIM_STATUS_SUSPENDED — the Bohmian
+  // mirror-state where the claim is visible and queryable but no verification
+  // round may be opened on it. Authority-gated. Requires suspension_enabled=true.
+  rpc SuspendClaim(MsgSuspendClaim) returns (MsgSuspendClaimResponse);
+
+  // ResumeClaim lifts a SUSPENDED claim back to IN_VERIFICATION, allowing
+  // a verification round to be opened. Authority-gated.
+  rpc ResumeClaim(MsgResumeClaim) returns (MsgResumeClaimResponse);
 }
 
 // ─── PoT lifecycle messages ───────────────────────────────────────────────────
@@ -371,6 +380,12 @@ message MsgSubmitReveal {
   // This proves the oracle was queried recently (not a replayed stale response).
   // Fail-open: empty = no freshness check. Oracle Resilience Brief Gap 4.
   string oracle_request_id = 6;
+
+  // negation_type: the verifier's Hegelian diagnosis of the claim's failure mode.
+  // Only meaningful when vote = "reject". UNSPECIFIED = general rejection.
+  // Aggregated at CompleteRound into VerificationRound.determinate_negation_type.
+  // Hegelian Dialectic Brief.
+  DeterminateNegationType negation_type = 7;
 }
 
 message MsgSubmitRevealResponse {}
@@ -1106,4 +1121,49 @@ message MsgSetAttentionalPracticeResponse {
   string verifier_address = 1;
   uint64 practice_hours   = 2;
   bool   verified         = 3; // true when set by governance authority, false for self-declaration
+}
+
+// ── Bohmian Suspension (Bohm Dialogue Gap 1) ──────────────────────────────────
+//
+// MsgSuspendClaim places a claim into CLAIM_STATUS_SUSPENDED — a "mirror-state"
+// where the claim is held visible without being acted upon. No PoT verification
+// round may be opened while the claim is SUSPENDED. Relations, canonical form,
+// and contradiction flags remain fully queryable — the claim is observed, not
+// buried.
+//
+// Encodes David Bohm's practice of suspension: "hold the assumption before
+// oneself like an object in a mirror — visible, examined, but not acted upon."
+// (*On Dialogue*, 1996, p.22.)
+//
+// Authority: only the governance authority address may suspend claims.
+// Requires Params.suspension_enabled = true.
+// Valid source statuses: IN_VERIFICATION, PENDING, CONTESTED.
+// Invalid (already terminal): ACCEPTED, REJECTED, EXPIRED, MALFORMED.
+message MsgSuspendClaim {
+  option (cosmos.msg.v1.signer) = "authority";
+
+  string authority   = 1; // governance authority address
+  string claim_id    = 2; // ID of the claim to suspend
+  string reason      = 3; // required: the assumption being held in mirror-state
+}
+
+message MsgSuspendClaimResponse {
+  string claim_id           = 1;
+  uint64 suspended_at_block = 2;
+}
+
+// MsgResumeClaim lifts a SUSPENDED claim back to IN_VERIFICATION status,
+// allowing a new verification round to be opened. Clears suspended_at_block
+// and suspension_reason from the claim.
+//
+// Authority: only the governance authority address may resume claims.
+message MsgResumeClaim {
+  option (cosmos.msg.v1.signer) = "authority";
+
+  string authority = 1; // governance authority address
+  string claim_id  = 2; // ID of the claim to resume
+}
+
+message MsgResumeClaimResponse {
+  string claim_id = 1;
 }

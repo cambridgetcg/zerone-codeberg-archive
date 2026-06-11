@@ -26,6 +26,16 @@ func (k Keeper) CreateVerificationRound(ctx context.Context, claim *types.Claim,
 		return nil, err
 	}
 
+	// Bohm Dialogue Gap 1: SUSPENDED claims cannot have verification rounds opened.
+	// A SUSPENDED claim is held in a Bohmian mirror-state — visible and queryable,
+	// but no PoT panel convenes until governance explicitly resumes it.
+	if claim.Status == types.ClaimStatus_CLAIM_STATUS_SUSPENDED {
+		return nil, types.ErrClaimNotSuspendable.Wrapf(
+			"claim %q is SUSPENDED; resume it with MsgResumeClaim before opening a verification round",
+			claim.Id,
+		)
+	}
+
 	// Settlement Finality Gap 2: enforce minimum round duration.
 	// Params.Validate() already checks this at MsgUpdateParams time; this guard
 	// is belt-and-suspenders for cases where params were set before the field
@@ -138,6 +148,15 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 	// This deterministic commitment allows any IBC light client on a remote chain to
 	// prove a specific zerone verdict via a standard Cosmos Merkle state proof.
 	round.FinalityReceiptHash = computeFinalityReceiptHash(round.Id, round.Verdict.String(), height, round.VerdictBlockHash)
+
+	// Hegelian Dialectic — Determinate Negation (Gap 1):
+	// When the verdict is REJECT, aggregate the verifiers' negation_type diagnoses
+	// and store the plurality on the round. "The negation is a determinate negation;
+	// it has a content." — Hegel, Science of Logic §54.
+	// This guides submitters toward what kind of more adequate successor claim to build.
+	if result.Verdict == types.Verdict_VERDICT_REJECT {
+		round.DeterminateNegationType = aggregateDeterminateNegationType(round.Reveals)
+	}
 
 	// Wave 15b: pay the invitation bonus BEFORE any verdict-specific side
 	// effects consume the invitation state. handleChallengeSurvival will
