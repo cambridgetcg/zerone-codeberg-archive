@@ -2127,6 +2127,22 @@ Bonding curve buy or sell executed. Emitted by `MsgSwap` on
 - `fee` -- fee deducted from output (bigint string; "0" when `swap_fee_bps = 0`)
 - `direction` -- `"buy"` (denom_a → denom_b, mints) or `"sell"` (denom_b → denom_a, burns)
 
+### zerone.liquiditypool.il_insurance_funded
+IL insurance fund topped up. Emitted by `MsgFundILInsurance`. Liquidity Gap 3.
+- `sender` -- address that deposited uzrn
+- `amount` -- amount deposited (bigint string, uzrn)
+- `new_balance` -- fund balance after deposit (bigint string, uzrn)
+
+### zerone.liquiditypool.il_insurance_payout
+Impermanent loss insurance paid out to a withdrawing LP. Emitted inside
+`MsgRemoveLiquidity` when IL ≥ `il_insurance_threshold_bps` and fund balance > 0.
+Liquidity Gap 3.
+- `pool_id` -- pool identifier
+- `recipient` -- LP address receiving payout
+- `payout_uzrn` -- payout amount (bigint string, uzrn)
+- `il_bps` -- computed IL in 1M-BPS scale
+- `fund_balance_after` -- remaining fund balance after payout (bigint string, uzrn)
+
 ---
 
 ## ontology
