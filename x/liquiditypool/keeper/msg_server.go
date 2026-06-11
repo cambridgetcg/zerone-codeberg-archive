@@ -675,6 +675,29 @@ func (m msgServer) RevealSwap(goCtx context.Context, msg *types.MsgRevealSwap) (
 	// Delete commitment before execution (one-use only; prevents replay even on error)
 	m.Keeper.DeleteSwapCommitment(ctx, msg.Sender, msg.PoolId)
 
+	// Fair sequencing (Market Microstructure Gap 5): if enabled, queue the swap
+	// for EndBlocker execution in commit-block-ascending (FIFO) order rather than
+	// executing it immediately in the current block's transaction ordering.
+	if params.FairSequencingEnabled {
+		m.Keeper.SetPendingSwapReveal(ctx, &types.PendingSwapReveal{
+			Sender:          msg.Sender,
+			PoolId:          msg.PoolId,
+			TokenInDenom:    msg.TokenInDenom,
+			TokenInAmount:   msg.TokenInAmount,
+			MinTokenOut:     msg.MinTokenOut,
+			DeadlineBlock:   msg.DeadlineBlock,
+			CommitBlock:     commit.CommitBlock,
+			PriorityTipUzrn: msg.PriorityTipUzrn,
+		})
+		ctx.EventManager().EmitEvent(sdk.NewEvent(
+			"zerone.liquiditypool.swap_reveal_queued",
+			sdk.NewAttribute("sender", msg.Sender),
+			sdk.NewAttribute("pool_id", msg.PoolId),
+			sdk.NewAttribute("commit_block", fmt.Sprintf("%d", commit.CommitBlock)),
+		))
+		return &types.MsgRevealSwapResponse{}, nil
+	}
+
 	// Execute the underlying swap
 	swapResp, err := m.Swap(goCtx, &types.MsgSwap{
 		Sender:        msg.Sender,

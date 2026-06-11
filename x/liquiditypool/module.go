@@ -114,6 +114,7 @@ func (am AppModule) BeginBlock(goCtx context.Context) error {
 	return nil
 }
 
-func (am AppModule) EndBlock(_ context.Context) error {
+func (am AppModule) EndBlock(ctx context.Context) error {
+	am.keeper.ProcessFairSequencedSwaps(ctx)
 	return nil
 }
