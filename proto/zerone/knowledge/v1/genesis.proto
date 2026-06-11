@@ -521,6 +521,22 @@ message Params {
   // Fail-open: 0 = gate disabled; M-PHENOMENOLOGICAL claims are accepted at any
   // confidence without requiring M-EMPIRICAL corroboration.
   uint64 phenomenological_corroboration_confidence_bps = 182;
+
+  // oracle_freshness_window_blocks: number of recent blocks within which an
+  // oracle_request_id embedded in MsgSubmitReveal must have been computed.
+  // If non-zero, the chain maintains a ring buffer of recent block hashes and
+  // verifies that the oracle was queried using a block hash from within this
+  // window. Prevents verifiers from replaying stale oracle responses across
+  // different claims or different time periods.
+  //
+  // The oracle request_id is: sha256(claim_id + "|" + hex(block_hash) + "|" + verifier_addr).
+  // Verifiers include this in MsgSubmitReveal.oracle_request_id; the chain checks
+  // that the embedded block_hash matches a stored hash from within the window.
+  //
+  // Fail-open: 0 = gate disabled (default). Non-empty oracle_request_id with a
+  // zero window is ignored (field stored but not validated).
+  // Oracle Resilience Brief Gap 4 (★★★★☆).
+  uint64 oracle_freshness_window_blocks = 183;
 }
 
 // GenesisState is the genesis state of the knowledge module.

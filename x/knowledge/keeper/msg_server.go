@@ -562,6 +562,18 @@ func (m *msgServer) SubmitReveal(ctx context.Context, msg *types.MsgSubmitReveal
 		return nil, fmt.Errorf("invalid vote: must be 'accept', 'reject', or 'malformed'")
 	}
 
+	// Oracle Resilience Brief Gap 4: verify oracle_request_id freshness.
+	// Fail-open if oracle_request_id is empty (field optional) or if params
+	// can't be read. Only enforces when both the field and the governance
+	// param (oracle_freshness_window_blocks > 0) are set.
+	if msg.OracleRequestId != "" {
+		if freshnessParams, pErr := m.keeper.GetParams(ctx); pErr == nil {
+			if err := m.keeper.CheckOracleFreshness(ctx, round.ClaimId, msg.Verifier, msg.OracleRequestId, freshnessParams); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	// Delegate to the unified helper which uses ComputeCommitmentHash
 	// (round_id + vote + confidence + salt) — matches the vote-extension path.
 	if err := m.keeper.StoreRevealInRound(ctx, msg.RoundId, &types.RevealEntry{

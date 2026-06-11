@@ -382,6 +382,10 @@ func DefaultParams() Params {
 		// neurophenomenological principle: first-person + third-person mutual
 		// constraint is the epistemic gold standard for consciousness claims.
 		PhenomenologicalCorroborationConfidenceBps: 0, // disabled — governance enables via MsgUpdateParams
+
+		// Oracle Resilience Brief Gap 4: oracle freshness window.
+		// 0 = disabled (default); governance enables by setting a positive block count.
+		OracleFreshnessWindowBlocks: 0,
 	}
 }
 
@@ -913,6 +917,11 @@ func (p *Params) Validate() error {
 	if p.PhenomenologicalCorroborationConfidenceBps > 1_000_000 {
 		return fmt.Errorf("phenomenological_corroboration_confidence_bps must be ≤ 1000000; got %d", p.PhenomenologicalCorroborationConfidenceBps)
 	}
+
+	// Oracle freshness window is a block count — any uint64 is valid (0 = disabled).
+	// No upper bound enforced; governance is responsible for reasonable values.
+	// (Oracle Resilience Brief Gap 4)
+	_ = p.OracleFreshnessWindowBlocks // already uint64, always valid
 
 	return nil
 }

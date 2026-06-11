@@ -399,14 +399,24 @@ func (*MsgSubmitCommitmentResponse) Descriptor() ([]byte, []int) {
 }
 
 type MsgSubmitReveal struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Verifier      string                 `protobuf:"bytes,1,opt,name=verifier,proto3" json:"verifier,omitempty"`
-	RoundId       string                 `protobuf:"bytes,2,opt,name=round_id,json=roundId,proto3" json:"round_id,omitempty"`
-	Vote          string                 `protobuf:"bytes,3,opt,name=vote,proto3" json:"vote,omitempty"` // "accept", "reject", or "malformed"
-	Salt          []byte                 `protobuf:"bytes,4,opt,name=salt,proto3" json:"salt,omitempty"`
-	Confidence    uint64                 `protobuf:"varint,5,opt,name=confidence,proto3" json:"confidence,omitempty"` // BPS; bound to commitment via ComputeCommitmentHash
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Verifier   string                 `protobuf:"bytes,1,opt,name=verifier,proto3" json:"verifier,omitempty"`
+	RoundId    string                 `protobuf:"bytes,2,opt,name=round_id,json=roundId,proto3" json:"round_id,omitempty"`
+	Vote       string                 `protobuf:"bytes,3,opt,name=vote,proto3" json:"vote,omitempty"` // "accept", "reject", or "malformed"
+	Salt       []byte                 `protobuf:"bytes,4,opt,name=salt,proto3" json:"salt,omitempty"`
+	Confidence uint64                 `protobuf:"varint,5,opt,name=confidence,proto3" json:"confidence,omitempty"` // BPS; bound to commitment via ComputeCommitmentHash
+	// oracle_request_id: optional freshness proof for the oracle query that
+	// informed this reveal. When params.oracle_freshness_window_blocks > 0 and
+	// this field is non-empty, the chain verifies that the request_id was computed
+	// using a block hash from within the last oracle_freshness_window_blocks blocks:
+	//
+	//	request_id = sha256(claim_id + "|" + hex(block_hash) + "|" + verifier_addr)
+	//
+	// This proves the oracle was queried recently (not a replayed stale response).
+	// Fail-open: empty = no freshness check. Oracle Resilience Brief Gap 4.
+	OracleRequestId string `protobuf:"bytes,6,opt,name=oracle_request_id,json=oracleRequestId,proto3" json:"oracle_request_id,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *MsgSubmitReveal) Reset() {
@@ -472,6 +482,13 @@ func (x *MsgSubmitReveal) GetConfidence() uint64 {
 		return x.Confidence
 	}
 	return 0
+}
+
+func (x *MsgSubmitReveal) GetOracleRequestId() string {
+	if x != nil {
+		return x.OracleRequestId
+	}
+	return ""
 }
 
 type MsgSubmitRevealResponse struct {
@@ -6499,7 +6516,7 @@ const file_zerone_knowledge_v1_tx_proto_rawDesc = "" +
 	"\bround_id\x18\x02 \x01(\tR\aroundId\x12\x1f\n" +
 	"\vcommit_hash\x18\x03 \x01(\fR\n" +
 	"commitHash:\r\x82\xe7\xb0*\bverifier\"\x1d\n" +
-	"\x1bMsgSubmitCommitmentResponse\"\x9f\x01\n" +
+	"\x1bMsgSubmitCommitmentResponse\"\xcb\x01\n" +
 	"\x0fMsgSubmitReveal\x12\x1a\n" +
 	"\bverifier\x18\x01 \x01(\tR\bverifier\x12\x19\n" +
 	"\bround_id\x18\x02 \x01(\tR\aroundId\x12\x12\n" +
@@ -6507,7 +6524,8 @@ const file_zerone_knowledge_v1_tx_proto_rawDesc = "" +
 	"\x04salt\x18\x04 \x01(\fR\x04salt\x12\x1e\n" +
 	"\n" +
 	"confidence\x18\x05 \x01(\x04R\n" +
-	"confidence:\r\x82\xe7\xb0*\bverifier\"\x19\n" +
+	"confidence\x12*\n" +
+	"\x11oracle_request_id\x18\x06 \x01(\tR\x0foracleRequestId:\r\x82\xe7\xb0*\bverifier\"\x19\n" +
 	"\x17MsgSubmitRevealResponse\"\xad\x01\n" +
 	"\x10MsgChallengeFact\x12\x1e\n" +
 	"\n" +

@@ -339,6 +339,15 @@ message MsgSubmitReveal {
   string vote       = 3; // "accept", "reject", or "malformed"
   bytes  salt       = 4;
   uint64 confidence = 5; // BPS; bound to commitment via ComputeCommitmentHash
+
+  // oracle_request_id: optional freshness proof for the oracle query that
+  // informed this reveal. When params.oracle_freshness_window_blocks > 0 and
+  // this field is non-empty, the chain verifies that the request_id was computed
+  // using a block hash from within the last oracle_freshness_window_blocks blocks:
+  //   request_id = sha256(claim_id + "|" + hex(block_hash) + "|" + verifier_addr)
+  // This proves the oracle was queried recently (not a replayed stale response).
+  // Fail-open: empty = no freshness check. Oracle Resilience Brief Gap 4.
+  string oracle_request_id = 6;
 }
 
 message MsgSubmitRevealResponse {}

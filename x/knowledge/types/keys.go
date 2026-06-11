@@ -212,6 +212,13 @@ var (
 
 	// ─── Fee markets: congestion counter ────────────────────────────
 	ActiveRoundsCountKey = []byte{0x7C} // singleton: number of currently active verification rounds (uint64, big-endian)
+
+	// ─── Oracle freshness: ring buffer of recent block hashes ────────
+	// Key: 0x7D | be64(height) → block_hash (raw bytes, 32 bytes for sha256)
+	// Written by BeginBlock (stores prev block's header hash).
+	// Queried by SubmitReveal to verify oracle_request_id freshness.
+	// Oracle Resilience Brief Gap 4.
+	RecentBlockHashKeyPrefix = []byte{0x7D}
 )
 
 // PendingFactInjectionKey returns the store key for a pending injection.
@@ -783,4 +790,16 @@ func PreRegistrationExpiryPrefixUpTo(upToBlock uint64) []byte {
 	// We scan the full prefix range [0x7B][0x00...] → [0x7B][be64(upToBlock+1)]
 	// Callers iterate this range and stop at entries > upToBlock.
 	return append([]byte{}, PreRegistrationExpiryIndexPrefix...)
+}
+
+// RecentBlockHashKey returns the KV key for the block hash at the given height.
+// Key format: RecentBlockHashKeyPrefix | be64(height)
+// Oracle Resilience Brief Gap 4: ring buffer of recent block hashes.
+func RecentBlockHashKey(height uint64) []byte {
+	key := make([]byte, 0, 1+8)
+	key = append(key, RecentBlockHashKeyPrefix...)
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, height)
+	key = append(key, buf...)
+	return key
 }

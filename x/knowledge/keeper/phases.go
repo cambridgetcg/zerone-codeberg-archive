@@ -108,6 +108,11 @@ func (k Keeper) BeginBlocker(ctx context.Context) error {
 	// cannot be fulfilled. Non-fatal — never blocks consensus.
 	k.ProcessExpiredPreRegistrations(ctx)
 
+	// Oracle Resilience Brief Gap 4: maintain the ring buffer of recent
+	// block hashes for oracle_request_id freshness verification.
+	// No-op when oracle_freshness_window_blocks == 0 (default).
+	k.WriteAndPruneRecentBlockHash(ctx, params)
+
 	return nil
 }
 

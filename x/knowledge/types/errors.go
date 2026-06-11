@@ -107,4 +107,9 @@ var (
 	// ─── Phenomenological method declaration (91) — Phenomenology Brief Gap 2 ──
 	// MsgSubmitClaim: phenomenological_method must be declared for M-PHENOMENOLOGICAL claims.
 	ErrMissingPhenomenologicalMethod = errors.Register(ModuleName, 91, "phenomenological_method is required for M-PHENOMENOLOGICAL claims")
+
+	// ─── Oracle freshness (92) — Oracle Resilience Brief Gap 4 ──────────────
+	// MsgSubmitReveal: oracle_request_id does not match any recent block hash.
+	// The oracle was queried using a block hash older than oracle_freshness_window_blocks.
+	ErrStaleOracleRequest = errors.Register(ModuleName, 92, "oracle_request_id does not match any recent block hash (oracle response may be stale)")
 )

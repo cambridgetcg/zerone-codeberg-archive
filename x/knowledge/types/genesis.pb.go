@@ -489,8 +489,23 @@ type Params struct {
 	// Fail-open: 0 = gate disabled; M-PHENOMENOLOGICAL claims are accepted at any
 	// confidence without requiring M-EMPIRICAL corroboration.
 	PhenomenologicalCorroborationConfidenceBps uint64 `protobuf:"varint,182,opt,name=phenomenological_corroboration_confidence_bps,json=phenomenologicalCorroborationConfidenceBps,proto3" json:"phenomenological_corroboration_confidence_bps,omitempty"`
-	unknownFields                              protoimpl.UnknownFields
-	sizeCache                                  protoimpl.SizeCache
+	// oracle_freshness_window_blocks: number of recent blocks within which an
+	// oracle_request_id embedded in MsgSubmitReveal must have been computed.
+	// If non-zero, the chain maintains a ring buffer of recent block hashes and
+	// verifies that the oracle was queried using a block hash from within this
+	// window. Prevents verifiers from replaying stale oracle responses across
+	// different claims or different time periods.
+	//
+	// The oracle request_id is: sha256(claim_id + "|" + hex(block_hash) + "|" + verifier_addr).
+	// Verifiers include this in MsgSubmitReveal.oracle_request_id; the chain checks
+	// that the embedded block_hash matches a stored hash from within the window.
+	//
+	// Fail-open: 0 = gate disabled (default). Non-empty oracle_request_id with a
+	// zero window is ignored (field stored but not validated).
+	// Oracle Resilience Brief Gap 4 (★★★★☆).
+	OracleFreshnessWindowBlocks uint64 `protobuf:"varint,183,opt,name=oracle_freshness_window_blocks,json=oracleFreshnessWindowBlocks,proto3" json:"oracle_freshness_window_blocks,omitempty"`
+	unknownFields               protoimpl.UnknownFields
+	sizeCache                   protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -1797,6 +1812,13 @@ func (x *Params) GetPhenomenologicalCorroborationConfidenceBps() uint64 {
 	return 0
 }
 
+func (x *Params) GetOracleFreshnessWindowBlocks() uint64 {
+	if x != nil {
+		return x.OracleFreshnessWindowBlocks
+	}
+	return 0
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -2044,7 +2066,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xdeZ\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xa4[\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2228,7 +2250,8 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\x1epre_registration_expiry_blocks\x18\xb3\x01 \x01(\x04R\x1bpreRegistrationExpiryBlocks\x12B\n" +
 	"\x1dpre_registration_discount_bps\x18\xb4\x01 \x01(\x04R\x1apreRegistrationDiscountBps\x12N\n" +
 	"#min_phenomenological_practice_hours\x18\xb5\x01 \x01(\x04R minPhenomenologicalPracticeHours\x12b\n" +
-	"-phenomenological_corroboration_confidence_bps\x18\xb6\x01 \x01(\x04R*phenomenologicalCorroborationConfidenceBps\x1aN\n" +
+	"-phenomenological_corroboration_confidence_bps\x18\xb6\x01 \x01(\x04R*phenomenologicalCorroborationConfidenceBps\x12D\n" +
+	"\x1eoracle_freshness_window_blocks\x18\xb7\x01 \x01(\x04R\x1boracleFreshnessWindowBlocks\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xb8\x0f\n" +
