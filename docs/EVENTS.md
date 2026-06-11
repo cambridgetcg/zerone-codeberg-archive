@@ -1376,6 +1376,19 @@ hash. Detection is informational — the claim proceeds to PoT regardless.
 
 ---
 
+### zerone.knowledge.ad_hoc_rescue_detected
+*Tx (MsgSubmitClaim).* A rescue claim's `RefutationConditions` are not a
+proper superset of the rescued (rejected) claim's conditions — Popper's
+criterion for ad-hoc theory modification. Only emitted when
+`MsgSubmitClaim.rescues_claim_id` is set, the referenced claim is REJECTED,
+and the new conditions fail the superset test. Detection is informational —
+`Claim.is_potentially_ad_hoc=true` is set, but the claim proceeds to PoT.
+- `claim_id` -- the new rescue claim ID
+- `rescues_claim_id` -- the rejected claim being rescued
+- `submitter` -- address of the rescue submitter
+- `new_refutation_conditions` -- count of conditions on the new claim
+- `popper_criterion` -- human-readable description of the criterion
+
 ### zerone.knowledge.bootstrap_sponsored
 Claim sponsored via bootstrap fund (gas-free).
 - `address_claims_used` -- number of claims used by this address
