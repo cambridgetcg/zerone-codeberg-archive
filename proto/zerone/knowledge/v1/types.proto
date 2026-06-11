@@ -695,6 +695,15 @@ message AgentCalibration {
   // An agent who always says ~50% scores 0; one who says 10% on rejects and 90% on
   // accepts scores near 1_000_000 (if calibrated).
   uint64 verifier_resolution_bps = 24;
+
+  // organization_id: the verifier's declared organizational affiliation.
+  // Self-declared via MsgSetVerifierOrganization; can be overridden by governance.
+  // Empty = affiliation unknown (treated as unique singleton for diversity scoring).
+  // Panel diversity score = distinct(organization_id values in panel) / total_verifiers.
+  // Scientific Method Gap 1: organizational independence is a structural proxy for
+  // epistemic independence — verifiers from the same institution share funding
+  // sources, oversight, and potentially training data.
+  string organization_id = 25;
 }
 
 // CalibrationBucket tracks prediction hit-rates within a confidence band.
@@ -880,6 +889,14 @@ message VerificationRound {
   // primitive needed for IBC cross-chain truth attestation (Settlement Finality Gap 1).
   // Empty until the round reaches COMPLETE phase.
   bytes verdict_block_hash        = 14;
+
+  // panel_diversity_score_bps: organizational independence of this panel,
+  // computed at CompleteRound. Score = (distinct_org_count / total_verifier_count) × 1_000_000.
+  // Score = 1_000_000 when all verifiers are from different organizations (max independence).
+  // Score = 1_000_000 / n when all n verifiers share an organization (min diversity).
+  // Verifiers without a declared organization_id are each counted as a unique singleton.
+  // Stored for auditability; governance can query low-diversity verdicts. Scientific Method Gap 1.
+  uint64 panel_diversity_score_bps = 15;
 }
 
 // CommitEntry records a validator's blinded commitment (SHA-256(vote || salt)).

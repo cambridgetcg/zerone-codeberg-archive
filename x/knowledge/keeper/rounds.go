@@ -91,6 +91,7 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 	//
 	//   Pragmatism Gap 1:    M-PRAGMATIC needs min consequence instances
 	//   Contemplative Gap:   M-PHENOMENOLOGICAL needs minimum round duration
+	//   Scientific Gap 1:    All claims need minimum panel organizational diversity
 	if result.Verdict == types.Verdict_VERDICT_ACCEPT {
 		methodologyGateParams, _ := k.GetParams(ctx)
 		if gateErr := k.CheckPragmaticConsequenceGate(ctx, *claim, *methodologyGateParams); gateErr != nil {
@@ -101,7 +102,19 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 				result.Verdict = types.Verdict_VERDICT_INCONCLUSIVE
 			}
 		}
+		// Scientific Method Gap 1: panel organizational independence gate.
+		// Compute diversity score regardless of verdict so it is always recorded.
+		// Only block ACCEPT when threshold is configured.
+		if result.Verdict == types.Verdict_VERDICT_ACCEPT {
+			if gateErr := k.CheckPanelDiversityGate(round.PanelDiversityScoreBps, *methodologyGateParams); gateErr != nil {
+				result.Verdict = types.Verdict_VERDICT_INCONCLUSIVE
+			}
+		}
 	}
+
+	// Always compute and store the panel diversity score so governance can audit
+	// the organizational independence of every panel, regardless of verdict.
+	round.PanelDiversityScoreBps = k.ComputePanelDiversityScore(ctx, round)
 
 	round.Verdict = result.Verdict
 	round.VerdictBlock = height

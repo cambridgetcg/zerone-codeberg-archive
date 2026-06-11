@@ -460,6 +460,19 @@ message Params {
   // phenomenological realization, attentional training effects) cannot be validly
   // assessed in a single-session flash panel.
   uint64 min_phenomenological_window_blocks = 176; // default: 0 (disabled)
+
+  // min_panel_diversity_bps: minimum panel diversity score required for an ACCEPT
+  // verdict. Panel diversity = (distinct_organizations / total_verifiers) × 1_000_000.
+  // When the panel votes ACCEPT but diversity_score < min_panel_diversity_bps,
+  // the verdict is overridden to VERDICT_INCONCLUSIVE — a new round must be
+  // convened with a more organizationally diverse panel.
+  // Default 0 = disabled (no diversity requirement). Governance can set this
+  // per-chain or it can be enforced via Methodology.min_panel_diversity_bps.
+  // Implements Scientific Method Gap 1: the replication crisis showed that
+  // counting independent replications without verifying organizational independence
+  // produces false confidence. Three verifiers from the same institution or
+  // trained on the same corpus are not three independent assessments.
+  uint64 min_panel_diversity_bps = 177; // default: 0 (disabled)
 }
 
 // GenesisState is the genesis state of the knowledge module.

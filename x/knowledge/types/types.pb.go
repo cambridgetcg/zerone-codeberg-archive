@@ -4145,8 +4145,16 @@ type AgentCalibration struct {
 	// An agent who always says ~50% scores 0; one who says 10% on rejects and 90% on
 	// accepts scores near 1_000_000 (if calibrated).
 	VerifierResolutionBps uint64 `protobuf:"varint,24,opt,name=verifier_resolution_bps,json=verifierResolutionBps,proto3" json:"verifier_resolution_bps,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// organization_id: the verifier's declared organizational affiliation.
+	// Self-declared via MsgSetVerifierOrganization; can be overridden by governance.
+	// Empty = affiliation unknown (treated as unique singleton for diversity scoring).
+	// Panel diversity score = distinct(organization_id values in panel) / total_verifiers.
+	// Scientific Method Gap 1: organizational independence is a structural proxy for
+	// epistemic independence — verifiers from the same institution share funding
+	// sources, oversight, and potentially training data.
+	OrganizationId string `protobuf:"bytes,25,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *AgentCalibration) Reset() {
@@ -4331,6 +4339,13 @@ func (x *AgentCalibration) GetVerifierResolutionBps() uint64 {
 		return x.VerifierResolutionBps
 	}
 	return 0
+}
+
+func (x *AgentCalibration) GetOrganizationId() string {
+	if x != nil {
+		return x.OrganizationId
+	}
+	return ""
 }
 
 // CalibrationBucket tracks prediction hit-rates within a confidence band.
@@ -5011,8 +5026,15 @@ type VerificationRound struct {
 	// primitive needed for IBC cross-chain truth attestation (Settlement Finality Gap 1).
 	// Empty until the round reaches COMPLETE phase.
 	VerdictBlockHash []byte `protobuf:"bytes,14,opt,name=verdict_block_hash,json=verdictBlockHash,proto3" json:"verdict_block_hash,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// panel_diversity_score_bps: organizational independence of this panel,
+	// computed at CompleteRound. Score = (distinct_org_count / total_verifier_count) × 1_000_000.
+	// Score = 1_000_000 when all verifiers are from different organizations (max independence).
+	// Score = 1_000_000 / n when all n verifiers share an organization (min diversity).
+	// Verifiers without a declared organization_id are each counted as a unique singleton.
+	// Stored for auditability; governance can query low-diversity verdicts. Scientific Method Gap 1.
+	PanelDiversityScoreBps uint64 `protobuf:"varint,15,opt,name=panel_diversity_score_bps,json=panelDiversityScoreBps,proto3" json:"panel_diversity_score_bps,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *VerificationRound) Reset() {
@@ -5141,6 +5163,13 @@ func (x *VerificationRound) GetVerdictBlockHash() []byte {
 		return x.VerdictBlockHash
 	}
 	return nil
+}
+
+func (x *VerificationRound) GetPanelDiversityScoreBps() uint64 {
+	if x != nil {
+		return x.PanelDiversityScoreBps
+	}
+	return 0
 }
 
 // CommitEntry records a validator's blinded commitment (SHA-256(vote || salt)).
@@ -9033,7 +9062,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x15corroborations_earned\x18\x04 \x01(\x04R\x14corroborationsEarned\x12\x1c\n" +
 	"\tdisproven\x18\x05 \x01(\x04R\tdisproven\x12'\n" +
 	"\x0fverifier_rounds\x18\x06 \x01(\x04R\x0everifierRounds\x123\n" +
-	"\x16verifier_sum_brier_bps\x18\a \x01(\x04R\x13verifierSumBrierBps\"\x97\t\n" +
+	"\x16verifier_sum_brier_bps\x18\a \x01(\x04R\x13verifierSumBrierBps\"\xc0\t\n" +
 	"\x10AgentCalibration\x12\x18\n" +
 	"\aaddress\x18\x01 \x01(\tR\aaddress\x12!\n" +
 	"\faccount_type\x18\x02 \x01(\tR\vaccountType\x12+\n" +
@@ -9058,7 +9087,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x16verifier_sum_brier_bps\x18\x15 \x01(\x04R\x13verifierSumBrierBps\x12C\n" +
 	"\x1everifier_calibration_score_bps\x18\x16 \x01(\x04R\x1bverifierCalibrationScoreBps\x12S\n" +
 	"\x11calibration_curve\x18\x17 \x03(\v2&.zerone.knowledge.v1.CalibrationBucketR\x10calibrationCurve\x126\n" +
-	"\x17verifier_resolution_bps\x18\x18 \x01(\x04R\x15verifierResolutionBps\x1ac\n" +
+	"\x17verifier_resolution_bps\x18\x18 \x01(\x04R\x15verifierResolutionBps\x12'\n" +
+	"\x0forganization_id\x18\x19 \x01(\tR\x0eorganizationId\x1ac\n" +
 	"\x0ePerMethodEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12;\n" +
 	"\x05value\x18\x02 \x01(\v2%.zerone.knowledge.v1.AgentMethodStatsR\x05value:\x028\x01\"\xb5\x01\n" +
@@ -9123,7 +9153,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x10observed_outcome\x18\x03 \x01(\tR\x0fobservedOutcome\x12#\n" +
 	"\revidence_hash\x18\x04 \x01(\tR\fevidenceHash\x12,\n" +
 	"\x12submitted_at_block\x18\x05 \x01(\x04R\x10submittedAtBlock\x12!\n" +
-	"\fsubmitted_by\x18\x06 \x01(\tR\vsubmittedBy\"\x87\x05\n" +
+	"\fsubmitted_by\x18\x06 \x01(\tR\vsubmittedBy\"\xc2\x05\n" +
 	"\x11VerificationRound\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\bclaim_id\x18\x02 \x01(\tR\aclaimId\x12(\n" +
@@ -9139,7 +9169,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x0freveal_deadline\x18\v \x01(\x04R\x0erevealDeadline\x121\n" +
 	"\x14aggregation_deadline\x18\f \x01(\x04R\x13aggregationDeadline\x12(\n" +
 	"\x10priority_tip_bps\x18\r \x01(\x04R\x0epriorityTipBps\x12,\n" +
-	"\x12verdict_block_hash\x18\x0e \x01(\fR\x10verdictBlockHash\"x\n" +
+	"\x12verdict_block_hash\x18\x0e \x01(\fR\x10verdictBlockHash\x129\n" +
+	"\x19panel_diversity_score_bps\x18\x0f \x01(\x04R\x16panelDiversityScoreBps\"x\n" +
 	"\vCommitEntry\x12\x1a\n" +
 	"\bverifier\x18\x01 \x01(\tR\bverifier\x12\x1f\n" +
 	"\vcommit_hash\x18\x02 \x01(\fR\n" +

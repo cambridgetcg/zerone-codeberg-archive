@@ -208,6 +208,15 @@ service Msg {
   // verification is best effort — the panel evaluates quality, the param gates quantity.
   rpc AddConsequenceInstance(MsgAddConsequenceInstance) returns (MsgAddConsequenceInstanceResponse);
 
+  // ─── Scientific Method Gap 1: Verifier Independence ──────────────────────
+  // SetVerifierOrganization declares or updates a verifier's organizational
+  // affiliation. Self-declaration: any address may set its own organization_id.
+  // Authority override: the governance authority may set the organization_id
+  // for any address (to correct misrepresentation or bootstrap known affiliations).
+  // The organization_id is stored in the verifier's AgentCalibration record and
+  // used to compute panel_diversity_score_bps at CompleteRound.
+  rpc SetVerifierOrganization(MsgSetVerifierOrganization) returns (MsgSetVerifierOrganizationResponse);
+
   // ─── Scientific Method Gap 2: Methodology Governance ─────────────────────
   // UpdateMethodology amends an existing methodology definition via governance
   // proposal. Provides Kuhn's "revolutionary science" path: the on-chain
@@ -913,6 +922,29 @@ message MsgAddConsequenceInstance {
 }
 message MsgAddConsequenceInstanceResponse {
   uint64 instance_count = 1;  // total consequence instances after addition
+}
+
+// ─── Scientific Method Gap 1: Verifier Independence ──────────────────────────
+//
+// MsgSetVerifierOrganization declares or updates the organizational affiliation
+// of a verifier address. Enables panel_diversity_score_bps computation at
+// CompleteRound. Self-declaration allowed for one's own address; authority can
+// override any address (for bootstrapping or correcting misrepresentation).
+//
+// organization_id is a free-form string — governance defines the registry of
+// recognized organizations separately. Empty string CLEARS the affiliation.
+message MsgSetVerifierOrganization {
+  option (cosmos.msg.v1.signer) = "sender";
+
+  string sender           = 1;  // self-declaration: must match verifier, OR be governance authority
+  string verifier_address = 2;  // target verifier whose affiliation is being set
+  string organization_id  = 3;  // new organization_id; empty = clear affiliation
+  string rationale        = 4;  // required for authority overrides; optional for self-declaration
+}
+
+message MsgSetVerifierOrganizationResponse {
+  string verifier_address = 1;
+  string organization_id  = 2;  // the organization_id that was stored
 }
 
 // ─── Scientific Method Gap 2: Methodology Governance ─────────────────────────

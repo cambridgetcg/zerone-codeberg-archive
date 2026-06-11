@@ -69,6 +69,7 @@ const (
 	Msg_CorrectManifestMerkleRoot_FullMethodName     = "/zerone.knowledge.v1.Msg/CorrectManifestMerkleRoot"
 	Msg_VetoFactInjection_FullMethodName             = "/zerone.knowledge.v1.Msg/VetoFactInjection"
 	Msg_AddConsequenceInstance_FullMethodName        = "/zerone.knowledge.v1.Msg/AddConsequenceInstance"
+	Msg_SetVerifierOrganization_FullMethodName       = "/zerone.knowledge.v1.Msg/SetVerifierOrganization"
 	Msg_UpdateMethodology_FullMethodName             = "/zerone.knowledge.v1.Msg/UpdateMethodology"
 )
 
@@ -224,6 +225,14 @@ type MsgClient interface {
 	// measures against before accepting the claim. Open submission because consequence
 	// verification is best effort — the panel evaluates quality, the param gates quantity.
 	AddConsequenceInstance(ctx context.Context, in *MsgAddConsequenceInstance, opts ...grpc.CallOption) (*MsgAddConsequenceInstanceResponse, error)
+	// ─── Scientific Method Gap 1: Verifier Independence ──────────────────────
+	// SetVerifierOrganization declares or updates a verifier's organizational
+	// affiliation. Self-declaration: any address may set its own organization_id.
+	// Authority override: the governance authority may set the organization_id
+	// for any address (to correct misrepresentation or bootstrap known affiliations).
+	// The organization_id is stored in the verifier's AgentCalibration record and
+	// used to compute panel_diversity_score_bps at CompleteRound.
+	SetVerifierOrganization(ctx context.Context, in *MsgSetVerifierOrganization, opts ...grpc.CallOption) (*MsgSetVerifierOrganizationResponse, error)
 	// ─── Scientific Method Gap 2: Methodology Governance ─────────────────────
 	// UpdateMethodology amends an existing methodology definition via governance
 	// proposal. Provides Kuhn's "revolutionary science" path: the on-chain
@@ -744,6 +753,16 @@ func (c *msgClient) AddConsequenceInstance(ctx context.Context, in *MsgAddConseq
 	return out, nil
 }
 
+func (c *msgClient) SetVerifierOrganization(ctx context.Context, in *MsgSetVerifierOrganization, opts ...grpc.CallOption) (*MsgSetVerifierOrganizationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgSetVerifierOrganizationResponse)
+	err := c.cc.Invoke(ctx, Msg_SetVerifierOrganization_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *msgClient) UpdateMethodology(ctx context.Context, in *MsgUpdateMethodology, opts ...grpc.CallOption) (*MsgUpdateMethodologyResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MsgUpdateMethodologyResponse)
@@ -906,6 +925,14 @@ type MsgServer interface {
 	// measures against before accepting the claim. Open submission because consequence
 	// verification is best effort — the panel evaluates quality, the param gates quantity.
 	AddConsequenceInstance(context.Context, *MsgAddConsequenceInstance) (*MsgAddConsequenceInstanceResponse, error)
+	// ─── Scientific Method Gap 1: Verifier Independence ──────────────────────
+	// SetVerifierOrganization declares or updates a verifier's organizational
+	// affiliation. Self-declaration: any address may set its own organization_id.
+	// Authority override: the governance authority may set the organization_id
+	// for any address (to correct misrepresentation or bootstrap known affiliations).
+	// The organization_id is stored in the verifier's AgentCalibration record and
+	// used to compute panel_diversity_score_bps at CompleteRound.
+	SetVerifierOrganization(context.Context, *MsgSetVerifierOrganization) (*MsgSetVerifierOrganizationResponse, error)
 	// ─── Scientific Method Gap 2: Methodology Governance ─────────────────────
 	// UpdateMethodology amends an existing methodology definition via governance
 	// proposal. Provides Kuhn's "revolutionary science" path: the on-chain
@@ -1075,6 +1102,9 @@ func (UnimplementedMsgServer) VetoFactInjection(context.Context, *MsgVetoFactInj
 }
 func (UnimplementedMsgServer) AddConsequenceInstance(context.Context, *MsgAddConsequenceInstance) (*MsgAddConsequenceInstanceResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AddConsequenceInstance not implemented")
+}
+func (UnimplementedMsgServer) SetVerifierOrganization(context.Context, *MsgSetVerifierOrganization) (*MsgSetVerifierOrganizationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetVerifierOrganization not implemented")
 }
 func (UnimplementedMsgServer) UpdateMethodology(context.Context, *MsgUpdateMethodology) (*MsgUpdateMethodologyResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateMethodology not implemented")
@@ -2000,6 +2030,24 @@ func _Msg_AddConsequenceInstance_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Msg_SetVerifierOrganization_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgSetVerifierOrganization)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).SetVerifierOrganization(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_SetVerifierOrganization_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).SetVerifierOrganization(ctx, req.(*MsgSetVerifierOrganization))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Msg_UpdateMethodology_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MsgUpdateMethodology)
 	if err := dec(in); err != nil {
@@ -2224,6 +2272,10 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddConsequenceInstance",
 			Handler:    _Msg_AddConsequenceInstance_Handler,
+		},
+		{
+			MethodName: "SetVerifierOrganization",
+			Handler:    _Msg_SetVerifierOrganization_Handler,
 		},
 		{
 			MethodName: "UpdateMethodology",
