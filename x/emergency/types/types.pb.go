@@ -730,6 +730,202 @@ func (x *EmergencyAuditEntry) GetDetails() string {
 	return ""
 }
 
+// ─── Circuit Breaker Gap 5: Surgical State Recovery ──────────────────────────
+//
+// StateMutation describes a single KV-store patch that Guardians are proposing
+// to apply as a surgical correction. It records both the expected old value and
+// the intended new value so node operators and auditors can verify the intent
+// off-chain before the proposal reaches quorum.
+//
+// Execution: on quorum approval the mutation list is emitted as a chain event.
+// Node operators may also apply them during a planned upgrade handler using the
+// on-chain record as the authoritative correction specification.
+type StateMutation struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ModuleName    string                 `protobuf:"bytes,1,opt,name=module_name,json=moduleName,proto3" json:"module_name,omitempty"` // target module KV store (e.g. "knowledge", "liquiditypool")
+	Key           []byte                 `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`                                 // raw KV store key
+	OldValue      []byte                 `protobuf:"bytes,3,opt,name=old_value,json=oldValue,proto3" json:"old_value,omitempty"`       // expected current value (guards against stale proposals)
+	NewValue      []byte                 `protobuf:"bytes,4,opt,name=new_value,json=newValue,proto3" json:"new_value,omitempty"`       // replacement value (empty = delete key)
+	Description   string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`                 // human-readable description of this individual fix
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StateMutation) Reset() {
+	*x = StateMutation{}
+	mi := &file_zerone_emergency_v1_types_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StateMutation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StateMutation) ProtoMessage() {}
+
+func (x *StateMutation) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_emergency_v1_types_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StateMutation.ProtoReflect.Descriptor instead.
+func (*StateMutation) Descriptor() ([]byte, []int) {
+	return file_zerone_emergency_v1_types_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *StateMutation) GetModuleName() string {
+	if x != nil {
+		return x.ModuleName
+	}
+	return ""
+}
+
+func (x *StateMutation) GetKey() []byte {
+	if x != nil {
+		return x.Key
+	}
+	return nil
+}
+
+func (x *StateMutation) GetOldValue() []byte {
+	if x != nil {
+		return x.OldValue
+	}
+	return nil
+}
+
+func (x *StateMutation) GetNewValue() []byte {
+	if x != nil {
+		return x.NewValue
+	}
+	return nil
+}
+
+func (x *StateMutation) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+// StateCorrectionProposal is the on-chain record of a guardian-approved surgical
+// state correction. Status transitions: pending → approved | rejected.
+type StateCorrectionProposal struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Proposer        string                 `protobuf:"bytes,2,opt,name=proposer,proto3" json:"proposer,omitempty"`
+	Mutations       []*StateMutation       `protobuf:"bytes,3,rep,name=mutations,proto3" json:"mutations,omitempty"`
+	Rationale       string                 `protobuf:"bytes,4,opt,name=rationale,proto3" json:"rationale,omitempty"` // why this correction is needed
+	ProposedAtBlock uint64                 `protobuf:"varint,5,opt,name=proposed_at_block,json=proposedAtBlock,proto3" json:"proposed_at_block,omitempty"`
+	Approvals       []string               `protobuf:"bytes,6,rep,name=approvals,proto3" json:"approvals,omitempty"`                                       // bech32 addresses that voted approve
+	Rejections      []string               `protobuf:"bytes,7,rep,name=rejections,proto3" json:"rejections,omitempty"`                                     // bech32 addresses that voted reject
+	Status          string                 `protobuf:"bytes,8,opt,name=status,proto3" json:"status,omitempty"`                                             // "pending" | "approved" | "rejected"
+	ApprovedAtBlock uint64                 `protobuf:"varint,9,opt,name=approved_at_block,json=approvedAtBlock,proto3" json:"approved_at_block,omitempty"` // 0 if not yet approved
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *StateCorrectionProposal) Reset() {
+	*x = StateCorrectionProposal{}
+	mi := &file_zerone_emergency_v1_types_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StateCorrectionProposal) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StateCorrectionProposal) ProtoMessage() {}
+
+func (x *StateCorrectionProposal) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_emergency_v1_types_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StateCorrectionProposal.ProtoReflect.Descriptor instead.
+func (*StateCorrectionProposal) Descriptor() ([]byte, []int) {
+	return file_zerone_emergency_v1_types_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *StateCorrectionProposal) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *StateCorrectionProposal) GetProposer() string {
+	if x != nil {
+		return x.Proposer
+	}
+	return ""
+}
+
+func (x *StateCorrectionProposal) GetMutations() []*StateMutation {
+	if x != nil {
+		return x.Mutations
+	}
+	return nil
+}
+
+func (x *StateCorrectionProposal) GetRationale() string {
+	if x != nil {
+		return x.Rationale
+	}
+	return ""
+}
+
+func (x *StateCorrectionProposal) GetProposedAtBlock() uint64 {
+	if x != nil {
+		return x.ProposedAtBlock
+	}
+	return 0
+}
+
+func (x *StateCorrectionProposal) GetApprovals() []string {
+	if x != nil {
+		return x.Approvals
+	}
+	return nil
+}
+
+func (x *StateCorrectionProposal) GetRejections() []string {
+	if x != nil {
+		return x.Rejections
+	}
+	return nil
+}
+
+func (x *StateCorrectionProposal) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *StateCorrectionProposal) GetApprovedAtBlock() uint64 {
+	if x != nil {
+		return x.ApprovedAtBlock
+	}
+	return 0
+}
+
 var File_zerone_emergency_v1_types_proto protoreflect.FileDescriptor
 
 const file_zerone_emergency_v1_types_proto_rawDesc = "" +
@@ -795,7 +991,26 @@ const file_zerone_emergency_v1_types_proto_rawDesc = "" +
 	"\x05actor\x18\x04 \x01(\tR\x05actor\x12\x1f\n" +
 	"\vceremony_id\x18\x05 \x01(\tR\n" +
 	"ceremonyId\x12\x18\n" +
-	"\adetails\x18\x06 \x01(\tR\adetailsB2Z0github.com/zerone-chain/zerone/x/emergency/typesb\x06proto3"
+	"\adetails\x18\x06 \x01(\tR\adetails\"\x9e\x01\n" +
+	"\rStateMutation\x12\x1f\n" +
+	"\vmodule_name\x18\x01 \x01(\tR\n" +
+	"moduleName\x12\x10\n" +
+	"\x03key\x18\x02 \x01(\fR\x03key\x12\x1b\n" +
+	"\told_value\x18\x03 \x01(\fR\boldValue\x12\x1b\n" +
+	"\tnew_value\x18\x04 \x01(\fR\bnewValue\x12 \n" +
+	"\vdescription\x18\x05 \x01(\tR\vdescription\"\xd3\x02\n" +
+	"\x17StateCorrectionProposal\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
+	"\bproposer\x18\x02 \x01(\tR\bproposer\x12@\n" +
+	"\tmutations\x18\x03 \x03(\v2\".zerone.emergency.v1.StateMutationR\tmutations\x12\x1c\n" +
+	"\trationale\x18\x04 \x01(\tR\trationale\x12*\n" +
+	"\x11proposed_at_block\x18\x05 \x01(\x04R\x0fproposedAtBlock\x12\x1c\n" +
+	"\tapprovals\x18\x06 \x03(\tR\tapprovals\x12\x1e\n" +
+	"\n" +
+	"rejections\x18\a \x03(\tR\n" +
+	"rejections\x12\x16\n" +
+	"\x06status\x18\b \x01(\tR\x06status\x12*\n" +
+	"\x11approved_at_block\x18\t \x01(\x04R\x0fapprovedAtBlockB2Z0github.com/zerone-chain/zerone/x/emergency/typesb\x06proto3"
 
 var (
 	file_zerone_emergency_v1_types_proto_rawDescOnce sync.Once
@@ -809,7 +1024,7 @@ func file_zerone_emergency_v1_types_proto_rawDescGZIP() []byte {
 	return file_zerone_emergency_v1_types_proto_rawDescData
 }
 
-var file_zerone_emergency_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_zerone_emergency_v1_types_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_zerone_emergency_v1_types_proto_goTypes = []any{
 	(*EmergencyHaltProposal)(nil),   // 0: zerone.emergency.v1.EmergencyHaltProposal
 	(*EmergencyRevertProposal)(nil), // 1: zerone.emergency.v1.EmergencyRevertProposal
@@ -820,17 +1035,20 @@ var file_zerone_emergency_v1_types_proto_goTypes = []any{
 	(*PrecommitEntry)(nil),          // 6: zerone.emergency.v1.PrecommitEntry
 	(*EmergencyCeremony)(nil),       // 7: zerone.emergency.v1.EmergencyCeremony
 	(*EmergencyAuditEntry)(nil),     // 8: zerone.emergency.v1.EmergencyAuditEntry
+	(*StateMutation)(nil),           // 9: zerone.emergency.v1.StateMutation
+	(*StateCorrectionProposal)(nil), // 10: zerone.emergency.v1.StateCorrectionProposal
 }
 var file_zerone_emergency_v1_types_proto_depIdxs = []int32{
 	3, // 0: zerone.emergency.v1.PrevoteEntry.value:type_name -> zerone.emergency.v1.EmergencyVote
 	4, // 1: zerone.emergency.v1.PrecommitEntry.value:type_name -> zerone.emergency.v1.EmergencyPrecommit
 	5, // 2: zerone.emergency.v1.EmergencyCeremony.prevotes:type_name -> zerone.emergency.v1.PrevoteEntry
 	6, // 3: zerone.emergency.v1.EmergencyCeremony.precommits:type_name -> zerone.emergency.v1.PrecommitEntry
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	9, // 4: zerone.emergency.v1.StateCorrectionProposal.mutations:type_name -> zerone.emergency.v1.StateMutation
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_zerone_emergency_v1_types_proto_init() }
@@ -844,7 +1062,7 @@ func file_zerone_emergency_v1_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_zerone_emergency_v1_types_proto_rawDesc), len(file_zerone_emergency_v1_types_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

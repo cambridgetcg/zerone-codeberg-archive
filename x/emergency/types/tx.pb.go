@@ -806,11 +806,233 @@ func (*MsgUpdateParamsResponse) Descriptor() ([]byte, []int) {
 	return file_zerone_emergency_v1_tx_proto_rawDescGZIP(), []int{13}
 }
 
+// MsgProposeStateCorrection submits a surgical state-correction proposal.
+// Mutations are executed by node operators during a planned upgrade once the
+// proposal reaches Guardian quorum.
+type MsgProposeStateCorrection struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Proposer      string                 `protobuf:"bytes,1,opt,name=proposer,proto3" json:"proposer,omitempty"`
+	Mutations     []*StateMutation       `protobuf:"bytes,2,rep,name=mutations,proto3" json:"mutations,omitempty"`
+	Rationale     string                 `protobuf:"bytes,3,opt,name=rationale,proto3" json:"rationale,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MsgProposeStateCorrection) Reset() {
+	*x = MsgProposeStateCorrection{}
+	mi := &file_zerone_emergency_v1_tx_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MsgProposeStateCorrection) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MsgProposeStateCorrection) ProtoMessage() {}
+
+func (x *MsgProposeStateCorrection) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_emergency_v1_tx_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MsgProposeStateCorrection.ProtoReflect.Descriptor instead.
+func (*MsgProposeStateCorrection) Descriptor() ([]byte, []int) {
+	return file_zerone_emergency_v1_tx_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *MsgProposeStateCorrection) GetProposer() string {
+	if x != nil {
+		return x.Proposer
+	}
+	return ""
+}
+
+func (x *MsgProposeStateCorrection) GetMutations() []*StateMutation {
+	if x != nil {
+		return x.Mutations
+	}
+	return nil
+}
+
+func (x *MsgProposeStateCorrection) GetRationale() string {
+	if x != nil {
+		return x.Rationale
+	}
+	return ""
+}
+
+type MsgProposeStateCorrectionResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ProposalId    string                 `protobuf:"bytes,1,opt,name=proposal_id,json=proposalId,proto3" json:"proposal_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MsgProposeStateCorrectionResponse) Reset() {
+	*x = MsgProposeStateCorrectionResponse{}
+	mi := &file_zerone_emergency_v1_tx_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MsgProposeStateCorrectionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MsgProposeStateCorrectionResponse) ProtoMessage() {}
+
+func (x *MsgProposeStateCorrectionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_emergency_v1_tx_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MsgProposeStateCorrectionResponse.ProtoReflect.Descriptor instead.
+func (*MsgProposeStateCorrectionResponse) Descriptor() ([]byte, []int) {
+	return file_zerone_emergency_v1_tx_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *MsgProposeStateCorrectionResponse) GetProposalId() string {
+	if x != nil {
+		return x.ProposalId
+	}
+	return ""
+}
+
+// MsgVoteStateCorrection casts a Guardian vote on a pending state-correction
+// proposal. When approvals reach GuardianMinVotes, the proposal transitions to
+// "approved" and emits zerone.emergency.state_correction_approved.
+type MsgVoteStateCorrection struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Voter         string                 `protobuf:"bytes,1,opt,name=voter,proto3" json:"voter,omitempty"`
+	ProposalId    string                 `protobuf:"bytes,2,opt,name=proposal_id,json=proposalId,proto3" json:"proposal_id,omitempty"`
+	Approve       bool                   `protobuf:"varint,3,opt,name=approve,proto3" json:"approve,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MsgVoteStateCorrection) Reset() {
+	*x = MsgVoteStateCorrection{}
+	mi := &file_zerone_emergency_v1_tx_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MsgVoteStateCorrection) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MsgVoteStateCorrection) ProtoMessage() {}
+
+func (x *MsgVoteStateCorrection) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_emergency_v1_tx_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MsgVoteStateCorrection.ProtoReflect.Descriptor instead.
+func (*MsgVoteStateCorrection) Descriptor() ([]byte, []int) {
+	return file_zerone_emergency_v1_tx_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *MsgVoteStateCorrection) GetVoter() string {
+	if x != nil {
+		return x.Voter
+	}
+	return ""
+}
+
+func (x *MsgVoteStateCorrection) GetProposalId() string {
+	if x != nil {
+		return x.ProposalId
+	}
+	return ""
+}
+
+func (x *MsgVoteStateCorrection) GetApprove() bool {
+	if x != nil {
+		return x.Approve
+	}
+	return false
+}
+
+type MsgVoteStateCorrectionResponse struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	QuorumReached      bool                   `protobuf:"varint,1,opt,name=quorum_reached,json=quorumReached,proto3" json:"quorum_reached,omitempty"`
+	CorrectionApproved bool                   `protobuf:"varint,2,opt,name=correction_approved,json=correctionApproved,proto3" json:"correction_approved,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *MsgVoteStateCorrectionResponse) Reset() {
+	*x = MsgVoteStateCorrectionResponse{}
+	mi := &file_zerone_emergency_v1_tx_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MsgVoteStateCorrectionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MsgVoteStateCorrectionResponse) ProtoMessage() {}
+
+func (x *MsgVoteStateCorrectionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_zerone_emergency_v1_tx_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MsgVoteStateCorrectionResponse.ProtoReflect.Descriptor instead.
+func (*MsgVoteStateCorrectionResponse) Descriptor() ([]byte, []int) {
+	return file_zerone_emergency_v1_tx_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *MsgVoteStateCorrectionResponse) GetQuorumReached() bool {
+	if x != nil {
+		return x.QuorumReached
+	}
+	return false
+}
+
+func (x *MsgVoteStateCorrectionResponse) GetCorrectionApproved() bool {
+	if x != nil {
+		return x.CorrectionApproved
+	}
+	return false
+}
+
 var File_zerone_emergency_v1_tx_proto protoreflect.FileDescriptor
 
 const file_zerone_emergency_v1_tx_proto_rawDesc = "" +
 	"\n" +
-	"\x1czerone/emergency/v1/tx.proto\x12\x13zerone.emergency.v1\x1a\x17cosmos/msg/v1/msg.proto\x1a!zerone/emergency/v1/genesis.proto\"\x97\x01\n" +
+	"\x1czerone/emergency/v1/tx.proto\x12\x13zerone.emergency.v1\x1a\x17cosmos/msg/v1/msg.proto\x1a!zerone/emergency/v1/genesis.proto\x1a\x1fzerone/emergency/v1/types.proto\"\x97\x01\n" +
 	"\x0eMsgProposeHalt\x12\x1a\n" +
 	"\bproposer\x18\x01 \x01(\tR\bproposer\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12B\n" +
@@ -861,13 +1083,29 @@ const file_zerone_emergency_v1_tx_proto_rawDesc = "" +
 	"\x0fMsgUpdateParams\x12\x1c\n" +
 	"\tauthority\x18\x01 \x01(\tR\tauthority\x123\n" +
 	"\x06params\x18\x02 \x01(\v2\x1b.zerone.emergency.v1.ParamsR\x06params:\x0e\x82\xe7\xb0*\tauthority\"\x19\n" +
-	"\x17MsgUpdateParamsResponse*\xdb\x01\n" +
+	"\x17MsgUpdateParamsResponse\"\xa6\x01\n" +
+	"\x19MsgProposeStateCorrection\x12\x1a\n" +
+	"\bproposer\x18\x01 \x01(\tR\bproposer\x12@\n" +
+	"\tmutations\x18\x02 \x03(\v2\".zerone.emergency.v1.StateMutationR\tmutations\x12\x1c\n" +
+	"\trationale\x18\x03 \x01(\tR\trationale:\r\x82\xe7\xb0*\bproposer\"D\n" +
+	"!MsgProposeStateCorrectionResponse\x12\x1f\n" +
+	"\vproposal_id\x18\x01 \x01(\tR\n" +
+	"proposalId\"u\n" +
+	"\x16MsgVoteStateCorrection\x12\x14\n" +
+	"\x05voter\x18\x01 \x01(\tR\x05voter\x12\x1f\n" +
+	"\vproposal_id\x18\x02 \x01(\tR\n" +
+	"proposalId\x12\x18\n" +
+	"\aapprove\x18\x03 \x01(\bR\aapprove:\n" +
+	"\x82\xe7\xb0*\x05voter\"x\n" +
+	"\x1eMsgVoteStateCorrectionResponse\x12%\n" +
+	"\x0equorum_reached\x18\x01 \x01(\bR\rquorumReached\x12/\n" +
+	"\x13correction_approved\x18\x02 \x01(\bR\x12correctionApproved*\xdb\x01\n" +
 	"\x11EmergencyCategory\x12\"\n" +
 	"\x1eEMERGENCY_CATEGORY_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"EMERGENCY_CATEGORY_SECURITY_BREACH\x10\x01\x12(\n" +
 	"$EMERGENCY_CATEGORY_CONSENSUS_FAILURE\x10\x02\x12'\n" +
 	"#EMERGENCY_CATEGORY_ECONOMIC_EXPLOIT\x10\x03\x12'\n" +
-	"#EMERGENCY_CATEGORY_STATE_CORRUPTION\x10\x042\xb3\x05\n" +
+	"#EMERGENCY_CATEGORY_STATE_CORRUPTION\x10\x042\xaf\a\n" +
 	"\x03Msg\x12_\n" +
 	"\vProposeHalt\x12#.zerone.emergency.v1.MsgProposeHalt\x1a+.zerone.emergency.v1.MsgProposeHaltResponse\x12V\n" +
 	"\bVoteHalt\x12 .zerone.emergency.v1.MsgVoteHalt\x1a(.zerone.emergency.v1.MsgVoteHaltResponse\x12e\n" +
@@ -877,7 +1115,9 @@ const file_zerone_emergency_v1_tx_proto_rawDesc = "" +
 	"\rProposeResume\x12%.zerone.emergency.v1.MsgProposeResume\x1a-.zerone.emergency.v1.MsgProposeResumeResponse\x12\\\n" +
 	"\n" +
 	"VoteResume\x12\".zerone.emergency.v1.MsgVoteResume\x1a*.zerone.emergency.v1.MsgVoteResumeResponse\x12b\n" +
-	"\fUpdateParams\x12$.zerone.emergency.v1.MsgUpdateParams\x1a,.zerone.emergency.v1.MsgUpdateParamsResponse\x1a\x05\x80\xe7\xb0*\x01B2Z0github.com/zerone-chain/zerone/x/emergency/typesb\x06proto3"
+	"\fUpdateParams\x12$.zerone.emergency.v1.MsgUpdateParams\x1a,.zerone.emergency.v1.MsgUpdateParamsResponse\x12\x80\x01\n" +
+	"\x16ProposeStateCorrection\x12..zerone.emergency.v1.MsgProposeStateCorrection\x1a6.zerone.emergency.v1.MsgProposeStateCorrectionResponse\x12w\n" +
+	"\x13VoteStateCorrection\x12+.zerone.emergency.v1.MsgVoteStateCorrection\x1a3.zerone.emergency.v1.MsgVoteStateCorrectionResponse\x1a\x05\x80\xe7\xb0*\x01B2Z0github.com/zerone-chain/zerone/x/emergency/typesb\x06proto3"
 
 var (
 	file_zerone_emergency_v1_tx_proto_rawDescOnce sync.Once
@@ -892,47 +1132,57 @@ func file_zerone_emergency_v1_tx_proto_rawDescGZIP() []byte {
 }
 
 var file_zerone_emergency_v1_tx_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_zerone_emergency_v1_tx_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_zerone_emergency_v1_tx_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_zerone_emergency_v1_tx_proto_goTypes = []any{
-	(EmergencyCategory)(0),           // 0: zerone.emergency.v1.EmergencyCategory
-	(*MsgProposeHalt)(nil),           // 1: zerone.emergency.v1.MsgProposeHalt
-	(*MsgProposeHaltResponse)(nil),   // 2: zerone.emergency.v1.MsgProposeHaltResponse
-	(*MsgVoteHalt)(nil),              // 3: zerone.emergency.v1.MsgVoteHalt
-	(*MsgVoteHaltResponse)(nil),      // 4: zerone.emergency.v1.MsgVoteHaltResponse
-	(*MsgProposeRevert)(nil),         // 5: zerone.emergency.v1.MsgProposeRevert
-	(*MsgProposeRevertResponse)(nil), // 6: zerone.emergency.v1.MsgProposeRevertResponse
-	(*MsgVoteRevert)(nil),            // 7: zerone.emergency.v1.MsgVoteRevert
-	(*MsgVoteRevertResponse)(nil),    // 8: zerone.emergency.v1.MsgVoteRevertResponse
-	(*MsgProposeResume)(nil),         // 9: zerone.emergency.v1.MsgProposeResume
-	(*MsgProposeResumeResponse)(nil), // 10: zerone.emergency.v1.MsgProposeResumeResponse
-	(*MsgVoteResume)(nil),            // 11: zerone.emergency.v1.MsgVoteResume
-	(*MsgVoteResumeResponse)(nil),    // 12: zerone.emergency.v1.MsgVoteResumeResponse
-	(*MsgUpdateParams)(nil),          // 13: zerone.emergency.v1.MsgUpdateParams
-	(*MsgUpdateParamsResponse)(nil),  // 14: zerone.emergency.v1.MsgUpdateParamsResponse
-	(*Params)(nil),                   // 15: zerone.emergency.v1.Params
+	(EmergencyCategory)(0),                    // 0: zerone.emergency.v1.EmergencyCategory
+	(*MsgProposeHalt)(nil),                    // 1: zerone.emergency.v1.MsgProposeHalt
+	(*MsgProposeHaltResponse)(nil),            // 2: zerone.emergency.v1.MsgProposeHaltResponse
+	(*MsgVoteHalt)(nil),                       // 3: zerone.emergency.v1.MsgVoteHalt
+	(*MsgVoteHaltResponse)(nil),               // 4: zerone.emergency.v1.MsgVoteHaltResponse
+	(*MsgProposeRevert)(nil),                  // 5: zerone.emergency.v1.MsgProposeRevert
+	(*MsgProposeRevertResponse)(nil),          // 6: zerone.emergency.v1.MsgProposeRevertResponse
+	(*MsgVoteRevert)(nil),                     // 7: zerone.emergency.v1.MsgVoteRevert
+	(*MsgVoteRevertResponse)(nil),             // 8: zerone.emergency.v1.MsgVoteRevertResponse
+	(*MsgProposeResume)(nil),                  // 9: zerone.emergency.v1.MsgProposeResume
+	(*MsgProposeResumeResponse)(nil),          // 10: zerone.emergency.v1.MsgProposeResumeResponse
+	(*MsgVoteResume)(nil),                     // 11: zerone.emergency.v1.MsgVoteResume
+	(*MsgVoteResumeResponse)(nil),             // 12: zerone.emergency.v1.MsgVoteResumeResponse
+	(*MsgUpdateParams)(nil),                   // 13: zerone.emergency.v1.MsgUpdateParams
+	(*MsgUpdateParamsResponse)(nil),           // 14: zerone.emergency.v1.MsgUpdateParamsResponse
+	(*MsgProposeStateCorrection)(nil),         // 15: zerone.emergency.v1.MsgProposeStateCorrection
+	(*MsgProposeStateCorrectionResponse)(nil), // 16: zerone.emergency.v1.MsgProposeStateCorrectionResponse
+	(*MsgVoteStateCorrection)(nil),            // 17: zerone.emergency.v1.MsgVoteStateCorrection
+	(*MsgVoteStateCorrectionResponse)(nil),    // 18: zerone.emergency.v1.MsgVoteStateCorrectionResponse
+	(*Params)(nil),                            // 19: zerone.emergency.v1.Params
+	(*StateMutation)(nil),                     // 20: zerone.emergency.v1.StateMutation
 }
 var file_zerone_emergency_v1_tx_proto_depIdxs = []int32{
 	0,  // 0: zerone.emergency.v1.MsgProposeHalt.category:type_name -> zerone.emergency.v1.EmergencyCategory
-	15, // 1: zerone.emergency.v1.MsgUpdateParams.params:type_name -> zerone.emergency.v1.Params
-	1,  // 2: zerone.emergency.v1.Msg.ProposeHalt:input_type -> zerone.emergency.v1.MsgProposeHalt
-	3,  // 3: zerone.emergency.v1.Msg.VoteHalt:input_type -> zerone.emergency.v1.MsgVoteHalt
-	5,  // 4: zerone.emergency.v1.Msg.ProposeRevert:input_type -> zerone.emergency.v1.MsgProposeRevert
-	7,  // 5: zerone.emergency.v1.Msg.VoteRevert:input_type -> zerone.emergency.v1.MsgVoteRevert
-	9,  // 6: zerone.emergency.v1.Msg.ProposeResume:input_type -> zerone.emergency.v1.MsgProposeResume
-	11, // 7: zerone.emergency.v1.Msg.VoteResume:input_type -> zerone.emergency.v1.MsgVoteResume
-	13, // 8: zerone.emergency.v1.Msg.UpdateParams:input_type -> zerone.emergency.v1.MsgUpdateParams
-	2,  // 9: zerone.emergency.v1.Msg.ProposeHalt:output_type -> zerone.emergency.v1.MsgProposeHaltResponse
-	4,  // 10: zerone.emergency.v1.Msg.VoteHalt:output_type -> zerone.emergency.v1.MsgVoteHaltResponse
-	6,  // 11: zerone.emergency.v1.Msg.ProposeRevert:output_type -> zerone.emergency.v1.MsgProposeRevertResponse
-	8,  // 12: zerone.emergency.v1.Msg.VoteRevert:output_type -> zerone.emergency.v1.MsgVoteRevertResponse
-	10, // 13: zerone.emergency.v1.Msg.ProposeResume:output_type -> zerone.emergency.v1.MsgProposeResumeResponse
-	12, // 14: zerone.emergency.v1.Msg.VoteResume:output_type -> zerone.emergency.v1.MsgVoteResumeResponse
-	14, // 15: zerone.emergency.v1.Msg.UpdateParams:output_type -> zerone.emergency.v1.MsgUpdateParamsResponse
-	9,  // [9:16] is the sub-list for method output_type
-	2,  // [2:9] is the sub-list for method input_type
-	2,  // [2:2] is the sub-list for extension type_name
-	2,  // [2:2] is the sub-list for extension extendee
-	0,  // [0:2] is the sub-list for field type_name
+	19, // 1: zerone.emergency.v1.MsgUpdateParams.params:type_name -> zerone.emergency.v1.Params
+	20, // 2: zerone.emergency.v1.MsgProposeStateCorrection.mutations:type_name -> zerone.emergency.v1.StateMutation
+	1,  // 3: zerone.emergency.v1.Msg.ProposeHalt:input_type -> zerone.emergency.v1.MsgProposeHalt
+	3,  // 4: zerone.emergency.v1.Msg.VoteHalt:input_type -> zerone.emergency.v1.MsgVoteHalt
+	5,  // 5: zerone.emergency.v1.Msg.ProposeRevert:input_type -> zerone.emergency.v1.MsgProposeRevert
+	7,  // 6: zerone.emergency.v1.Msg.VoteRevert:input_type -> zerone.emergency.v1.MsgVoteRevert
+	9,  // 7: zerone.emergency.v1.Msg.ProposeResume:input_type -> zerone.emergency.v1.MsgProposeResume
+	11, // 8: zerone.emergency.v1.Msg.VoteResume:input_type -> zerone.emergency.v1.MsgVoteResume
+	13, // 9: zerone.emergency.v1.Msg.UpdateParams:input_type -> zerone.emergency.v1.MsgUpdateParams
+	15, // 10: zerone.emergency.v1.Msg.ProposeStateCorrection:input_type -> zerone.emergency.v1.MsgProposeStateCorrection
+	17, // 11: zerone.emergency.v1.Msg.VoteStateCorrection:input_type -> zerone.emergency.v1.MsgVoteStateCorrection
+	2,  // 12: zerone.emergency.v1.Msg.ProposeHalt:output_type -> zerone.emergency.v1.MsgProposeHaltResponse
+	4,  // 13: zerone.emergency.v1.Msg.VoteHalt:output_type -> zerone.emergency.v1.MsgVoteHaltResponse
+	6,  // 14: zerone.emergency.v1.Msg.ProposeRevert:output_type -> zerone.emergency.v1.MsgProposeRevertResponse
+	8,  // 15: zerone.emergency.v1.Msg.VoteRevert:output_type -> zerone.emergency.v1.MsgVoteRevertResponse
+	10, // 16: zerone.emergency.v1.Msg.ProposeResume:output_type -> zerone.emergency.v1.MsgProposeResumeResponse
+	12, // 17: zerone.emergency.v1.Msg.VoteResume:output_type -> zerone.emergency.v1.MsgVoteResumeResponse
+	14, // 18: zerone.emergency.v1.Msg.UpdateParams:output_type -> zerone.emergency.v1.MsgUpdateParamsResponse
+	16, // 19: zerone.emergency.v1.Msg.ProposeStateCorrection:output_type -> zerone.emergency.v1.MsgProposeStateCorrectionResponse
+	18, // 20: zerone.emergency.v1.Msg.VoteStateCorrection:output_type -> zerone.emergency.v1.MsgVoteStateCorrectionResponse
+	12, // [12:21] is the sub-list for method output_type
+	3,  // [3:12] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_zerone_emergency_v1_tx_proto_init() }
@@ -941,13 +1191,14 @@ func file_zerone_emergency_v1_tx_proto_init() {
 		return
 	}
 	file_zerone_emergency_v1_genesis_proto_init()
+	file_zerone_emergency_v1_types_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_zerone_emergency_v1_tx_proto_rawDesc), len(file_zerone_emergency_v1_tx_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   14,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

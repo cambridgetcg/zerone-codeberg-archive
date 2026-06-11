@@ -27,6 +27,10 @@ var (
 	// update received from the liquiditypool module. Used by the oracle staleness
 	// circuit breaker (P-21b) to detect oracle failure.
 	LastOracleUpdateBlockKey = []byte{0x0D}
+
+	// StateCorrectionKeyPrefix is the key prefix for StateCorrectionProposal records.
+	// Keyed by proposal ID string. Circuit Breaker Gap 5.
+	StateCorrectionKeyPrefix = []byte{0x0E}
 )
 
 // CeremonyKey returns the store key for a ceremony by ID.
@@ -37,6 +41,11 @@ func CeremonyKey(id string) []byte {
 // GuardianProposalCountKey returns the store key for a guardian's proposal count.
 func GuardianProposalCountKey(addr string) []byte {
 	return append(GuardianProposalCountPrefix, []byte(addr)...)
+}
+
+// StateCorrectionKey returns the store key for a StateCorrectionProposal by ID.
+func StateCorrectionKey(id string) []byte {
+	return append(StateCorrectionKeyPrefix, []byte(id)...)
 }
 
 // AuditLogKey returns the store key for an audit entry by height and index.

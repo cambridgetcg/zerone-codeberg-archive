@@ -19,13 +19,15 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Msg_ProposeHalt_FullMethodName   = "/zerone.emergency.v1.Msg/ProposeHalt"
-	Msg_VoteHalt_FullMethodName      = "/zerone.emergency.v1.Msg/VoteHalt"
-	Msg_ProposeRevert_FullMethodName = "/zerone.emergency.v1.Msg/ProposeRevert"
-	Msg_VoteRevert_FullMethodName    = "/zerone.emergency.v1.Msg/VoteRevert"
-	Msg_ProposeResume_FullMethodName = "/zerone.emergency.v1.Msg/ProposeResume"
-	Msg_VoteResume_FullMethodName    = "/zerone.emergency.v1.Msg/VoteResume"
-	Msg_UpdateParams_FullMethodName  = "/zerone.emergency.v1.Msg/UpdateParams"
+	Msg_ProposeHalt_FullMethodName            = "/zerone.emergency.v1.Msg/ProposeHalt"
+	Msg_VoteHalt_FullMethodName               = "/zerone.emergency.v1.Msg/VoteHalt"
+	Msg_ProposeRevert_FullMethodName          = "/zerone.emergency.v1.Msg/ProposeRevert"
+	Msg_VoteRevert_FullMethodName             = "/zerone.emergency.v1.Msg/VoteRevert"
+	Msg_ProposeResume_FullMethodName          = "/zerone.emergency.v1.Msg/ProposeResume"
+	Msg_VoteResume_FullMethodName             = "/zerone.emergency.v1.Msg/VoteResume"
+	Msg_UpdateParams_FullMethodName           = "/zerone.emergency.v1.Msg/UpdateParams"
+	Msg_ProposeStateCorrection_FullMethodName = "/zerone.emergency.v1.Msg/ProposeStateCorrection"
+	Msg_VoteStateCorrection_FullMethodName    = "/zerone.emergency.v1.Msg/VoteStateCorrection"
 )
 
 // MsgClient is the client API for Msg service.
@@ -41,6 +43,9 @@ type MsgClient interface {
 	ProposeResume(ctx context.Context, in *MsgProposeResume, opts ...grpc.CallOption) (*MsgProposeResumeResponse, error)
 	VoteResume(ctx context.Context, in *MsgVoteResume, opts ...grpc.CallOption) (*MsgVoteResumeResponse, error)
 	UpdateParams(ctx context.Context, in *MsgUpdateParams, opts ...grpc.CallOption) (*MsgUpdateParamsResponse, error)
+	// ── Circuit Breaker Gap 5: Surgical State Recovery ──
+	ProposeStateCorrection(ctx context.Context, in *MsgProposeStateCorrection, opts ...grpc.CallOption) (*MsgProposeStateCorrectionResponse, error)
+	VoteStateCorrection(ctx context.Context, in *MsgVoteStateCorrection, opts ...grpc.CallOption) (*MsgVoteStateCorrectionResponse, error)
 }
 
 type msgClient struct {
@@ -121,6 +126,26 @@ func (c *msgClient) UpdateParams(ctx context.Context, in *MsgUpdateParams, opts 
 	return out, nil
 }
 
+func (c *msgClient) ProposeStateCorrection(ctx context.Context, in *MsgProposeStateCorrection, opts ...grpc.CallOption) (*MsgProposeStateCorrectionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgProposeStateCorrectionResponse)
+	err := c.cc.Invoke(ctx, Msg_ProposeStateCorrection_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) VoteStateCorrection(ctx context.Context, in *MsgVoteStateCorrection, opts ...grpc.CallOption) (*MsgVoteStateCorrectionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgVoteStateCorrectionResponse)
+	err := c.cc.Invoke(ctx, Msg_VoteStateCorrection_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MsgServer is the server API for Msg service.
 // All implementations must embed UnimplementedMsgServer
 // for forward compatibility.
@@ -134,6 +159,9 @@ type MsgServer interface {
 	ProposeResume(context.Context, *MsgProposeResume) (*MsgProposeResumeResponse, error)
 	VoteResume(context.Context, *MsgVoteResume) (*MsgVoteResumeResponse, error)
 	UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error)
+	// ── Circuit Breaker Gap 5: Surgical State Recovery ──
+	ProposeStateCorrection(context.Context, *MsgProposeStateCorrection) (*MsgProposeStateCorrectionResponse, error)
+	VoteStateCorrection(context.Context, *MsgVoteStateCorrection) (*MsgVoteStateCorrectionResponse, error)
 	mustEmbedUnimplementedMsgServer()
 }
 
@@ -164,6 +192,12 @@ func (UnimplementedMsgServer) VoteResume(context.Context, *MsgVoteResume) (*MsgV
 }
 func (UnimplementedMsgServer) UpdateParams(context.Context, *MsgUpdateParams) (*MsgUpdateParamsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateParams not implemented")
+}
+func (UnimplementedMsgServer) ProposeStateCorrection(context.Context, *MsgProposeStateCorrection) (*MsgProposeStateCorrectionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ProposeStateCorrection not implemented")
+}
+func (UnimplementedMsgServer) VoteStateCorrection(context.Context, *MsgVoteStateCorrection) (*MsgVoteStateCorrectionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method VoteStateCorrection not implemented")
 }
 func (UnimplementedMsgServer) mustEmbedUnimplementedMsgServer() {}
 func (UnimplementedMsgServer) testEmbeddedByValue()             {}
@@ -312,6 +346,42 @@ func _Msg_UpdateParams_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Msg_ProposeStateCorrection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgProposeStateCorrection)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).ProposeStateCorrection(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_ProposeStateCorrection_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).ProposeStateCorrection(ctx, req.(*MsgProposeStateCorrection))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_VoteStateCorrection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgVoteStateCorrection)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).VoteStateCorrection(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_VoteStateCorrection_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).VoteStateCorrection(ctx, req.(*MsgVoteStateCorrection))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Msg_ServiceDesc is the grpc.ServiceDesc for Msg service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -346,6 +416,14 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateParams",
 			Handler:    _Msg_UpdateParams_Handler,
+		},
+		{
+			MethodName: "ProposeStateCorrection",
+			Handler:    _Msg_ProposeStateCorrection_Handler,
+		},
+		{
+			MethodName: "VoteStateCorrection",
+			Handler:    _Msg_VoteStateCorrection_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

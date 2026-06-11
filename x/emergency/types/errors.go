@@ -18,4 +18,8 @@ var (
 	ErrHaltRequired          = errors.Register(ModuleName, 14, "chain must be halted for this operation")
 	ErrInsufficientGuardians = errors.Register(ModuleName, 15, "insufficient total guardian stake")
 	ErrChainHalted           = errors.Register(ModuleName, 16, "chain is halted: only emergency transactions are accepted")
+	// Circuit Breaker Gap 5: surgical state recovery errors.
+	ErrCorrectionNotFound    = errors.Register(ModuleName, 17, "state correction proposal not found")
+	ErrCorrectionNotPending  = errors.Register(ModuleName, 18, "state correction proposal is not in pending status")
+	ErrNoMutations           = errors.Register(ModuleName, 19, "state correction must contain at least one mutation")
 )

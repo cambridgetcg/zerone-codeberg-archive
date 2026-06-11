@@ -392,6 +392,39 @@ func (k msgServer) UpdateParams(goCtx context.Context, msg *types.MsgUpdateParam
 	return &types.MsgUpdateParamsResponse{}, nil
 }
 
+// ─── Circuit Breaker Gap 5: Surgical State Recovery ──────────────────────────
+
+// ProposeStateCorrection creates a surgical state-correction proposal.
+// Proposer must be a Guardian-tier validator.
+func (k msgServer) ProposeStateCorrection(goCtx context.Context, msg *types.MsgProposeStateCorrection) (*types.MsgProposeStateCorrectionResponse, error) {
+	if !k.IsGuardian(goCtx, msg.Proposer) {
+		return nil, fmt.Errorf("%w: %s", types.ErrNotGuardian, msg.Proposer)
+	}
+
+	id, err := k.Keeper.ProposeStateCorrection(goCtx, msg.Proposer, msg.Mutations, msg.Rationale)
+	if err != nil {
+		return nil, err
+	}
+	return &types.MsgProposeStateCorrectionResponse{ProposalId: id}, nil
+}
+
+// VoteStateCorrection records a Guardian vote on a state-correction proposal.
+// Approvals >= HaltQuorum fraction of active guardians triggers approval.
+func (k msgServer) VoteStateCorrection(goCtx context.Context, msg *types.MsgVoteStateCorrection) (*types.MsgVoteStateCorrectionResponse, error) {
+	if !k.IsGuardian(goCtx, msg.Voter) {
+		return nil, fmt.Errorf("%w: %s", types.ErrNotGuardian, msg.Voter)
+	}
+
+	quorumReached, approved, err := k.Keeper.VoteStateCorrection(goCtx, msg.Voter, msg.ProposalId, msg.Approve)
+	if err != nil {
+		return nil, err
+	}
+	return &types.MsgVoteStateCorrectionResponse{
+		QuorumReached:      quorumReached,
+		CorrectionApproved: approved,
+	}, nil
+}
+
 // --- Helpers ---
 
 func (k msgServer) addVoteAudit(ctx context.Context, action types.AuditAction, voter, ceremonyId string) {

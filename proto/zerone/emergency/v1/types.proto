@@ -85,3 +85,35 @@ message EmergencyAuditEntry {
   string ceremony_id = 5;
   string details = 6;
 }
+
+// ─── Circuit Breaker Gap 5: Surgical State Recovery ──────────────────────────
+//
+// StateMutation describes a single KV-store patch that Guardians are proposing
+// to apply as a surgical correction. It records both the expected old value and
+// the intended new value so node operators and auditors can verify the intent
+// off-chain before the proposal reaches quorum.
+//
+// Execution: on quorum approval the mutation list is emitted as a chain event.
+// Node operators may also apply them during a planned upgrade handler using the
+// on-chain record as the authoritative correction specification.
+message StateMutation {
+  string module_name  = 1; // target module KV store (e.g. "knowledge", "liquiditypool")
+  bytes  key          = 2; // raw KV store key
+  bytes  old_value    = 3; // expected current value (guards against stale proposals)
+  bytes  new_value    = 4; // replacement value (empty = delete key)
+  string description  = 5; // human-readable description of this individual fix
+}
+
+// StateCorrectionProposal is the on-chain record of a guardian-approved surgical
+// state correction. Status transitions: pending → approved | rejected.
+message StateCorrectionProposal {
+  string id                     = 1;
+  string proposer               = 2;
+  repeated StateMutation mutations = 3;
+  string rationale              = 4;  // why this correction is needed
+  uint64 proposed_at_block      = 5;
+  repeated string approvals     = 6;  // bech32 addresses that voted approve
+  repeated string rejections    = 7;  // bech32 addresses that voted reject
+  string status                 = 8;  // "pending" | "approved" | "rejected"
+  uint64 approved_at_block      = 9;  // 0 if not yet approved
+}

@@ -239,6 +239,8 @@ func RegisterCodec(cdc *codec.LegacyAmino) {
 	cdc.RegisterConcrete(&MsgProposeResume{}, "emergency/MsgProposeResume", nil)
 	cdc.RegisterConcrete(&MsgVoteResume{}, "emergency/MsgVoteResume", nil)
 	cdc.RegisterConcrete(&MsgUpdateParams{}, "emergency/MsgUpdateParams", nil)
+	cdc.RegisterConcrete(&MsgProposeStateCorrection{}, "emergency/MsgProposeStateCorrection", nil)
+	cdc.RegisterConcrete(&MsgVoteStateCorrection{}, "emergency/MsgVoteStateCorrection", nil)
 }
 
 func RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
@@ -250,6 +252,8 @@ func RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
 		&MsgProposeResume{},
 		&MsgVoteResume{},
 		&MsgUpdateParams{},
+		&MsgProposeStateCorrection{},
+		&MsgVoteStateCorrection{},
 	)
 }
 

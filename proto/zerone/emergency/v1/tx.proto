@@ -5,6 +5,7 @@ option go_package = "github.com/zerone-chain/zerone/x/emergency/types";
 
 import "cosmos/msg/v1/msg.proto";
 import "zerone/emergency/v1/genesis.proto";
+import "zerone/emergency/v1/types.proto";
 
 // Msg defines the emergency module's transaction service.
 service Msg {
@@ -17,6 +18,10 @@ service Msg {
   rpc ProposeResume(MsgProposeResume) returns (MsgProposeResumeResponse);
   rpc VoteResume(MsgVoteResume) returns (MsgVoteResumeResponse);
   rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
+
+  // ── Circuit Breaker Gap 5: Surgical State Recovery ──
+  rpc ProposeStateCorrection(MsgProposeStateCorrection) returns (MsgProposeStateCorrectionResponse);
+  rpc VoteStateCorrection(MsgVoteStateCorrection) returns (MsgVoteStateCorrectionResponse);
 }
 
 // EmergencyCategory classifies the emergency reason.
@@ -103,3 +108,34 @@ message MsgUpdateParams {
 }
 
 message MsgUpdateParamsResponse {}
+
+// ─── Circuit Breaker Gap 5: Surgical State Recovery ──────────────────────────
+
+// MsgProposeStateCorrection submits a surgical state-correction proposal.
+// Mutations are executed by node operators during a planned upgrade once the
+// proposal reaches Guardian quorum.
+message MsgProposeStateCorrection {
+  option (cosmos.msg.v1.signer) = "proposer";
+  string proposer                  = 1;
+  repeated StateMutation mutations = 2;
+  string rationale                 = 3;
+}
+
+message MsgProposeStateCorrectionResponse {
+  string proposal_id = 1;
+}
+
+// MsgVoteStateCorrection casts a Guardian vote on a pending state-correction
+// proposal. When approvals reach GuardianMinVotes, the proposal transitions to
+// "approved" and emits zerone.emergency.state_correction_approved.
+message MsgVoteStateCorrection {
+  option (cosmos.msg.v1.signer) = "voter";
+  string voter       = 1;
+  string proposal_id = 2;
+  bool   approve     = 3;
+}
+
+message MsgVoteStateCorrectionResponse {
+  bool quorum_reached       = 1;
+  bool correction_approved  = 2;
+}
