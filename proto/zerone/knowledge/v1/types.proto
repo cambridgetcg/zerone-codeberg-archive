@@ -96,6 +96,32 @@ enum InferenceType {
   INFERENCE_TYPE_CITATION    = 6;  // Plain citation without an inference claim
 }
 
+// AttackTargetType specifies which component of a Toulmin argument is being
+// attacked in a CONTRADICTS relation (Structured Deliberation Gap 2 — Dung
+// argumentation framework).
+//
+// Dung (1995): "On the acceptability of arguments and its fundamental role in
+// nonmonotonic reasoning, logic programming and n-person games." A Dung AF is
+// a pair ⟨A, attacks⟩. Specifying the COMPONENT being attacked allows formal
+// AF solvers to distinguish:
+//   · Warrant attack  → challenges the inferential bridge between data and claim
+//   · Backing attack  → challenges the authority/evidence behind the warrant
+//   · Data attack     → challenges the evidence/grounds itself
+//   · Qualifier attack → challenges the stated certainty level (qualifier_bps)
+//   · Conclusion attack → challenges the central claim directly
+//
+// Only meaningful when the FactRelation or ClaimRelation has
+// relation = RELATION_TYPE_CONTRADICTS. Ignored (treated as UNSPECIFIED)
+// for all other relation types.
+enum AttackTargetType {
+  ATTACK_TARGET_TYPE_UNSPECIFIED = 0;  // general contradiction; no specific Toulmin component targeted
+  ATTACK_TARGET_TYPE_CONCLUSION  = 1;  // attacks the main claim / conclusion directly
+  ATTACK_TARGET_TYPE_WARRANT     = 2;  // attacks the inferential bridge (requires Toulmin Gap 1)
+  ATTACK_TARGET_TYPE_BACKING     = 3;  // attacks the justification behind the warrant
+  ATTACK_TARGET_TYPE_DATA        = 4;  // attacks the evidence / grounds of the original argument
+  ATTACK_TARGET_TYPE_QUALIFIER   = 5;  // disputes the stated certainty level (qualifier_bps)
+}
+
 // FactRelation is a typed, directional edge in the knowledge graph.
 message FactRelation {
   string source_fact_id   = 1;  // The fact declaring the relationship
@@ -112,6 +138,10 @@ message FactRelation {
   // the edge inherits the source claim's method. Used when a claim spans
   // multiple methodologies (cross-method citation).
   string method_id = 8;
+  // Structured Deliberation Gap 2 (Dung AF): which Toulmin component this
+  // CONTRADICTS relation is attacking. UNSPECIFIED = general contradiction.
+  // Only meaningful when relation = RELATION_TYPE_CONTRADICTS.
+  AttackTargetType attack_target = 9;
 }
 
 // ClaimRelation declares a typed relationship from a claim to an existing fact.
@@ -121,6 +151,10 @@ message ClaimRelation {
   InferenceType inference = 3;
   uint64 inference_strength_bps = 4;
   string method_id = 5;  // Optional; empty = inherit from parent claim
+  // Structured Deliberation Gap 2 (Dung AF): which Toulmin component this
+  // CONTRADICTS relation is attacking. UNSPECIFIED = general contradiction.
+  // Only meaningful when relation = RELATION_TYPE_CONTRADICTS.
+  AttackTargetType attack_target = 6;
 }
 
 // NormativeCommitment is a value, principle, or stance the chain holds,
