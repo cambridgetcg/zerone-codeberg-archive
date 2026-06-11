@@ -496,6 +496,32 @@ message Fact {
   // Populated by CompleteRound REJECT path when sublation is detected.
   // Appended — never overwritten.
   repeated string sublated_claim_ids = 81;
+
+  // ── Hegelian Dialectic Gap 3: Progressive Enrichment ─────────────────────
+  //
+  // enrichment_count: the number of times this Fact has been the Hegelian
+  // successor of a sublated claim. Each sublation is an enrichment event —
+  // the rejected claim's determination, though inadequate in its immediate
+  // form, was not lost; its essential content was preserved and elevated in
+  // this Fact. The enrichment count measures how many prior inquiries
+  // contributed to the formation of this determination.
+  //
+  // Hegel, Science of Logic: "the higher unity is the determinate unity, the
+  // unity that contains within itself as moments the very distinctions it
+  // supersedes." A fact with high enrichment_count carries the content of
+  // many sublated inadequate attempts — it is epistemically richer than a
+  // fact that arrived at its determination directly.
+  //
+  // Monotonically increasing; incremented in recordSublation (hegelian_sublation.go).
+  // Always equals len(sublated_claim_ids) — maintained alongside for O(1) access.
+  //
+  // Hegelian Dialectic Gap 3 (★★★☆☆). Default: 0 (no prior sublations).
+  uint64 enrichment_count = 82;
+
+  // last_enriched_at_block: block height of the most recent sublation enrichment.
+  // Zero when enrichment_count == 0. Updated each time a new claim is sublated
+  // into this Fact — records when the determination was last deepened.
+  uint64 last_enriched_at_block = 83;
 }
 
 // CurriculumTier orders training examples by difficulty and foundational depth.

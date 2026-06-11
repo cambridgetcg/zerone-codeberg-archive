@@ -2491,8 +2491,32 @@ type Fact struct {
 	// Populated by CompleteRound REJECT path when sublation is detected.
 	// Appended — never overwritten.
 	SublatedClaimIds []string `protobuf:"bytes,81,rep,name=sublated_claim_ids,json=sublatedClaimIds,proto3" json:"sublated_claim_ids,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// ── Hegelian Dialectic Gap 3: Progressive Enrichment ─────────────────────
+	//
+	// enrichment_count: the number of times this Fact has been the Hegelian
+	// successor of a sublated claim. Each sublation is an enrichment event —
+	// the rejected claim's determination, though inadequate in its immediate
+	// form, was not lost; its essential content was preserved and elevated in
+	// this Fact. The enrichment count measures how many prior inquiries
+	// contributed to the formation of this determination.
+	//
+	// Hegel, Science of Logic: "the higher unity is the determinate unity, the
+	// unity that contains within itself as moments the very distinctions it
+	// supersedes." A fact with high enrichment_count carries the content of
+	// many sublated inadequate attempts — it is epistemically richer than a
+	// fact that arrived at its determination directly.
+	//
+	// Monotonically increasing; incremented in recordSublation (hegelian_sublation.go).
+	// Always equals len(sublated_claim_ids) — maintained alongside for O(1) access.
+	//
+	// Hegelian Dialectic Gap 3 (★★★☆☆). Default: 0 (no prior sublations).
+	EnrichmentCount uint64 `protobuf:"varint,82,opt,name=enrichment_count,json=enrichmentCount,proto3" json:"enrichment_count,omitempty"`
+	// last_enriched_at_block: block height of the most recent sublation enrichment.
+	// Zero when enrichment_count == 0. Updated each time a new claim is sublated
+	// into this Fact — records when the determination was last deepened.
+	LastEnrichedAtBlock uint64 `protobuf:"varint,83,opt,name=last_enriched_at_block,json=lastEnrichedAtBlock,proto3" json:"last_enriched_at_block,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *Fact) Reset() {
@@ -3020,6 +3044,20 @@ func (x *Fact) GetSublatedClaimIds() []string {
 		return x.SublatedClaimIds
 	}
 	return nil
+}
+
+func (x *Fact) GetEnrichmentCount() uint64 {
+	if x != nil {
+		return x.EnrichmentCount
+	}
+	return 0
+}
+
+func (x *Fact) GetLastEnrichedAtBlock() uint64 {
+	if x != nil {
+		return x.LastEnrichedAtBlock
+	}
+	return 0
 }
 
 // TokenizerSpec is the governance-ratified contract that names the special
@@ -9879,7 +9917,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x05scope\x18\x04 \x01(\tR\x05scope\x12%\n" +
 	"\x0etemporal_scope\x18\x05 \x01(\tR\rtemporalScope\x12\x1c\n" +
 	"\tnegatable\x18\x06 \x01(\bR\tnegatable\x12\x12\n" +
-	"\x04tags\x18\a \x03(\tR\x04tags\"\xa0\x18\n" +
+	"\x04tags\x18\a \x03(\tR\x04tags\"\x80\x19\n" +
 	"\x04Fact\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12\x16\n" +
@@ -9962,7 +10000,9 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\abacking\x18N \x01(\tR\abacking\x12#\n" +
 	"\rqualifier_bps\x18O \x01(\x04R\fqualifierBps\x12G\n" +
 	" corroboration_severity_score_bps\x18P \x01(\x04R\x1dcorroborationSeverityScoreBps\x12,\n" +
-	"\x12sublated_claim_ids\x18Q \x03(\tR\x10sublatedClaimIds\"\xe0\x05\n" +
+	"\x12sublated_claim_ids\x18Q \x03(\tR\x10sublatedClaimIds\x12)\n" +
+	"\x10enrichment_count\x18R \x01(\x04R\x0fenrichmentCount\x123\n" +
+	"\x16last_enriched_at_block\x18S \x01(\x04R\x13lastEnrichedAtBlock\"\xe0\x05\n" +
 	"\rTokenizerSpec\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x04R\aversion\x12*\n" +
 	"\x11ratified_at_block\x18\x02 \x01(\x04R\x0fratifiedAtBlock\x12.\n" +

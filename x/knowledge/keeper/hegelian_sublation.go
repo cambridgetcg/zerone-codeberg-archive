@@ -88,8 +88,14 @@ func (k Keeper) recordSublation(ctx context.Context, claim *types.Claim) {
 	claim.SublationAtBlock = uint64(sdkCtx.BlockHeight())
 
 	// Reverse link: the successor Fact records which claim it sublated.
+	// Hegelian Gap 3 (Progressive Enrichment): also increment the fact's
+	// enrichment_count and update last_enriched_at_block. Each sublation is an
+	// enrichment event — the rejected claim's determination was not lost; its
+	// content was preserved and elevated in the successor Fact.
 	if successor, found := k.GetFact(ctx, successorID); found && successor != nil {
 		successor.SublatedClaimIds = append(successor.SublatedClaimIds, claim.Id)
+		successor.EnrichmentCount++
+		successor.LastEnrichedAtBlock = uint64(sdkCtx.BlockHeight())
 		_ = k.SetFact(ctx, successor) // best-effort; main REJECT flow is unaffected
 	}
 
