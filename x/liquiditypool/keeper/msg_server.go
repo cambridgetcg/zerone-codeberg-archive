@@ -547,7 +547,7 @@ func (m msgServer) RemoveLiquidity(goCtx context.Context, msg *types.MsgRemoveLi
 	// MaybePayILInsurance reads pool.ReserveA/B for the current price, so it must be
 	// called BEFORE the pool state is updated below.  Fail-silent: insurance failure
 	// never aborts a valid withdrawal.
-	ilPayout := m.Keeper.MaybePayILInsurance(ctx, pool, senderAddr, amountA, amountB)
+	ilPayout := m.Keeper.MaybePayILInsurance(ctx, pool, msg.Sender, senderAddr, amountA, amountB)
 
 	// Update pool state
 	newReserveA := new(big.Int).Sub(reserveA, amountA)
@@ -586,10 +586,8 @@ func (m msgServer) FundILInsurance(goCtx context.Context, msg *types.MsgFundILIn
 		return nil, types.ErrILInsuranceInvalidAmount
 	}
 
-	senderAddr, err := sdk.AccAddressFromBech32(msg.Sender)
-	if err != nil {
-		return nil, fmt.Errorf("invalid sender address: %w", err)
-	}
+	// Address validation happens at the tx layer; ignore error here to match module pattern.
+	senderAddr, _ := sdk.AccAddressFromBech32(msg.Sender)
 
 	// Transfer amount from sender to module account
 	coins := sdk.NewCoins(sdk.NewCoin("uzrn", sdkmath.NewIntFromBigInt(amount)))

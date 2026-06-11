@@ -81,24 +81,23 @@ func ComputeILBps(depositPrice, currentPrice *big.Int) uint64 {
 // IL payout — called from RemoveLiquidity
 // ────────────────────────────────────────────────────────────────────────────
 
-// MaybePayILInsurance computes and distributes IL compensation to senderAddr.
+// MaybePayILInsurance computes and distributes IL compensation to the withdrawing LP.
 //
 // Prerequisites (checked internally, fail-silent when not met):
 //   - Params.IlInsuranceThresholdBps > 0 (insurance enabled)
-//   - LpMinerPosition.DepositPriceAPerB is set and the pool has uzrn on one side
+//   - Pool contains "uzrn" on one side
+//   - LpMinerPosition.DepositPriceAPerB is set (LP deposited after Gap 3 upgrade)
 //   - Computed IL ≥ threshold
 //   - Fund balance > 0
 //
-// The payout is min(IL × maxCoverage, fundBalance), transferred from the
-// module account to senderAddr.
-//
-// pool is the pool being withdrawn from; senderAddr the withdrawing LP.
-// amountA / amountB are the raw amounts being returned (before this call modifies state).
-//
-// Returns the payout amount in uzrn (0 if nothing was paid).
+// senderStr is the raw msg.Sender string used for KV position lookup (consistent with
+// how AddLiquidity stores the deposit price). senderAddr is used for the coin transfer.
+// amountA / amountB are the assets being returned to the sender (pre-pool-state-update).
+// Returns the payout in uzrn (0 if nothing was paid).
 func (k Keeper) MaybePayILInsurance(
 	ctx sdk.Context,
 	pool *types.Pool,
+	senderStr string,
 	senderAddr sdk.AccAddress,
 	amountA, amountB *big.Int,
 ) *big.Int {
@@ -125,8 +124,9 @@ func (k Keeper) MaybePayILInsurance(
 		return zeroPayout
 	}
 
-	// Load deposit price from LP miner position
-	pos := k.GetLpMinerPosition(ctx, pool.PoolId, senderAddr.String())
+	// Load deposit price from LP miner position using the raw sender string
+	// (consistent with AddLiquidity's write path which uses msg.Sender directly).
+	pos := k.GetLpMinerPosition(ctx, pool.PoolId, senderStr)
 	if pos == nil || pos.DepositPriceAPerB == "" {
 		return zeroPayout // no deposit price recorded (pre-IL-insurance LP or genesis LP)
 	}
