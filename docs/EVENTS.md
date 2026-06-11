@@ -2049,6 +2049,29 @@ LP miner claimed their accumulated rewards.
 - `miner` -- claimer address
 - `amount` -- uzrn transferred to the miner
 
+### zerone.liquiditypool.bonding_curve_pool_created
+New bonding curve (single-asset) pool created. Emitted by `MsgCreatePool` when
+`pool_type = POOL_TYPE_BONDING_CURVE`. Liquidity Gap 4.
+- `pool_id` -- assigned pool identifier
+- `denom_a` -- reserve token (e.g. `uzrn`)
+- `denom_b` -- continuous token denom (minted/burned on demand)
+- `reserve_a` -- initial reserve amount (= `amount_a` from `MsgCreatePool`)
+- `initial_supply` -- initial continuous token supply minted to creator (= `reserve_a`, 1:1)
+- `constant_reserve_ratio_bps` -- CRR in basis points (must be 1,000,000 = 100% in v1)
+- `creator` -- governance authority address
+
+### zerone.liquiditypool.bonding_curve_swap
+Bonding curve buy or sell executed. Emitted by `MsgSwap` on
+`POOL_TYPE_BONDING_CURVE` pools. Liquidity Gap 4.
+- `pool_id` -- pool identifier
+- `sender` -- swapper address
+- `token_in` -- denom sent by swapper
+- `amount_in` -- amount sent (bigint string)
+- `token_out` -- denom received by swapper
+- `amount_out` -- amount received after fee deduction (bigint string)
+- `fee` -- fee deducted from output (bigint string; "0" when `swap_fee_bps = 0`)
+- `direction` -- `"buy"` (denom_a → denom_b, mints) or `"sell"` (denom_b → denom_a, burns)
+
 ---
 
 ## ontology
