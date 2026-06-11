@@ -5011,8 +5011,26 @@ type Claim struct {
 	// false (the default) means either: no rescue declared, rescue target was not
 	// rejected, or the new claim genuinely expands falsifiability.
 	IsPotentiallyAdHoc bool `protobuf:"varint,40,opt,name=is_potentially_ad_hoc,json=isPotentiallyAdHoc,proto3" json:"is_potentially_ad_hoc,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// ── Socratic Elenctic Self-Consistency (Socratic Dialectic Gap 1) ──────────
+	//
+	// is_self_contradictory: set at claim creation when Params.socratic_check_enabled
+	// is true, the new claim has a canonical_form, and an existing on-chain fact
+	// submitted by the SAME submitter carries the logically OPPOSING canonical form.
+	//
+	// This encodes the Socratic elenchus: the interlocutor is trapped by their own
+	// prior commitments. The chain detects when a submitter's new claim directly
+	// negates something they have previously asserted and had accepted as fact.
+	//
+	// Informational and non-blocking. The claim proceeds to PoT regardless.
+	// Verifiers see the self-contradiction explicitly and can weight accordingly.
+	// Distinct from ConflictingFactId (which flags conflict with ANY submitter's fact).
+	IsSelfContradictory bool `protobuf:"varint,41,opt,name=is_self_contradictory,json=isSelfContradictory,proto3" json:"is_self_contradictory,omitempty"`
+	// self_contradiction_fact_id: the ID of the existing accepted fact (by the same
+	// submitter) whose canonical form opposes the new claim's canonical form.
+	// Empty when is_self_contradictory = false. Non-empty ↔ is_self_contradictory.
+	SelfContradictionFactId string `protobuf:"bytes,42,opt,name=self_contradiction_fact_id,json=selfContradictionFactId,proto3" json:"self_contradiction_fact_id,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *Claim) Reset() {
@@ -5323,6 +5341,20 @@ func (x *Claim) GetIsPotentiallyAdHoc() bool {
 		return x.IsPotentiallyAdHoc
 	}
 	return false
+}
+
+func (x *Claim) GetIsSelfContradictory() bool {
+	if x != nil {
+		return x.IsSelfContradictory
+	}
+	return false
+}
+
+func (x *Claim) GetSelfContradictionFactId() string {
+	if x != nil {
+		return x.SelfContradictionFactId
+	}
+	return ""
 }
 
 // PreRegistration records a submitter's declared intent to submit a claim
@@ -9801,7 +9833,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x06format\x18\x01 \x01(\x0e2 .zerone.knowledge.v1.ProofFormatR\x06format\x12+\n" +
 	"\x11certificate_bytes\x18\x02 \x01(\fR\x10certificateBytes\x12#\n" +
 	"\rformal_system\x18\x03 \x01(\tR\fformalSystem\x12(\n" +
-	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\xaa\x0e\n" +
+	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\x9b\x0f\n" +
 	"\x05Claim\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\ffact_content\x18\x02 \x01(\tR\vfactContent\x12\x16\n" +
@@ -9846,7 +9878,9 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\rqualifier_bps\x18% \x01(\x04R\fqualifierBps\x12.\n" +
 	"\x13conflicting_fact_id\x18& \x01(\tR\x11conflictingFactId\x12(\n" +
 	"\x10rescues_claim_id\x18' \x01(\tR\x0erescuesClaimId\x121\n" +
-	"\x15is_potentially_ad_hoc\x18( \x01(\bR\x12isPotentiallyAdHoc\"\xf5\x02\n" +
+	"\x15is_potentially_ad_hoc\x18( \x01(\bR\x12isPotentiallyAdHoc\x122\n" +
+	"\x15is_self_contradictory\x18) \x01(\bR\x13isSelfContradictory\x12;\n" +
+	"\x1aself_contradiction_fact_id\x18* \x01(\tR\x17selfContradictionFactId\"\xf5\x02\n" +
 	"\x0fPreRegistration\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
 	"\tsubmitter\x18\x02 \x01(\tR\tsubmitter\x12!\n" +

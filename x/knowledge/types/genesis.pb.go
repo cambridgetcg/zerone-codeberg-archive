@@ -525,8 +525,19 @@ type Params struct {
 	//
 	// Formal Logic Brief Gap 3 (★★★☆☆). Default: false.
 	ConstraintCheckEnabled bool `protobuf:"varint,185,opt,name=constraint_check_enabled,json=constraintCheckEnabled,proto3" json:"constraint_check_enabled,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// socratic_check_enabled: when true, MsgSubmitClaim detects when the submitter
+	// has an existing accepted Fact whose canonical form OPPOSES the new claim's
+	// canonical form. This encodes the Socratic elenchus: a submitter is trapped by
+	// their own prior commitments. The detection is informational and non-blocking.
+	// Sets Claim.IsSelfContradictory and emits zerone.knowledge.socratic_self_contradiction_detected.
+	//
+	// Requires Params.constraint_check_enabled = true is NOT required — this is a
+	// distinct check with a submitter-scope filter (only the same submitter's facts).
+	//
+	// Socratic Dialectic Brief Gap 1 (★★★☆☆). Default: false.
+	SocraticCheckEnabled bool `protobuf:"varint,186,opt,name=socratic_check_enabled,json=socraticCheckEnabled,proto3" json:"socratic_check_enabled,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -1854,6 +1865,13 @@ func (x *Params) GetConstraintCheckEnabled() bool {
 	return false
 }
 
+func (x *Params) GetSocraticCheckEnabled() bool {
+	if x != nil {
+		return x.SocraticCheckEnabled
+	}
+	return false
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -2101,7 +2119,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\x9c\\\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xd3\\\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2288,7 +2306,8 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"-phenomenological_corroboration_confidence_bps\x18\xb6\x01 \x01(\x04R*phenomenologicalCorroborationConfidenceBps\x12D\n" +
 	"\x1eoracle_freshness_window_blocks\x18\xb7\x01 \x01(\x04R\x1boracleFreshnessWindowBlocks\x12;\n" +
 	"\x19transitive_relation_verbs\x18\xb8\x01 \x03(\tR\x17transitiveRelationVerbs\x129\n" +
-	"\x18constraint_check_enabled\x18\xb9\x01 \x01(\bR\x16constraintCheckEnabled\x1aN\n" +
+	"\x18constraint_check_enabled\x18\xb9\x01 \x01(\bR\x16constraintCheckEnabled\x125\n" +
+	"\x16socratic_check_enabled\x18\xba\x01 \x01(\bR\x14socraticCheckEnabled\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xb8\x0f\n" +

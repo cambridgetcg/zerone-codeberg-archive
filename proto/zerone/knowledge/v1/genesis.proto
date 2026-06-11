@@ -560,6 +560,18 @@ message Params {
   //
   // Formal Logic Brief Gap 3 (★★★☆☆). Default: false.
   bool constraint_check_enabled = 185;
+
+  // socratic_check_enabled: when true, MsgSubmitClaim detects when the submitter
+  // has an existing accepted Fact whose canonical form OPPOSES the new claim's
+  // canonical form. This encodes the Socratic elenchus: a submitter is trapped by
+  // their own prior commitments. The detection is informational and non-blocking.
+  // Sets Claim.IsSelfContradictory and emits zerone.knowledge.socratic_self_contradiction_detected.
+  //
+  // Requires Params.constraint_check_enabled = true is NOT required — this is a
+  // distinct check with a submitter-scope filter (only the same submitter's facts).
+  //
+  // Socratic Dialectic Brief Gap 1 (★★★☆☆). Default: false.
+  bool socratic_check_enabled = 186;
 }
 
 // GenesisState is the genesis state of the knowledge module.

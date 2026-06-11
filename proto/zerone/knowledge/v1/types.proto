@@ -1088,6 +1088,26 @@ message Claim {
   // false (the default) means either: no rescue declared, rescue target was not
   // rejected, or the new claim genuinely expands falsifiability.
   bool is_potentially_ad_hoc = 40;
+
+  // ── Socratic Elenctic Self-Consistency (Socratic Dialectic Gap 1) ──────────
+  //
+  // is_self_contradictory: set at claim creation when Params.socratic_check_enabled
+  // is true, the new claim has a canonical_form, and an existing on-chain fact
+  // submitted by the SAME submitter carries the logically OPPOSING canonical form.
+  //
+  // This encodes the Socratic elenchus: the interlocutor is trapped by their own
+  // prior commitments. The chain detects when a submitter's new claim directly
+  // negates something they have previously asserted and had accepted as fact.
+  //
+  // Informational and non-blocking. The claim proceeds to PoT regardless.
+  // Verifiers see the self-contradiction explicitly and can weight accordingly.
+  // Distinct from ConflictingFactId (which flags conflict with ANY submitter's fact).
+  bool is_self_contradictory = 41;
+
+  // self_contradiction_fact_id: the ID of the existing accepted fact (by the same
+  // submitter) whose canonical form opposes the new claim's canonical form.
+  // Empty when is_self_contradictory = false. Non-empty ↔ is_self_contradictory.
+  string self_contradiction_fact_id = 42;
 }
 
 // PreRegistration records a submitter's declared intent to submit a claim

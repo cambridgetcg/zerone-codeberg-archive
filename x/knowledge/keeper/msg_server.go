@@ -321,6 +321,29 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 		}
 	}
 
+	// Socratic Dialectic Gap 1 — elenctic self-consistency check.
+	// When params.SocraticCheckEnabled and the new claim has a canonical_form,
+	// check whether the SAME submitter already has an accepted Fact with the
+	// logically opposing canonical form. If so, the submitter's new claim directly
+	// contradicts something they have already asserted and had verified on-chain —
+	// the Socratic elenchus: trapped by their own prior commitments.
+	// Informational and non-blocking.
+	if params.SocraticCheckEnabled && canonicalForm != "" {
+		selfContradicted, contradictionFactID := m.keeper.CheckSocraticConsistency(ctx, msg.Submitter, canonicalForm)
+		if selfContradicted {
+			claim.IsSelfContradictory = true
+			claim.SelfContradictionFactId = contradictionFactID
+			sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
+				"zerone.knowledge.socratic_self_contradiction_detected",
+				sdk.NewAttribute("claim_id", claimID),
+				sdk.NewAttribute("self_contradiction_fact_id", contradictionFactID),
+				sdk.NewAttribute("submitter", msg.Submitter),
+				sdk.NewAttribute("canonical_form", canonicalForm),
+				sdk.NewAttribute("socratic_principle", "submitter contradicts their own prior accepted fact"),
+			))
+		}
+	}
+
 	if err := m.keeper.SetClaim(ctx, claim); err != nil {
 		return nil, err
 	}
