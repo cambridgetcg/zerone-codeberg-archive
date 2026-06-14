@@ -150,21 +150,23 @@ func (k Keeper) VoteStateCorrection(
 		}
 
 		// Emit the full mutation list as the authoritative correction specification.
-		attrs := []sdk.Attribute{
-			sdk.NewAttribute("proposal_id", prop.Id),
-			sdk.NewAttribute("proposer", prop.Proposer),
-			sdk.NewAttribute("approved_at_block", fmt.Sprintf("%d", prop.ApprovedAtBlock)),
-			sdk.NewAttribute("mutation_count", fmt.Sprintf("%d", len(prop.Mutations))),
-		}
+		// Per-mutation attributes are built dynamically; the four base attributes
+		// are inlined for event-audit scanner compatibility.
+		mutationAttrs := make([]sdk.Attribute, 0, 2*len(prop.Mutations))
 		for i, m := range prop.Mutations {
-			attrs = append(attrs,
+			mutationAttrs = append(mutationAttrs,
 				sdk.NewAttribute(fmt.Sprintf("mutation_%d_module", i), m.ModuleName),
 				sdk.NewAttribute(fmt.Sprintf("mutation_%d_description", i), m.Description),
 			)
 		}
 		sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
 			"zerone.emergency.state_correction_approved",
-			attrs...,
+			append([]sdk.Attribute{
+				sdk.NewAttribute("proposal_id", prop.Id),
+				sdk.NewAttribute("proposer", prop.Proposer),
+				sdk.NewAttribute("approved_at_block", fmt.Sprintf("%d", prop.ApprovedAtBlock)),
+				sdk.NewAttribute("mutation_count", fmt.Sprintf("%d", len(prop.Mutations))),
+			}, mutationAttrs...)...,
 		))
 		return true, true, nil
 	}
