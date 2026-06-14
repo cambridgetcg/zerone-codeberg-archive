@@ -270,6 +270,12 @@ func (k Keeper) SetTreasuryBalance(ctx sdk.Context, balance string) {
 	_ = kvStore.Set(types.TreasuryKeyPrefix, bz)
 }
 
+// GetTreasuryBalance returns the explicitly funded treasury balance.
+// This tracks deposits made via FundResearch — it is DISTINCT from the
+// stake escrow held in the same module account (those are not treasury funds).
+//
+// For the consolidated view including billing's research_fund allocation, use
+// GetConsolidatedResearchBalance which reads both sources from the bank.
 func (k Keeper) GetTreasuryBalance(ctx sdk.Context) string {
 	kvStore := k.storeService.OpenKVStore(ctx)
 	bz, err := kvStore.Get(types.TreasuryKeyPrefix)
@@ -279,6 +285,28 @@ func (k Keeper) GetTreasuryBalance(ctx sdk.Context) string {
 	var tb types.TreasuryBalance
 	proto.Unmarshal(bz, &tb)
 	return tb.Balance
+}
+
+// GetBillingResearchFundBalance returns the balance of the billing module's
+// research_fund account — the ResearchBps allocation from each billing payment.
+// This was previously invisible to x/research (Gap 6 — dual accounting).
+func (k Keeper) GetBillingResearchFundBalance(ctx sdk.Context) string {
+	coin := k.bankKeeper.GetModuleBalance(ctx, "research_fund", "uzrn")
+	return coin.Amount.String()
+}
+
+// GetConsolidatedResearchBalance returns the sum of explicit treasury funds
+// (FundResearch deposits) and the billing research_fund allocation.
+// This is the true picture of research funding across both sources — it
+// eliminates the dual-accounting gap where research_fund was invisible to
+// the research module (Gap 6).
+func (k Keeper) GetConsolidatedResearchBalance(ctx sdk.Context) string {
+	explicit, ok := sdkmath.NewIntFromString(k.GetTreasuryBalance(ctx))
+	if !ok {
+		explicit = sdkmath.ZeroInt()
+	}
+	billing := k.bankKeeper.GetModuleBalance(ctx, "research_fund", "uzrn").Amount
+	return explicit.Add(billing).String()
 }
 
 // ---------- Counters ----------

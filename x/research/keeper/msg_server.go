@@ -469,7 +469,7 @@ func (m msgServer) FundResearch(
 		return nil, fmt.Errorf("failed to fund research treasury: %w", err)
 	}
 
-	// Update treasury balance
+	// Update explicit treasury balance tracker.
 	currentBalance := new(big.Int)
 	currentBalance.SetString(m.Keeper.GetTreasuryBalance(ctx), 10)
 	newBalance := new(big.Int).Add(currentBalance, amountInt)

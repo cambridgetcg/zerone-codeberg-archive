@@ -131,6 +131,22 @@ func (m *mockBankKeeper) SendCoinsFromModuleToModule(_ context.Context, senderMo
 	return nil
 }
 
+// GetModuleBalance returns the mock balance for a module name + denom.
+// Key format matches SendCoinsFromAccountToModule (moduleName + "/" + denom).
+func (m *mockBankKeeper) GetModuleBalance(_ context.Context, moduleName string, denom string) sdk.Coin {
+	key := moduleName + "/" + denom
+	bal, ok := m.balances[key]
+	if !ok {
+		return sdk.NewCoin(denom, sdkmath.ZeroInt())
+	}
+	return sdk.NewCoin(denom, bal)
+}
+
+// setModuleBalance is a test helper to pre-populate a module account balance.
+func (m *mockBankKeeper) setModuleBalance(moduleName string, denom string, amount sdkmath.Int) {
+	m.balances[moduleName+"/"+denom] = amount
+}
+
 // -----------------------------------------------------------------------
 // Setup
 // -----------------------------------------------------------------------
@@ -1147,6 +1163,41 @@ func TestTreasuryBalance(t *testing.T) {
 	bal = k.GetTreasuryBalance(ctx)
 	if bal != "12345" {
 		t.Errorf("expected treasury 12345, got %s", bal)
+	}
+}
+
+// TestConsolidatedResearchBalance verifies Treasury Gap 6 fix:
+// GetConsolidatedResearchBalance surfaces BOTH explicit treasury funds
+// (FundResearch deposits tracked in KV) AND billing research_fund allocation
+// (previously invisible to x/research). The dual accounting risk is now
+// addressed by making both sources visible in one query.
+func TestConsolidatedResearchBalance(t *testing.T) {
+	k, ctx, bk := setupKeeper(t)
+
+	// Initially both sources are zero.
+	consolidated := k.GetConsolidatedResearchBalance(ctx)
+	if consolidated != "0" {
+		t.Errorf("expected consolidated 0, got %s", consolidated)
+	}
+
+	// Simulate explicit FundResearch deposit (KV tracker).
+	k.SetTreasuryBalance(ctx, "5000000")
+	consolidated = k.GetConsolidatedResearchBalance(ctx)
+	if consolidated != "5000000" {
+		t.Errorf("expected consolidated 5000000 (KV only), got %s", consolidated)
+	}
+
+	// Simulate billing research_fund allocation arriving via bank.
+	bk.setModuleBalance("research_fund", "uzrn", sdkmath.NewInt(2000000))
+	consolidated = k.GetConsolidatedResearchBalance(ctx)
+	if consolidated != "7000000" {
+		t.Errorf("expected consolidated 7000000 (KV + billing), got %s", consolidated)
+	}
+
+	// GetBillingResearchFundBalance reads billing source independently.
+	billingBal := k.GetBillingResearchFundBalance(ctx)
+	if billingBal != "2000000" {
+		t.Errorf("expected billing fund 2000000, got %s", billingBal)
 	}
 }
 

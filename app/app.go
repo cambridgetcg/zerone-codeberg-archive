@@ -1193,11 +1193,15 @@ func NewZeroneApp(
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
 	)
 
+	// ResearchBankAdapter adds GetModuleBalance to the SDK bank keeper so that
+	// x/research can read its treasury balance directly from the bank (Gap 6 —
+	// eliminates the dual KV tracker that could diverge from the real balance).
+	researchBankAdapter := zeroneresearchkeeper.NewResearchBankAdapter(app.BankKeeper)
 	app.ResearchKeeper = zeroneresearchkeeper.NewKeeper(
 		sdkruntime.NewKVStoreService(keys[zeroneresearchtypes.StoreKey]),
 		appCodec,
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
-		app.BankKeeper,
+		researchBankAdapter,
 	)
 
 	// ---- Alignment keeper (R7-2) ----
