@@ -220,6 +220,10 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 			votedAccept := reveal.Vote == "accept"
 			k.RecordVerifierOutcome(ctx, reveal.Verifier, verifierMethodId, reveal.ConfidenceBps, votedAccept, outcomeAccept)
 		}
+		// Bayesian Gap 2: Submitter Prior-Calibration Brier Scoring.
+		// Score the submitter's stated prior against the actual verdict.
+		// No-op when prior_probability_bps == 0 (no prior stated).
+		k.RecordSubmitterPriorOutcome(ctx, claim.Submitter, claim.PriorProbabilityBps, outcomeAccept)
 	}
 
 	var factId string

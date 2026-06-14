@@ -461,6 +461,85 @@ func ComputeVerifierResolutionScore(c *types.AgentCalibration) uint64 {
 	return score
 }
 
+// ─── Bayesian Gap 2: Submitter Prior-Calibration Brier Scoring ───────────────
+//
+// When a claim resolves to a binary verdict (ACCEPT or REJECT) and the
+// submitter stated a prior (prior_probability_bps != 0), the chain computes
+// the submitter's Brier contribution:
+//
+//	contribution = (prior_bps − outcome_bps)² / 1_000_000
+//
+// where outcome_bps = 1_000_000 for ACCEPT, 0 for REJECT.
+//
+// A perfectly calibrated submitter who declares 70% on claims accepted 70%
+// of the time will have a low Brier score. An overconfident submitter who
+// always declares 99% on rejected claims will have a high score.
+// Lower = better calibration.
+//
+// Distinct from verifier Brier scoring (RecordVerifierOutcome): this scores
+// the *submitter* role — how well they know in advance whether their claim
+// will be accepted. Well-calibrated submitters provide more epistemic signal
+// even when both calibrated and poorly-calibrated submitters submit true claims.
+//
+// Fields updated: AgentCalibration.SubmitterPriorCount,
+// SubmitterBrierSumBps, SubmitterBrierScoreBps (fields 29–31).
+//
+// Wiring: called from CompleteRound within the binary verdict block,
+// immediately after RecordVerifierOutcome for all reveals.
+
+// RecordSubmitterPriorOutcome updates the submitter's Bayesian prior-calibration
+// Brier score after a binary verdict.
+//
+// priorBps: Claim.PriorProbabilityBps — 0 means no prior stated (skip).
+// outcomeAccept: true if verdict was ACCEPT, false if REJECT.
+func (k Keeper) RecordSubmitterPriorOutcome(
+	ctx context.Context,
+	submitter string,
+	priorBps uint64,
+	outcomeAccept bool,
+) {
+	if submitter == "" || priorBps == 0 {
+		// priorBps == 0: no prior stated — backward compatible; nothing to score.
+		return
+	}
+
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+	height := uint64(sdkCtx.BlockHeight())
+
+	c := k.getOrInitCalibration(ctx, submitter)
+
+	// Outcome in BPS: 1_000_000 for ACCEPT, 0 for REJECT.
+	var oAcceptBps int64
+	if outcomeAccept {
+		oAcceptBps = 1_000_000
+	}
+
+	// Brier error = (prior_bps − outcome_bps)² / 1_000_000, normalised to BPS.
+	// diff ∈ [−1_000_000, 1_000_000] → diff² ≤ 10^12 → fits int64/uint64.
+	diff := int64(priorBps) - oAcceptBps
+	brierBps := uint64(diff*diff) / 1_000_000
+
+	c.SubmitterPriorCount++
+	c.SubmitterBrierSumBps += brierBps
+	c.SubmitterBrierScoreBps = c.SubmitterBrierSumBps / c.SubmitterPriorCount
+
+	c.LastUpdatedBlock = height
+	_ = k.SetAgentCalibration(ctx, c)
+	// EmitCalibrationUpdated fires from RecordSubmissionOutcome in the same
+	// CompleteRound call — no duplicate event needed here.
+}
+
+// RecordSubmitterPriorOutcomeForTest exports RecordSubmitterPriorOutcome for
+// white-box unit tests.
+func (k Keeper) RecordSubmitterPriorOutcomeForTest(
+	ctx context.Context,
+	submitter string,
+	priorBps uint64,
+	outcomeAccept bool,
+) {
+	k.RecordSubmitterPriorOutcome(ctx, submitter, priorBps, outcomeAccept)
+}
+
 // EmitCalibrationUpdated emits an event for off-chain observers (training
 // pipelines, dashboards) to track calibration changes without polling.
 func (k Keeper) EmitCalibrationUpdated(ctx context.Context, c *types.AgentCalibration) {
