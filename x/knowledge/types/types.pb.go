@@ -2545,8 +2545,26 @@ type Fact struct {
 	// verification panel moved belief from the submitter's prior.
 	// |confidence_bps − stated_prior_bps| = Bayesian update magnitude.
 	StatedPriorBps uint64 `protobuf:"varint,85,opt,name=stated_prior_bps,json=statedPriorBps,proto3" json:"stated_prior_bps,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// ── Formal Logic Gap 5 — Mechanical Verification Flag ────────────────────
+	//
+	// mechanically_verified: true when this fact was accepted via Tier 0 —
+	// the chain's on-chain proof certificate verifier confirmed that all
+	// premise_fact_ids are accepted on-chain facts and the certificate is
+	// structurally valid. The claim bypassed the Proof-of-Truth social panel.
+	//
+	// false (default) = accepted through normal PoT social verification.
+	//
+	// This is the formal-logic answer to the question: "was this fact
+	// certified by mechanical derivation or by social consensus?" It
+	// operationalises Gap 5 of the Formal Logic brief — making the
+	// distinction between Tier 0 (mechanical) and Tier 1 (social)
+	// verification legible on-chain.
+	//
+	// Consequent of Claim.certificate_verified — the fact inherits the
+	// verification mode from its originating claim.
+	MechanicallyVerified bool `protobuf:"varint,86,opt,name=mechanically_verified,json=mechanicallyVerified,proto3" json:"mechanically_verified,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *Fact) Reset() {
@@ -3102,6 +3120,13 @@ func (x *Fact) GetStatedPriorBps() uint64 {
 		return x.StatedPriorBps
 	}
 	return 0
+}
+
+func (x *Fact) GetMechanicallyVerified() bool {
+	if x != nil {
+		return x.MechanicallyVerified
+	}
+	return false
 }
 
 // TokenizerSpec is the governance-ratified contract that names the special
@@ -4640,6 +4665,29 @@ type AgentCalibration struct {
 	// Empty = tradition unknown (treated as unique singleton for scoring —
 	// fail-open). Contemplative Traditions Brief Gap 4 (★★☆☆☆).
 	ContemplativeTradition string `protobuf:"bytes,28,opt,name=contemplative_tradition,json=contemplativeTradition,proto3" json:"contemplative_tradition,omitempty"`
+	// ── Bayesian Gap 2: Submitter Prior-Calibration Brier Scoring ──────────────
+	//
+	// Measures how well submitters' declared priors correspond to actual verdicts.
+	// When a claim has a stated prior (prior_probability_bps != 0) and receives a
+	// binary verdict (ACCEPT or REJECT), the chain computes the Brier contribution:
+	//
+	//	contribution = (prior_bps − outcome_bps)² / 1_000_000
+	//
+	// where outcome_bps = 1_000_000 for ACCEPT, 0 for REJECT.
+	//
+	// A perfectly calibrated submitter who declares 70% on claims that are
+	// accepted 70% of the time will have a low Brier score. An overconfident
+	// submitter who always declares 99% on claims that get rejected will have a
+	// high score. Lower = better (like the original Brier scoring rule).
+	//
+	// Distinct from verifier Brier scoring (fields 20-22) which measures how well
+	// verifiers' panel-confidence votes track outcomes. This field measures the
+	// submitter role: do they know in advance how likely their claims are to be
+	// accepted? Well-calibrated submitters add more epistemic signal than
+	// poorly-calibrated ones, even when both submit true claims.
+	SubmitterPriorCount    uint64 `protobuf:"varint,29,opt,name=submitter_prior_count,json=submitterPriorCount,proto3" json:"submitter_prior_count,omitempty"`            // claims with stated prior that have been scored
+	SubmitterBrierSumBps   uint64 `protobuf:"varint,30,opt,name=submitter_brier_sum_bps,json=submitterBrierSumBps,proto3" json:"submitter_brier_sum_bps,omitempty"`       // accumulated Σ(prior−outcome)²/1M
+	SubmitterBrierScoreBps uint64 `protobuf:"varint,31,opt,name=submitter_brier_score_bps,json=submitterBrierScoreBps,proto3" json:"submitter_brier_score_bps,omitempty"` // derived mean: sum/count (lower = better calibration)
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -4854,6 +4902,27 @@ func (x *AgentCalibration) GetContemplativeTradition() string {
 		return x.ContemplativeTradition
 	}
 	return ""
+}
+
+func (x *AgentCalibration) GetSubmitterPriorCount() uint64 {
+	if x != nil {
+		return x.SubmitterPriorCount
+	}
+	return 0
+}
+
+func (x *AgentCalibration) GetSubmitterBrierSumBps() uint64 {
+	if x != nil {
+		return x.SubmitterBrierSumBps
+	}
+	return 0
+}
+
+func (x *AgentCalibration) GetSubmitterBrierScoreBps() uint64 {
+	if x != nil {
+		return x.SubmitterBrierScoreBps
+	}
+	return 0
 }
 
 // CalibrationBucket tracks prediction hit-rates within a confidence band.
@@ -10037,7 +10106,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x05scope\x18\x04 \x01(\tR\x05scope\x12%\n" +
 	"\x0etemporal_scope\x18\x05 \x01(\tR\rtemporalScope\x12\x1c\n" +
 	"\tnegatable\x18\x06 \x01(\bR\tnegatable\x12\x12\n" +
-	"\x04tags\x18\a \x03(\tR\x04tags\"\xdd\x19\n" +
+	"\x04tags\x18\a \x03(\tR\x04tags\"\x92\x1a\n" +
 	"\x04Fact\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12\x16\n" +
@@ -10124,7 +10193,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x10enrichment_count\x18R \x01(\x04R\x0fenrichmentCount\x123\n" +
 	"\x16last_enriched_at_block\x18S \x01(\x04R\x13lastEnrichedAtBlock\x121\n" +
 	"\x15superseded_by_fact_id\x18T \x01(\tR\x12supersededByFactId\x12(\n" +
-	"\x10stated_prior_bps\x18U \x01(\x04R\x0estatedPriorBps\"\xe0\x05\n" +
+	"\x10stated_prior_bps\x18U \x01(\x04R\x0estatedPriorBps\x123\n" +
+	"\x15mechanically_verified\x18V \x01(\bR\x14mechanicallyVerified\"\xe0\x05\n" +
 	"\rTokenizerSpec\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x04R\aversion\x12*\n" +
 	"\x11ratified_at_block\x18\x02 \x01(\x04R\x0fratifiedAtBlock\x12.\n" +
@@ -10271,7 +10341,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x15corroborations_earned\x18\x04 \x01(\x04R\x14corroborationsEarned\x12\x1c\n" +
 	"\tdisproven\x18\x05 \x01(\x04R\tdisproven\x12'\n" +
 	"\x0fverifier_rounds\x18\x06 \x01(\x04R\x0everifierRounds\x123\n" +
-	"\x16verifier_sum_brier_bps\x18\a \x01(\x04R\x13verifierSumBrierBps\"\x80\v\n" +
+	"\x16verifier_sum_brier_bps\x18\a \x01(\x04R\x13verifierSumBrierBps\"\xa6\f\n" +
 	"\x10AgentCalibration\x12\x18\n" +
 	"\aaddress\x18\x01 \x01(\tR\aaddress\x12!\n" +
 	"\faccount_type\x18\x02 \x01(\tR\vaccountType\x12+\n" +
@@ -10300,7 +10370,10 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x0forganization_id\x18\x19 \x01(\tR\x0eorganizationId\x12<\n" +
 	"\x1aattentional_practice_hours\x18\x1a \x01(\x04R\x18attentionalPracticeHours\x12G\n" +
 	" attentional_practice_verified_by\x18\x1b \x01(\tR\x1dattentionalPracticeVerifiedBy\x127\n" +
-	"\x17contemplative_tradition\x18\x1c \x01(\tR\x16contemplativeTradition\x1ac\n" +
+	"\x17contemplative_tradition\x18\x1c \x01(\tR\x16contemplativeTradition\x122\n" +
+	"\x15submitter_prior_count\x18\x1d \x01(\x04R\x13submitterPriorCount\x125\n" +
+	"\x17submitter_brier_sum_bps\x18\x1e \x01(\x04R\x14submitterBrierSumBps\x129\n" +
+	"\x19submitter_brier_score_bps\x18\x1f \x01(\x04R\x16submitterBrierScoreBps\x1ac\n" +
 	"\x0ePerMethodEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12;\n" +
 	"\x05value\x18\x02 \x01(\v2%.zerone.knowledge.v1.AgentMethodStatsR\x05value:\x028\x01\"\xb5\x01\n" +

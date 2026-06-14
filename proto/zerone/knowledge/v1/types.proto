@@ -554,6 +554,25 @@ message Fact {
   // verification panel moved belief from the submitter's prior.
   // |confidence_bps − stated_prior_bps| = Bayesian update magnitude.
   uint64 stated_prior_bps = 85;
+
+  // ── Formal Logic Gap 5 — Mechanical Verification Flag ────────────────────
+  //
+  // mechanically_verified: true when this fact was accepted via Tier 0 —
+  // the chain's on-chain proof certificate verifier confirmed that all
+  // premise_fact_ids are accepted on-chain facts and the certificate is
+  // structurally valid. The claim bypassed the Proof-of-Truth social panel.
+  //
+  // false (default) = accepted through normal PoT social verification.
+  //
+  // This is the formal-logic answer to the question: "was this fact
+  // certified by mechanical derivation or by social consensus?" It
+  // operationalises Gap 5 of the Formal Logic brief — making the
+  // distinction between Tier 0 (mechanical) and Tier 1 (social)
+  // verification legible on-chain.
+  //
+  // Consequent of Claim.certificate_verified — the fact inherits the
+  // verification mode from its originating claim.
+  bool mechanically_verified = 86;
 }
 
 // CurriculumTier orders training examples by difficulty and foundational depth.
@@ -950,6 +969,28 @@ message AgentCalibration {
   // Empty = tradition unknown (treated as unique singleton for scoring —
   // fail-open). Contemplative Traditions Brief Gap 4 (★★☆☆☆).
   string contemplative_tradition = 28;
+
+  // ── Bayesian Gap 2: Submitter Prior-Calibration Brier Scoring ──────────────
+  //
+  // Measures how well submitters' declared priors correspond to actual verdicts.
+  // When a claim has a stated prior (prior_probability_bps != 0) and receives a
+  // binary verdict (ACCEPT or REJECT), the chain computes the Brier contribution:
+  //   contribution = (prior_bps − outcome_bps)² / 1_000_000
+  // where outcome_bps = 1_000_000 for ACCEPT, 0 for REJECT.
+  //
+  // A perfectly calibrated submitter who declares 70% on claims that are
+  // accepted 70% of the time will have a low Brier score. An overconfident
+  // submitter who always declares 99% on claims that get rejected will have a
+  // high score. Lower = better (like the original Brier scoring rule).
+  //
+  // Distinct from verifier Brier scoring (fields 20-22) which measures how well
+  // verifiers' panel-confidence votes track outcomes. This field measures the
+  // submitter role: do they know in advance how likely their claims are to be
+  // accepted? Well-calibrated submitters add more epistemic signal than
+  // poorly-calibrated ones, even when both submit true claims.
+  uint64 submitter_prior_count    = 29; // claims with stated prior that have been scored
+  uint64 submitter_brier_sum_bps  = 30; // accumulated Σ(prior−outcome)²/1M
+  uint64 submitter_brier_score_bps = 31; // derived mean: sum/count (lower = better calibration)
 }
 
 // CalibrationBucket tracks prediction hit-rates within a confidence band.

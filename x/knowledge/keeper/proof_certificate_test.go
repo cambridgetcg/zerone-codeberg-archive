@@ -325,3 +325,105 @@ func TestProofCert_BypassEnabledAutoAccepts(t *testing.T) {
 	})
 	require.True(t, created, "a fact should be created from the auto-accepted claim")
 }
+
+// ── Formal Logic Gap 5 — mechanically_verified flag ───────────────────────
+//
+// Gap 5 makes the Tier 0 / Tier 1 distinction legible on-chain:
+// a fact accepted via proof-certificate bypass carries mechanically_verified=true;
+// a fact accepted through social PoT carries mechanically_verified=false (default).
+
+// TestProofCert_MechanicallyVerifiedFlagSetOnAutoAccept checks that a fact
+// created via Tier 0 bypass has MechanicallyVerified = true.
+func TestProofCert_MechanicallyVerifiedFlagSetOnAutoAccept(t *testing.T) {
+	k, ctx, _ := setupKnowledgeTestWithBank(t)
+
+	params, err := k.GetParams(ctx)
+	require.NoError(t, err)
+	params.ProofCertificateBypassEnabled = true
+	require.NoError(t, k.SetParams(ctx, params))
+
+	premise := makeTestFact(t, k, ctx, "fact-gap5-premise", "axiom: A and B implies B", "logic", "tautologies", makeValidBech32Addr("sub-g5p"), 880_000)
+	premise.Status = types.FactStatus_FACT_STATUS_ACTIVE
+	require.NoError(t, k.SetFact(ctx, premise))
+
+	claim := &types.Claim{
+		Id:              "claim-gap5-tier0",
+		FactContent:     "conjunction elimination: from A and B, B follows",
+		Domain:          "logic",
+		Category:        "propositional",
+		Submitter:       makeValidBech32Addr("submitter-g5"),
+		Status:          types.ClaimStatus_CLAIM_STATUS_PENDING,
+		MethodId:        "M-FORMAL",
+		CertificateVerified: true,
+		ProofCertificate: &types.ProofCertificate{
+			Format:           types.ProofFormat_PROOF_FORMAT_CANONICAL_CHAIN,
+			CertificateBytes: []byte("conjunction-elim from premise"),
+			FormalSystem:     "CANONICAL_FORM_V1",
+			PremiseFactIds:   []string{premise.Id},
+		},
+	}
+	require.NoError(t, k.SetClaim(ctx, claim))
+
+	accepted, err := k.MaybeAutoAcceptCertifiedClaim(ctx, claim)
+	require.NoError(t, err)
+	require.True(t, accepted)
+
+	// The resulting fact must carry mechanically_verified = true (Gap 5).
+	var foundFact *types.Fact
+	k.IterateFacts(ctx, func(f *types.Fact) bool {
+		if f.ClaimId == claim.Id {
+			foundFact = f
+			return true
+		}
+		return false
+	})
+	require.NotNil(t, foundFact, "fact should exist after auto-accept")
+	require.True(t, foundFact.MechanicallyVerified,
+		"Tier 0 auto-accepted fact must have mechanically_verified = true (Gap 5)")
+}
+
+// TestProofCert_MechanicallyVerifiedFalseByDefault checks that facts lacking
+// a proof certificate (the normal social-PoT path) have MechanicallyVerified=false.
+func TestProofCert_MechanicallyVerifiedFalseByDefault(t *testing.T) {
+	k, ctx, _ := setupKnowledgeTestWithBank(t)
+
+	// A plain fact with no certificate — default zero-value proto bool = false.
+	fact := makeTestFact(t, k, ctx, "fact-social-path", "water freezes at 0C at STP", "chemistry", "properties", makeValidBech32Addr("sub-social"), 750_000)
+	require.False(t, fact.MechanicallyVerified,
+		"socially-verified fact must NOT carry mechanically_verified = true")
+}
+
+// TestProofCert_BypassOffDoesNotSetFlag ensures that when bypass is disabled,
+// even a claim with CertificateVerified=true does NOT auto-accept and no Tier 0
+// fact (with MechanicallyVerified=true) is created.
+func TestProofCert_BypassOffDoesNotSetFlag(t *testing.T) {
+	k, ctx, _ := setupKnowledgeTestWithBank(t)
+
+	// Default: bypass disabled.
+	claim := &types.Claim{
+		Id:                  "claim-bypass-off-flag",
+		FactContent:         "modus ponens: P and P implies Q therefore Q",
+		Domain:              "logic",
+		Category:            "propositional",
+		Submitter:           makeValidBech32Addr("sub-bypass-off"),
+		Status:              types.ClaimStatus_CLAIM_STATUS_PENDING,
+		MethodId:            "M-FORMAL",
+		CertificateVerified: true, // verified but bypass is off
+	}
+	require.NoError(t, k.SetClaim(ctx, claim))
+
+	accepted, err := k.MaybeAutoAcceptCertifiedClaim(ctx, claim)
+	require.NoError(t, err)
+	require.False(t, accepted, "bypass off: no auto-accept, no Tier 0 fact created")
+
+	// No fact should exist for this claim.
+	var found bool
+	k.IterateFacts(ctx, func(f *types.Fact) bool {
+		if f.ClaimId == claim.Id {
+			found = true
+			return true
+		}
+		return false
+	})
+	require.False(t, found, "no fact created when bypass disabled")
+}

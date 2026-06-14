@@ -95,6 +95,15 @@ func (k Keeper) MaybeAutoAcceptCertifiedClaim(ctx context.Context, claim *types.
 		return false, fmt.Errorf("proof certificate auto-accept: createFactFromClaim: %w", err)
 	}
 
+	// Gap 5 — mark the fact as mechanically verified (Tier 0, not social PoT).
+	// This makes the Tier 0 / Tier 1 distinction legible on-chain: callers can
+	// query fact.mechanically_verified to distinguish a chain-checked derivation
+	// from a human/agent consensus verdict.
+	if fact, found := k.GetFact(ctx, factID); found {
+		fact.MechanicallyVerified = true
+		_ = k.SetFact(ctx, fact)
+	}
+
 	claim.Status = types.ClaimStatus_CLAIM_STATUS_ACCEPTED
 	if saveErr := k.SetClaim(ctx, claim); saveErr != nil {
 		return false, saveErr
