@@ -591,8 +591,20 @@ type Params struct {
 	// Only meaningful when extraordinary_claim_min_contradictions > 0.
 	// Default: 2_000_000 (2×).
 	ExtraordinaryClaimVerifierMultiplierBps uint64 `protobuf:"varint,191,opt,name=extraordinary_claim_verifier_multiplier_bps,json=extraordinaryClaimVerifierMultiplierBps,proto3" json:"extraordinary_claim_verifier_multiplier_bps,omitempty"`
-	unknownFields                           protoimpl.UnknownFields
-	sizeCache                               protoimpl.SizeCache
+	// research_programme_degeneration_threshold: Lakatosian degenerating-programme
+	// early-warning gate (Falsificationism Gap 3). When a rescue-chain claim has
+	// research_programme_depth > this threshold, the chain emits
+	// zerone.knowledge.degenerating_research_programme and sets a flag on the claim.
+	//
+	// 0 = disabled (default). When enabled, governance sets the tolerance for
+	// successive rescues before emitting the degeneration signal. A threshold of 3
+	// means chains of 4+ rescues emit the warning; 3-deep chains are allowed.
+	//
+	// Informational only — does not block claim submission.
+	// Default: 0 (disabled). Falsificationism Gap 3 (★★★☆☆).
+	ResearchProgrammeDegenerationThreshold uint64 `protobuf:"varint,192,opt,name=research_programme_degeneration_threshold,json=researchProgrammeDegenerationThreshold,proto3" json:"research_programme_degeneration_threshold,omitempty"`
+	unknownFields                          protoimpl.UnknownFields
+	sizeCache                              protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -1962,6 +1974,13 @@ func (x *Params) GetExtraordinaryClaimVerifierMultiplierBps() uint64 {
 	return 0
 }
 
+func (x *Params) GetResearchProgrammeDegenerationThreshold() uint64 {
+	if x != nil {
+		return x.ResearchProgrammeDegenerationThreshold
+	}
+	return 0
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -2209,7 +2228,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xaf_\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\x8b`\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2402,7 +2421,8 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\x10aporia_threshold\x18\xbc\x01 \x01(\x04R\x0faporiaThreshold\x12I\n" +
 	"!min_cross_tradition_diversity_bps\x18\xbd\x01 \x01(\x04R\x1dminCrossTraditionDiversityBps\x12T\n" +
 	"&extraordinary_claim_min_contradictions\x18\xbe\x01 \x01(\x04R#extraordinaryClaimMinContradictions\x12]\n" +
-	"+extraordinary_claim_verifier_multiplier_bps\x18\xbf\x01 \x01(\x04R'extraordinaryClaimVerifierMultiplierBps\x1aN\n" +
+	"+extraordinary_claim_verifier_multiplier_bps\x18\xbf\x01 \x01(\x04R'extraordinaryClaimVerifierMultiplierBps\x12Z\n" +
+	")research_programme_degeneration_threshold\x18\xc0\x01 \x01(\x04R&researchProgrammeDegenerationThreshold\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xb8\x0f\n" +

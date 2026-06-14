@@ -805,6 +805,35 @@ Revert ceremony finalized; operator action required.
 - `target_hash` -- rollback target hash
 - `action` -- operator instructions
 
+### zerone.emergency.state_correction_proposed
+*Tx (MsgProposeStateCorrection).* A Guardian-tier validator has proposed a set of
+surgical KV mutations to correct corrupted or incorrectly-set module state without
+requiring a full chain revert. The full mutation list is specified at proposal time
+and recorded in the KV store. (Circuit Breaker Gap 5.)
+- `proposal_id` -- deterministic ID (`"sc-<blockheight>-<proposer[:8]>"`)
+- `proposer` -- address of the proposing Guardian
+- `mutation_count` -- number of KV mutations in the proposal
+- `rationale` -- human-readable justification for the correction
+
+### zerone.emergency.state_correction_approved
+*Keeper (VoteStateCorrection).* Guardian quorum (`HaltQuorum` BPS) reached for a
+pending state-correction proposal. Node operators should apply the listed
+mutations in the next upgrade handler. Per-mutation attributes follow the pattern
+`mutation_N_module` / `mutation_N_description` for each mutation index N.
+(Circuit Breaker Gap 5.)
+- `proposal_id` -- the approved proposal ID
+- `proposer` -- original proposer address
+- `approved_at_block` -- block at which quorum was reached
+- `mutation_count` -- number of mutations to apply
+- `mutation_N_module` -- module name for mutation N (one per mutation)
+- `mutation_N_description` -- description for mutation N (one per mutation)
+
+### zerone.emergency.state_correction_rejected
+*Keeper (VoteStateCorrection).* Approval is now mathematically impossible — the
+remaining uncast votes cannot bring approval BPS to `HaltQuorum`. Proposal is
+marked rejected. (Circuit Breaker Gap 5.)
+- `proposal_id` -- the rejected proposal ID
+
 ---
 
 ## evidence_mgmt
@@ -1406,12 +1435,40 @@ Clears `suspended_at_block` and `suspension_reason`. (Bohm Dialogue Gap 1.)
 - `claim_id` -- the resumed claim ID
 - `authority` -- governance authority address that performed the resumption
 
-### zerone.knowledge.dung_label_assigned
+**Dung Label (not an event — Structured Deliberation Gap 3)**
 *Keeper (rounds.go — CompleteRound).* Not a standalone event; the Dung label is
 set silently as part of the CompleteRound state update. The label is readable via
 `QueryClaim` as `Claim.dung_label`. No separate event is emitted — the verdict
-events (above) carry the same information. (Structured Deliberation Gap 3.)
+events (above) carry the same information.
 See: `zerone.knowledge.claim_accepted`, `zerone.knowledge.claim_rejected`, etc.
+
+### zerone.knowledge.socratic_self_contradiction_detected
+*Tx (MsgSubmitClaim).* The new claim's canonical form directly opposes an
+accepted Fact already held by the same submitter — the submitter's new assertion
+contradicts their own prior on-chain position (elenctic self-refutation). Emitted
+only when `Params.socratic_check_enabled = true` and the new claim has a canonical
+form. Detection is informational: `Claim.self_contradiction_fact_id` is set but
+the claim proceeds to PoT. (Socratic Dialectic Gap 1.)
+- `claim_id` -- the new claim that triggered the check
+- `self_contradiction_fact_id` -- the submitter's prior Fact with the opposing form
+- `submitter` -- address of the submitter whose prior position is contradicted
+- `canonical_form` -- the canonical form of the new claim
+- `socratic_principle` -- human-readable description: "submitter contradicts their own prior accepted fact"
+
+### zerone.knowledge.degenerating_research_programme
+*Tx (MsgSubmitClaim).* A claim that rescues a prior rejected claim has pushed
+the research programme's rescue chain depth past `Params.degeneration_threshold`.
+Encodes Lakatos's criterion: a research programme that repeatedly adds ad-hoc
+protective hypotheses to its hard core, without expanding empirical scope,
+is degenerating rather than progressing. Emitted only when threshold > 0 and
+a rescue chain triggers it. `Claim.degeneration_flagged = true`. (Falsificationism
+Gap 2 / degenerating programme signal.)
+- `claim_id` -- the rescue claim that crossed the threshold
+- `rescues_claim_id` -- the rejected claim being rescued
+- `research_programme_depth` -- current rescue chain depth at time of emission
+- `degeneration_threshold` -- the governance-configured threshold
+- `submitter` -- address submitting the rescue claim
+- `lakatos_criterion` -- human-readable: "successive rescue chain depth exceeds degeneration threshold"
 
 ### zerone.knowledge.claim_in_aporia
 *Keeper (rounds.go / phases.go).* Emitted when a claim's `inconclusive_count`
@@ -2144,6 +2201,26 @@ Liquidity Gap 3.
 - `payout_uzrn` -- payout amount (bigint string, uzrn)
 - `il_bps` -- computed IL in 1M-BPS scale
 - `fund_balance_after` -- remaining fund balance after payout (bigint string, uzrn)
+
+### zerone.liquiditypool.swap_reveal_queued
+*Tx (MsgRevealSwap — fair-sequencing path).* When `Params.commit_reveal_delay_blocks > 0`
+and `Params.fair_sequencing_enabled = true`, a revealed swap is not executed
+immediately — it is queued in the fair-sequencing buffer for FIFO processing in
+the next BeginBlock. Emitted instead of the normal swap result. (Market
+Microstructure Gap 1 / Fair Sequencing.)
+- `sender` -- address that submitted the MsgRevealSwap
+- `pool_id` -- target pool identifier
+- `commit_block` -- block at which the original MsgCommitSwap was recorded
+
+### zerone.liquiditypool.fair_sequenced_swap_executed
+*BeginBlock (ProcessFairSequencingQueue).* A swap that was previously queued by
+`swap_reveal_queued` has been executed in FIFO order. The fair-sequencing buffer
+processes all eligible entries each block, respecting commit order rather than
+mempool order to neutralise front-running. (Market Microstructure Gap 5 /
+Fair Sequencing.)
+- `sender` -- address whose queued swap was executed
+- `pool_id` -- pool on which the swap executed
+- `commit_block` -- original commit block (determines FIFO position)
 
 ---
 

@@ -631,6 +631,19 @@ message Params {
   // Only meaningful when extraordinary_claim_min_contradictions > 0.
   // Default: 2_000_000 (2×).
   uint64 extraordinary_claim_verifier_multiplier_bps = 191;
+
+  // research_programme_degeneration_threshold: Lakatosian degenerating-programme
+  // early-warning gate (Falsificationism Gap 3). When a rescue-chain claim has
+  // research_programme_depth > this threshold, the chain emits
+  // zerone.knowledge.degenerating_research_programme and sets a flag on the claim.
+  //
+  // 0 = disabled (default). When enabled, governance sets the tolerance for
+  // successive rescues before emitting the degeneration signal. A threshold of 3
+  // means chains of 4+ rescues emit the warning; 3-deep chains are allowed.
+  //
+  // Informational only — does not block claim submission.
+  // Default: 0 (disabled). Falsificationism Gap 3 (★★★☆☆).
+  uint64 research_programme_degeneration_threshold = 192;
 }
 
 // GenesisState is the genesis state of the knowledge module.

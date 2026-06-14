@@ -5467,8 +5467,29 @@ type Claim struct {
 	// Declared at submission. Not changed post-submission. Propagates to Fact as
 	// Fact.stated_prior_bps on ACCEPT verdict.
 	PriorProbabilityBps uint64 `protobuf:"varint,50,opt,name=prior_probability_bps,json=priorProbabilityBps,proto3" json:"prior_probability_bps,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// ── Falsificationism Gap 3: Research Programme Depth (Lakatos) ───────────
+	//
+	// research_programme_depth: how deep this claim sits in a chain of
+	// successive rescues. depth=0 means this claim does not rescue any prior
+	// claim (rescues_claim_id is empty). depth=1 means this claim rescues a
+	// depth=0 claim. depth=N means the chain has N successive rescue steps.
+	//
+	// Imre Lakatos (Methodology of Scientific Research Programmes, 1970)
+	// distinguished progressive from degenerating research programmes:
+	//   - Progressive: each rescue generates genuinely novel predictions.
+	//   - Degenerating: each rescue merely patches the previous failure.
+	//
+	// A high depth, combined with is_potentially_ad_hoc = true across the
+	// chain, is the on-chain signal of a degenerating research programme.
+	// The chain emits zerone.knowledge.degenerating_research_programme when
+	// depth > Params.research_programme_degeneration_threshold (when > 0).
+	//
+	// Informational and non-blocking — the claim proceeds to PoT regardless.
+	// Set at claim creation from the rescued claim's depth + 1.
+	// Default: 0 (no rescue chain).
+	ResearchProgrammeDepth uint64 `protobuf:"varint,51,opt,name=research_programme_depth,json=researchProgrammeDepth,proto3" json:"research_programme_depth,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Claim) Reset() {
@@ -5847,6 +5868,13 @@ func (x *Claim) GetDungLabel() DungLabel {
 func (x *Claim) GetPriorProbabilityBps() uint64 {
 	if x != nil {
 		return x.PriorProbabilityBps
+	}
+	return 0
+}
+
+func (x *Claim) GetResearchProgrammeDepth() uint64 {
+	if x != nil {
+		return x.ResearchProgrammeDepth
 	}
 	return 0
 }
@@ -10396,7 +10424,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x06format\x18\x01 \x01(\x0e2 .zerone.knowledge.v1.ProofFormatR\x06format\x12+\n" +
 	"\x11certificate_bytes\x18\x02 \x01(\fR\x10certificateBytes\x12#\n" +
 	"\rformal_system\x18\x03 \x01(\tR\fformalSystem\x12(\n" +
-	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\xaa\x12\n" +
+	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\xe4\x12\n" +
 	"\x05Claim\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\ffact_content\x18\x02 \x01(\tR\vfactContent\x12\x16\n" +
@@ -10452,7 +10480,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x17aporia_reached_at_block\x180 \x01(\x04R\x14aporiaReachedAtBlock\x12=\n" +
 	"\n" +
 	"dung_label\x181 \x01(\x0e2\x1e.zerone.knowledge.v1.DungLabelR\tdungLabel\x122\n" +
-	"\x15prior_probability_bps\x182 \x01(\x04R\x13priorProbabilityBps\"\xf5\x02\n" +
+	"\x15prior_probability_bps\x182 \x01(\x04R\x13priorProbabilityBps\x128\n" +
+	"\x18research_programme_depth\x183 \x01(\x04R\x16researchProgrammeDepth\"\xf5\x02\n" +
 	"\x0fPreRegistration\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
 	"\tsubmitter\x18\x02 \x01(\tR\tsubmitter\x12!\n" +

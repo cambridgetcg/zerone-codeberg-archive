@@ -397,6 +397,9 @@ func DefaultParams() Params {
 		// Multiplier default: 2× (extraordinary claims require twice the panel).
 		ExtraordinaryClaimMinContradictions:     0,
 		ExtraordinaryClaimVerifierMultiplierBps: 2_000_000,
+		// Falsificationism Gap 3: Lakatosian research programme depth gate.
+		// 0 = disabled (default). Governance sets threshold > 0 to enable.
+		ResearchProgrammeDegenerationThreshold: 0,
 	}
 }
 

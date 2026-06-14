@@ -329,6 +329,27 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 				sdk.NewAttribute("popper_criterion", "new RefutationConditions must be proper superset of rescued claim's"),
 			))
 		}
+
+		// Falsificationism Gap 3: Lakatosian research programme depth.
+		// A rescue claim sits one step deeper than the claim it rescues.
+		// The depth tracks how many successive rescues make up this
+		// research programme — deep chains may indicate degeneration.
+		if rescued, foundRescued := m.keeper.GetClaim(ctx, msg.RescuesClaimId); foundRescued {
+			claim.ResearchProgrammeDepth = rescued.ResearchProgrammeDepth + 1
+			// Emit degeneration warning when depth exceeds governance threshold.
+			threshold := params.ResearchProgrammeDegenerationThreshold
+			if threshold > 0 && claim.ResearchProgrammeDepth > threshold {
+				sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
+					"zerone.knowledge.degenerating_research_programme",
+					sdk.NewAttribute("claim_id", claimID),
+					sdk.NewAttribute("rescues_claim_id", msg.RescuesClaimId),
+					sdk.NewAttribute("research_programme_depth", fmt.Sprintf("%d", claim.ResearchProgrammeDepth)),
+					sdk.NewAttribute("degeneration_threshold", fmt.Sprintf("%d", threshold)),
+					sdk.NewAttribute("submitter", msg.Submitter),
+					sdk.NewAttribute("lakatos_criterion", "successive rescue chain depth exceeds degeneration threshold"),
+				))
+			}
+		}
 	}
 
 	// Socratic Dialectic Gap 1 — elenctic self-consistency check.
