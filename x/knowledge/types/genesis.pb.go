@@ -603,8 +603,41 @@ type Params struct {
 	// Informational only — does not block claim submission.
 	// Default: 0 (disabled). Falsificationism Gap 3 (★★★☆☆).
 	ResearchProgrammeDegenerationThreshold uint64 `protobuf:"varint,192,opt,name=research_programme_degeneration_threshold,json=researchProgrammeDegenerationThreshold,proto3" json:"research_programme_degeneration_threshold,omitempty"`
-	unknownFields                          protoimpl.UnknownFields
-	sizeCache                              protoimpl.SizeCache
+	// defeater_opposition_threshold_bps: Pollock undercutting-defeater trigger.
+	// When a challenge claim is REJECTED (the original fact survives) but the
+	// panel's rejection confidence (rejectionConfidenceBps) is BELOW this
+	// threshold, the marginal challenge is recorded as an undercutting defeater on
+	// the surviving fact (Fact.defeater_count++). This encodes Pollock's (1986)
+	// epistemology: a successful but narrow-margin challenge signals that the
+	// evidence connecting claim to truth is weakly supporting — the defeater
+	// reduces the effective evidential support without falsifying the claim.
+	//
+	// Example: threshold = 600_000 (60%). A challenge is REJECTED at 58%
+	// confidence → the fact survived but only by a slim margin → defeater recorded.
+	// A challenge rejected at 80% confidence → strong corroboration, no defeater.
+	//
+	// 0 = disabled (default). All challenge survivals are corroborations only.
+	// Recommended initial value: 500_000–650_000 (50–65% opposition threshold).
+	// Skepticism Brief Gap 1 (★★★☆☆). Default: 0 (disabled).
+	DefeaterOppositionThresholdBps uint64 `protobuf:"varint,193,opt,name=defeater_opposition_threshold_bps,json=defeaterOppositionThresholdBps,proto3" json:"defeater_opposition_threshold_bps,omitempty"`
+	// defeater_per_count_discount_bps: per-defeater discount applied to
+	// Fact.effective_confidence_bps. Each accumulated defeater reduces the
+	// fact's effective confidence by this many BPS of the base confidence.
+	//
+	//	effective = confidence_bps × (1 − defeater_count × discount / 1_000_000)
+	//	clamped to [0, confidence_bps].
+	//
+	// Example: base confidence = 800_000 (80%), discount = 50_000 (5%), defeaters = 3:
+	//
+	//	effective = 800_000 × (1 − 3 × 50_000 / 1_000_000)
+	//	          = 800_000 × (1 − 0.15) = 800_000 × 0.85 = 680_000 (68%).
+	//
+	// 0 = no discount applied (effective_confidence_bps tracks confidence_bps exactly).
+	// Only meaningful when defeater_opposition_threshold_bps > 0.
+	// Skepticism Brief Gap 1. Default: 0 (disabled).
+	DefeaterPerCountDiscountBps uint64 `protobuf:"varint,194,opt,name=defeater_per_count_discount_bps,json=defeaterPerCountDiscountBps,proto3" json:"defeater_per_count_discount_bps,omitempty"`
+	unknownFields               protoimpl.UnknownFields
+	sizeCache                   protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -1981,6 +2014,20 @@ func (x *Params) GetResearchProgrammeDegenerationThreshold() uint64 {
 	return 0
 }
 
+func (x *Params) GetDefeaterOppositionThresholdBps() uint64 {
+	if x != nil {
+		return x.DefeaterOppositionThresholdBps
+	}
+	return 0
+}
+
+func (x *Params) GetDefeaterPerCountDiscountBps() uint64 {
+	if x != nil {
+		return x.DefeaterPerCountDiscountBps
+	}
+	return 0
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -2228,7 +2275,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\x8b`\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\x9ea\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2422,7 +2469,9 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"!min_cross_tradition_diversity_bps\x18\xbd\x01 \x01(\x04R\x1dminCrossTraditionDiversityBps\x12T\n" +
 	"&extraordinary_claim_min_contradictions\x18\xbe\x01 \x01(\x04R#extraordinaryClaimMinContradictions\x12]\n" +
 	"+extraordinary_claim_verifier_multiplier_bps\x18\xbf\x01 \x01(\x04R'extraordinaryClaimVerifierMultiplierBps\x12Z\n" +
-	")research_programme_degeneration_threshold\x18\xc0\x01 \x01(\x04R&researchProgrammeDegenerationThreshold\x1aN\n" +
+	")research_programme_degeneration_threshold\x18\xc0\x01 \x01(\x04R&researchProgrammeDegenerationThreshold\x12J\n" +
+	"!defeater_opposition_threshold_bps\x18\xc1\x01 \x01(\x04R\x1edefeaterOppositionThresholdBps\x12E\n" +
+	"\x1fdefeater_per_count_discount_bps\x18\xc2\x01 \x01(\x04R\x1bdefeaterPerCountDiscountBps\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xb8\x0f\n" +

@@ -1455,6 +1455,24 @@ the claim proceeds to PoT. (Socratic Dialectic Gap 1.)
 - `canonical_form` -- the canonical form of the new claim
 - `socratic_principle` -- human-readable description: "submitter contradicts their own prior accepted fact"
 
+### zerone.knowledge.defeater_recorded
+*Keeper (defeater.go / handleChallengeSurvival).* An undercutting defeater has
+been recorded on a surviving fact after a challenge claim was REJECTED with low
+panel confidence. Encodes John Pollock's (1986) epistemology: when a challenge
+fails by a slim margin, the rejection is weak evidence — the evidential connection
+between fact and truth is attacked, even though the fact survived. The fact's
+`DefeaterCount` is incremented and `EffectiveConfidenceBps` is recomputed as
+`confidence × (1 − defeater_count × discount_bps / 1_000_000)`. Nominal
+`Confidence` is unchanged — only the Pollock-adjusted epistemic readout is
+affected. Emitted only when `defeater_opposition_threshold_bps > 0` and
+`rejection_confidence_bps < threshold`. (Skepticism Gap 1.)
+- `fact_id` -- the surviving fact that received the defeater
+- `defeater_count` -- total accumulated defeaters on this fact after this event
+- `rejection_confidence_bps` -- the panel's confidence in the REJECT verdict (the slim margin)
+- `threshold_bps` -- the governance-configured opposition threshold
+- `effective_confidence_bps` -- the recomputed Pollock-adjusted confidence
+- `pollock_criterion` -- human-readable: "undercutting defeater: rejection confidence below opposition threshold"
+
 ### zerone.knowledge.degenerating_research_programme
 *Tx (MsgSubmitClaim).* A claim that rescues a prior rejected claim has pushed
 the research programme's rescue chain depth past `Params.degeneration_threshold`.

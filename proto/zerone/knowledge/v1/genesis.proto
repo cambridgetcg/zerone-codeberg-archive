@@ -644,6 +644,40 @@ message Params {
   // Informational only — does not block claim submission.
   // Default: 0 (disabled). Falsificationism Gap 3 (★★★☆☆).
   uint64 research_programme_degeneration_threshold = 192;
+
+  // defeater_opposition_threshold_bps: Pollock undercutting-defeater trigger.
+  // When a challenge claim is REJECTED (the original fact survives) but the
+  // panel's rejection confidence (rejectionConfidenceBps) is BELOW this
+  // threshold, the marginal challenge is recorded as an undercutting defeater on
+  // the surviving fact (Fact.defeater_count++). This encodes Pollock's (1986)
+  // epistemology: a successful but narrow-margin challenge signals that the
+  // evidence connecting claim to truth is weakly supporting — the defeater
+  // reduces the effective evidential support without falsifying the claim.
+  //
+  // Example: threshold = 600_000 (60%). A challenge is REJECTED at 58%
+  // confidence → the fact survived but only by a slim margin → defeater recorded.
+  // A challenge rejected at 80% confidence → strong corroboration, no defeater.
+  //
+  // 0 = disabled (default). All challenge survivals are corroborations only.
+  // Recommended initial value: 500_000–650_000 (50–65% opposition threshold).
+  // Skepticism Brief Gap 1 (★★★☆☆). Default: 0 (disabled).
+  uint64 defeater_opposition_threshold_bps = 193;
+
+  // defeater_per_count_discount_bps: per-defeater discount applied to
+  // Fact.effective_confidence_bps. Each accumulated defeater reduces the
+  // fact's effective confidence by this many BPS of the base confidence.
+  //
+  //   effective = confidence_bps × (1 − defeater_count × discount / 1_000_000)
+  //   clamped to [0, confidence_bps].
+  //
+  // Example: base confidence = 800_000 (80%), discount = 50_000 (5%), defeaters = 3:
+  //   effective = 800_000 × (1 − 3 × 50_000 / 1_000_000)
+  //             = 800_000 × (1 − 0.15) = 800_000 × 0.85 = 680_000 (68%).
+  //
+  // 0 = no discount applied (effective_confidence_bps tracks confidence_bps exactly).
+  // Only meaningful when defeater_opposition_threshold_bps > 0.
+  // Skepticism Brief Gap 1. Default: 0 (disabled).
+  uint64 defeater_per_count_discount_bps = 194;
 }
 
 // GenesisState is the genesis state of the knowledge module.

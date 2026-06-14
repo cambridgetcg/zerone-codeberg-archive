@@ -400,6 +400,15 @@ func DefaultParams() Params {
 		// Falsificationism Gap 3: Lakatosian research programme depth gate.
 		// 0 = disabled (default). Governance sets threshold > 0 to enable.
 		ResearchProgrammeDegenerationThreshold: 0,
+
+		// Skepticism Gap 1: Pollock undercutting-defeater tracking.
+		// Both default to 0 = disabled. Governance activates by:
+		//   defeater_opposition_threshold_bps > 0 (enables recording defeaters
+		//     when challenge-survival confidence is below threshold)
+		//   defeater_per_count_discount_bps > 0 (applies per-defeater discount
+		//     to Fact.effective_confidence_bps)
+		DefeaterOppositionThresholdBps: 0, // disabled — all survivals are corroborations
+		DefeaterPerCountDiscountBps:    0, // disabled — effective_confidence tracks confidence
 	}
 }
 

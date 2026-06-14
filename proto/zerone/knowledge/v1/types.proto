@@ -573,6 +573,41 @@ message Fact {
   // Consequent of Claim.certificate_verified — the fact inherits the
   // verification mode from its originating claim.
   bool mechanically_verified = 86;
+
+  // ── Skepticism Gap 1 — Pollock Undercutting Defeater Tracking ───────────
+  //
+  // defeater_count: number of undercutting defeaters recorded on this fact.
+  // An undercutting defeater (Pollock, 1986) reduces evidential support for a
+  // belief without directly contradicting it — it attacks the connection between
+  // evidence and conclusion rather than the conclusion itself.
+  //
+  // On-chain encoding: when a challenge claim is REJECTED (the fact survives)
+  // but the panel's rejection confidence is LOW (below the governance threshold
+  // defeater_opposition_threshold_bps), this signals that a meaningful minority
+  // opposed the fact's validity. The failed challenge provides weak evidence
+  // rather than strong corroboration — it is an undercutting defeater.
+  //
+  // Initialised to 0 on fact creation. Incremented by recordDefeaterIfApplicable
+  // called from handleChallengeSurvival when rejectionConfidenceBps < threshold.
+  // Never decremented.
+  uint64 defeater_count = 87;
+
+  // effective_confidence_bps: the fact's confidence discounted by accumulated
+  // undercutting defeaters. Pollock's epistemic score after defeater application.
+  //
+  //   effective = confidence_bps × (1 − defeater_count × discount_bps / 1_000_000)
+  //   clamped to [0, confidence_bps].
+  //
+  // Initialised to confidence_bps at fact creation. Decremented each time a
+  // defeater is recorded (via recordDefeaterIfApplicable). Used by the chain's
+  // epistemic scorecard queries to surface weakly-supported facts even when
+  // their nominal confidence_bps is high. Training pipelines and query engines
+  // should prefer effective_confidence_bps over raw confidence_bps for
+  // epistemically-aware ranking.
+  //
+  // Governance param: defeater_per_count_discount_bps (default 0 = disabled).
+  // When 0, effective_confidence_bps tracks confidence_bps exactly (no discount).
+  uint64 effective_confidence_bps = 88;
 }
 
 // CurriculumTier orders training examples by difficulty and foundational depth.

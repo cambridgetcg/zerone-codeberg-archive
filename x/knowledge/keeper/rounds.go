@@ -783,6 +783,11 @@ func (k Keeper) createFactFromClaim(ctx context.Context, claim *types.Claim, rou
 		// post-hoc update magnitude analysis: |ConfidenceBps − StatedPriorBps|.
 		// Zero when no prior was declared at submission.
 		StatedPriorBps: claim.PriorProbabilityBps,
+		// Skepticism Gap 1: effective confidence is initialised to the panel
+		// confidence. It is decremented each time an undercutting defeater is
+		// recorded (when a challenge survives by a slim margin). Zero defeaters
+		// at birth means effective == nominal confidence exactly.
+		EffectiveConfidenceBps: confidence,
 	}
 
 	// Apply domain carrying capacity birth pressure (R29-1)
@@ -1207,6 +1212,14 @@ func (k Keeper) handleChallengeSurvival(ctx context.Context, challengeClaim *typ
 	originalFact.Status = types.FactStatus_FACT_STATUS_ACTIVE
 	originalFact.AtRiskSinceEpoch = 0
 	_ = k.SetFact(ctx, originalFact)
+
+	// Skepticism Gap 1: record undercutting defeater when rejection confidence
+	// is below governance threshold. A slim-margin survival (low rejection
+	// confidence = meaningful minority opposition) signals that the evidential
+	// connection between claim and truth is weakly supporting — Pollock's
+	// undercutting defeater. Does not modify Confidence; updates
+	// EffectiveConfidenceBps and DefeaterCount only.
+	k.recordDefeaterIfApplicable(ctx, originalFact.Id, rejectionConfidenceBps)
 
 	// Popper, not popularity: a fact's standing comes from how many
 	// serious challenges it has survived. This event records one more

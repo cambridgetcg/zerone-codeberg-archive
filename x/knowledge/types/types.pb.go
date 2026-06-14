@@ -2563,8 +2563,41 @@ type Fact struct {
 	// Consequent of Claim.certificate_verified — the fact inherits the
 	// verification mode from its originating claim.
 	MechanicallyVerified bool `protobuf:"varint,86,opt,name=mechanically_verified,json=mechanicallyVerified,proto3" json:"mechanically_verified,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// ── Skepticism Gap 1 — Pollock Undercutting Defeater Tracking ───────────
+	//
+	// defeater_count: number of undercutting defeaters recorded on this fact.
+	// An undercutting defeater (Pollock, 1986) reduces evidential support for a
+	// belief without directly contradicting it — it attacks the connection between
+	// evidence and conclusion rather than the conclusion itself.
+	//
+	// On-chain encoding: when a challenge claim is REJECTED (the fact survives)
+	// but the panel's rejection confidence is LOW (below the governance threshold
+	// defeater_opposition_threshold_bps), this signals that a meaningful minority
+	// opposed the fact's validity. The failed challenge provides weak evidence
+	// rather than strong corroboration — it is an undercutting defeater.
+	//
+	// Initialised to 0 on fact creation. Incremented by recordDefeaterIfApplicable
+	// called from handleChallengeSurvival when rejectionConfidenceBps < threshold.
+	// Never decremented.
+	DefeaterCount uint64 `protobuf:"varint,87,opt,name=defeater_count,json=defeaterCount,proto3" json:"defeater_count,omitempty"`
+	// effective_confidence_bps: the fact's confidence discounted by accumulated
+	// undercutting defeaters. Pollock's epistemic score after defeater application.
+	//
+	//	effective = confidence_bps × (1 − defeater_count × discount_bps / 1_000_000)
+	//	clamped to [0, confidence_bps].
+	//
+	// Initialised to confidence_bps at fact creation. Decremented each time a
+	// defeater is recorded (via recordDefeaterIfApplicable). Used by the chain's
+	// epistemic scorecard queries to surface weakly-supported facts even when
+	// their nominal confidence_bps is high. Training pipelines and query engines
+	// should prefer effective_confidence_bps over raw confidence_bps for
+	// epistemically-aware ranking.
+	//
+	// Governance param: defeater_per_count_discount_bps (default 0 = disabled).
+	// When 0, effective_confidence_bps tracks confidence_bps exactly (no discount).
+	EffectiveConfidenceBps uint64 `protobuf:"varint,88,opt,name=effective_confidence_bps,json=effectiveConfidenceBps,proto3" json:"effective_confidence_bps,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Fact) Reset() {
@@ -3127,6 +3160,20 @@ func (x *Fact) GetMechanicallyVerified() bool {
 		return x.MechanicallyVerified
 	}
 	return false
+}
+
+func (x *Fact) GetDefeaterCount() uint64 {
+	if x != nil {
+		return x.DefeaterCount
+	}
+	return 0
+}
+
+func (x *Fact) GetEffectiveConfidenceBps() uint64 {
+	if x != nil {
+		return x.EffectiveConfidenceBps
+	}
+	return 0
 }
 
 // TokenizerSpec is the governance-ratified contract that names the special
@@ -10134,7 +10181,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x05scope\x18\x04 \x01(\tR\x05scope\x12%\n" +
 	"\x0etemporal_scope\x18\x05 \x01(\tR\rtemporalScope\x12\x1c\n" +
 	"\tnegatable\x18\x06 \x01(\bR\tnegatable\x12\x12\n" +
-	"\x04tags\x18\a \x03(\tR\x04tags\"\x92\x1a\n" +
+	"\x04tags\x18\a \x03(\tR\x04tags\"\xf3\x1a\n" +
 	"\x04Fact\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12\x16\n" +
@@ -10222,7 +10269,9 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x16last_enriched_at_block\x18S \x01(\x04R\x13lastEnrichedAtBlock\x121\n" +
 	"\x15superseded_by_fact_id\x18T \x01(\tR\x12supersededByFactId\x12(\n" +
 	"\x10stated_prior_bps\x18U \x01(\x04R\x0estatedPriorBps\x123\n" +
-	"\x15mechanically_verified\x18V \x01(\bR\x14mechanicallyVerified\"\xe0\x05\n" +
+	"\x15mechanically_verified\x18V \x01(\bR\x14mechanicallyVerified\x12%\n" +
+	"\x0edefeater_count\x18W \x01(\x04R\rdefeaterCount\x128\n" +
+	"\x18effective_confidence_bps\x18X \x01(\x04R\x16effectiveConfidenceBps\"\xe0\x05\n" +
 	"\rTokenizerSpec\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x04R\aversion\x12*\n" +
 	"\x11ratified_at_block\x18\x02 \x01(\x04R\x0fratifiedAtBlock\x12.\n" +
