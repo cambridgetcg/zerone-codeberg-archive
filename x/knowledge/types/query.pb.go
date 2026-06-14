@@ -7235,8 +7235,11 @@ type IdleFact struct {
 	CorroborationCount  uint64                 `protobuf:"varint,4,opt,name=corroboration_count,json=corroborationCount,proto3" json:"corroboration_count,omitempty"`
 	ProbeInvitedAtBlock uint64                 `protobuf:"varint,5,opt,name=probe_invited_at_block,json=probeInvitedAtBlock,proto3" json:"probe_invited_at_block,omitempty"`
 	BlocksSinceInvited  uint64                 `protobuf:"varint,6,opt,name=blocks_since_invited,json=blocksSinceInvited,proto3" json:"blocks_since_invited,omitempty"` // current_block - probe_invited_at_block
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Skepticism Gap 2: Pollock epistemic-stress signals for prober prioritization.
+	DefeaterCount          uint64 `protobuf:"varint,7,opt,name=defeater_count,json=defeaterCount,proto3" json:"defeater_count,omitempty"`                              // number of undercutting defeaters recorded (0 = pristine)
+	EffectiveConfidenceBps uint64 `protobuf:"varint,8,opt,name=effective_confidence_bps,json=effectiveConfidenceBps,proto3" json:"effective_confidence_bps,omitempty"` // Pollock-adjusted confidence (may be lower than confidence)
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *IdleFact) Reset() {
@@ -7307,6 +7310,20 @@ func (x *IdleFact) GetProbeInvitedAtBlock() uint64 {
 func (x *IdleFact) GetBlocksSinceInvited() uint64 {
 	if x != nil {
 		return x.BlocksSinceInvited
+	}
+	return 0
+}
+
+func (x *IdleFact) GetDefeaterCount() uint64 {
+	if x != nil {
+		return x.DefeaterCount
+	}
+	return 0
+}
+
+func (x *IdleFact) GetEffectiveConfidenceBps() uint64 {
+	if x != nil {
+		return x.EffectiveConfidenceBps
 	}
 	return 0
 }
@@ -11380,7 +11397,7 @@ const file_zerone_knowledge_v1_query_proto_rawDesc = "" +
 	"\x0fagent_bonus_bps\x18\x06 \x01(\x04R\ragentBonusBps\x12&\n" +
 	"\x0fhuman_bonus_bps\x18\a \x01(\x04R\rhumanBonusBps\x12,\n" +
 	"\x12agent_accuracy_bps\x18\b \x01(\x04R\x10agentAccuracyBps\x12,\n" +
-	"\x12human_accuracy_bps\x18\t \x01(\x04R\x10humanAccuracyBps\"\xea\x01\n" +
+	"\x12human_accuracy_bps\x18\t \x01(\x04R\x10humanAccuracyBps\"\xcb\x02\n" +
 	"\bIdleFact\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06domain\x18\x02 \x01(\tR\x06domain\x12\x1e\n" +
@@ -11389,7 +11406,9 @@ const file_zerone_knowledge_v1_query_proto_rawDesc = "" +
 	"confidence\x12/\n" +
 	"\x13corroboration_count\x18\x04 \x01(\x04R\x12corroborationCount\x123\n" +
 	"\x16probe_invited_at_block\x18\x05 \x01(\x04R\x13probeInvitedAtBlock\x120\n" +
-	"\x14blocks_since_invited\x18\x06 \x01(\x04R\x12blocksSinceInvited\"E\n" +
+	"\x14blocks_since_invited\x18\x06 \x01(\x04R\x12blocksSinceInvited\x12%\n" +
+	"\x0edefeater_count\x18\a \x01(\x04R\rdefeaterCount\x128\n" +
+	"\x18effective_confidence_bps\x18\b \x01(\x04R\x16effectiveConfidenceBps\"E\n" +
 	"\x15QueryIdleFactsRequest\x12\x16\n" +
 	"\x06domain\x18\x01 \x01(\tR\x06domain\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\rR\x05limit\"M\n" +

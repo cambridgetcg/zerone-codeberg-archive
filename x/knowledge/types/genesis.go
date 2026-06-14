@@ -409,6 +409,9 @@ func DefaultParams() Params {
 		//     to Fact.effective_confidence_bps)
 		DefeaterOppositionThresholdBps: 0, // disabled — all survivals are corroborations
 		DefeaterPerCountDiscountBps:    0, // disabled — effective_confidence tracks confidence
+		// Skepticism Gap 2: defeater-aware probe prioritization.
+		DefeaterProbePriorityMinCount:       0, // disabled — all facts use normal idle threshold
+		DefeaterProbeReducedThresholdBlocks: 0, // 0 = halve normal threshold when enabled
 	}
 }
 

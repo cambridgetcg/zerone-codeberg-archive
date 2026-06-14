@@ -678,6 +678,45 @@ message Params {
   // Only meaningful when defeater_opposition_threshold_bps > 0.
   // Skepticism Brief Gap 1. Default: 0 (disabled).
   uint64 defeater_per_count_discount_bps = 194;
+
+  // defeater_probe_priority_min_count: minimum Fact.defeater_count that
+  // promotes a fact to "priority probe" status (Skepticism Gap 2 — Defeater-
+  // Aware Probe Prioritization). A fact that has accumulated this many
+  // undercutting defeaters is considered epistemically stressed and is invited
+  // for external probing using a reduced idle threshold
+  // (defeater_probe_reduced_threshold_blocks) rather than the normal
+  // probe_invitation_idle_threshold_blocks. This causes stressed facts to
+  // surface in the probe queue sooner than pristine high-confidence facts.
+  //
+  // Pollock's insight: a fact that has survived multiple narrow-margin
+  // challenges still asserts the same conclusion, but the accumulation of
+  // undercutting defeaters reveals that the evidential connection is being
+  // repeatedly questioned. The probe priority mechanism ensures that such
+  // facts receive additional scrutiny before their effective_confidence_bps
+  // decays too far to be useful.
+  //
+  // 0 = disabled (default). All facts use the same idle threshold regardless
+  // of defeater count. Enable via governance once defeater tracking
+  // (defeater_opposition_threshold_bps > 0) is active.
+  // Skepticism Brief Gap 2 (★★★☆☆). Default: 0 (disabled).
+  uint64 defeater_probe_priority_min_count = 195;
+
+  // defeater_probe_reduced_threshold_blocks: the idle threshold in blocks
+  // used for facts that qualify for priority probing (DefeaterCount >=
+  // defeater_probe_priority_min_count). A smaller value means the fact is
+  // promoted into the probe invitation queue sooner.
+  //
+  // 0 = halve the normal probe_invitation_idle_threshold_blocks (fast default
+  // that governance can override). Non-zero = use this exact threshold.
+  // Only meaningful when defeater_probe_priority_min_count > 0.
+  //
+  // Example: if probe_invitation_idle_threshold_blocks = 34,272 (~1 day) and
+  // defeater_probe_reduced_threshold_blocks = 8,568 (~6 hours), then a fact
+  // with 2+ defeaters will be invited for probing after only 6 hours of
+  // inactivity instead of the normal 24-hour wait.
+  //
+  // Skepticism Brief Gap 2. Default: 0 (halve the normal threshold).
+  uint64 defeater_probe_reduced_threshold_blocks = 196;
 }
 
 // GenesisState is the genesis state of the knowledge module.

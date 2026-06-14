@@ -1277,6 +1277,9 @@ message IdleFact {
   uint64 corroboration_count   = 4;
   uint64 probe_invited_at_block = 5;
   uint64 blocks_since_invited  = 6; // current_block - probe_invited_at_block
+  // Skepticism Gap 2: Pollock epistemic-stress signals for prober prioritization.
+  uint64 defeater_count           = 7; // number of undercutting defeaters recorded (0 = pristine)
+  uint64 effective_confidence_bps = 8; // Pollock-adjusted confidence (may be lower than confidence)
 }
 
 message QueryIdleFactsRequest {

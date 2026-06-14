@@ -1801,13 +1801,17 @@ Emitted each block that the Wave 15 BeginBlocker mints uzrn into the dedicated p
 - `block` -- block height
 
 ### zerone.knowledge.probe_invited
-Emitted by the Wave 15 stress-test invitation heartbeat. Each block the chain scans for high-confidence facts that have gone idle longer than `ProbeInvitationIdleThresholdBlocks` and nominates them for external probing. The chain manufactures demand for its own epistemic audit — truth stands firm under challenge because of its nature, and the architecture now actively invites challenge rather than waiting for it.
+Emitted by the Wave 15 stress-test invitation heartbeat. Each block the chain scans for high-confidence facts that have gone idle longer than `ProbeInvitationIdleThresholdBlocks` and nominates them for external probing. The chain manufactures demand for its own epistemic audit — truth stands firm under challenge because of its nature, and the architecture now actively invites challenge rather than waiting for it. Skepticism Gap 2: facts with accumulated undercutting defeaters (`DefeaterCount >= DefeaterProbePriorityMinCount`) are promoted to the probe queue sooner using a reduced idle threshold; their epistemic stress signals are included in the event.
 - `fact_id` -- the fact being nominated for stress-testing
 - `domain` -- fact domain (enables domain-scoped prober subscription)
 - `confidence` -- current confidence (BPS)
 - `corroboration_count` -- survived attacks so far
 - `idle_since_block` -- block height of the last probe (or acceptance if never probed)
 - `invited_at_block` -- current block height
+- `creed_commitment` -- always "5" (TRUTH_SEEKING.md commitment 5)
+- `defeater_count` -- number of Pollock undercutting defeaters accumulated (0 = pristine)
+- `effective_confidence_bps` -- Pollock-adjusted confidence after defeater discounts
+- `priority_probe` -- "true" if this fact qualified for reduced-threshold priority probing
 
 ### zerone.knowledge.challenge_settled
 Emitted when a challenge claim's stake is settled after the verification round completes. The verifier reward pool (55%) is distributed separately via `verifier_reward`; this event covers the remaining 45% of the challenger's stake.

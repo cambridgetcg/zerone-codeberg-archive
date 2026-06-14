@@ -636,8 +636,45 @@ type Params struct {
 	// Only meaningful when defeater_opposition_threshold_bps > 0.
 	// Skepticism Brief Gap 1. Default: 0 (disabled).
 	DefeaterPerCountDiscountBps uint64 `protobuf:"varint,194,opt,name=defeater_per_count_discount_bps,json=defeaterPerCountDiscountBps,proto3" json:"defeater_per_count_discount_bps,omitempty"`
-	unknownFields               protoimpl.UnknownFields
-	sizeCache                   protoimpl.SizeCache
+	// defeater_probe_priority_min_count: minimum Fact.defeater_count that
+	// promotes a fact to "priority probe" status (Skepticism Gap 2 — Defeater-
+	// Aware Probe Prioritization). A fact that has accumulated this many
+	// undercutting defeaters is considered epistemically stressed and is invited
+	// for external probing using a reduced idle threshold
+	// (defeater_probe_reduced_threshold_blocks) rather than the normal
+	// probe_invitation_idle_threshold_blocks. This causes stressed facts to
+	// surface in the probe queue sooner than pristine high-confidence facts.
+	//
+	// Pollock's insight: a fact that has survived multiple narrow-margin
+	// challenges still asserts the same conclusion, but the accumulation of
+	// undercutting defeaters reveals that the evidential connection is being
+	// repeatedly questioned. The probe priority mechanism ensures that such
+	// facts receive additional scrutiny before their effective_confidence_bps
+	// decays too far to be useful.
+	//
+	// 0 = disabled (default). All facts use the same idle threshold regardless
+	// of defeater count. Enable via governance once defeater tracking
+	// (defeater_opposition_threshold_bps > 0) is active.
+	// Skepticism Brief Gap 2 (★★★☆☆). Default: 0 (disabled).
+	DefeaterProbePriorityMinCount uint64 `protobuf:"varint,195,opt,name=defeater_probe_priority_min_count,json=defeaterProbePriorityMinCount,proto3" json:"defeater_probe_priority_min_count,omitempty"`
+	// defeater_probe_reduced_threshold_blocks: the idle threshold in blocks
+	// used for facts that qualify for priority probing (DefeaterCount >=
+	// defeater_probe_priority_min_count). A smaller value means the fact is
+	// promoted into the probe invitation queue sooner.
+	//
+	// 0 = halve the normal probe_invitation_idle_threshold_blocks (fast default
+	// that governance can override). Non-zero = use this exact threshold.
+	// Only meaningful when defeater_probe_priority_min_count > 0.
+	//
+	// Example: if probe_invitation_idle_threshold_blocks = 34,272 (~1 day) and
+	// defeater_probe_reduced_threshold_blocks = 8,568 (~6 hours), then a fact
+	// with 2+ defeaters will be invited for probing after only 6 hours of
+	// inactivity instead of the normal 24-hour wait.
+	//
+	// Skepticism Brief Gap 2. Default: 0 (halve the normal threshold).
+	DefeaterProbeReducedThresholdBlocks uint64 `protobuf:"varint,196,opt,name=defeater_probe_reduced_threshold_blocks,json=defeaterProbeReducedThresholdBlocks,proto3" json:"defeater_probe_reduced_threshold_blocks,omitempty"`
+	unknownFields                       protoimpl.UnknownFields
+	sizeCache                           protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -2028,6 +2065,20 @@ func (x *Params) GetDefeaterPerCountDiscountBps() uint64 {
 	return 0
 }
 
+func (x *Params) GetDefeaterProbePriorityMinCount() uint64 {
+	if x != nil {
+		return x.DefeaterProbePriorityMinCount
+	}
+	return 0
+}
+
+func (x *Params) GetDefeaterProbeReducedThresholdBlocks() uint64 {
+	if x != nil {
+		return x.DefeaterProbeReducedThresholdBlocks
+	}
+	return 0
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -2275,7 +2326,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\x9ea\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xc0b\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2471,7 +2522,9 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"+extraordinary_claim_verifier_multiplier_bps\x18\xbf\x01 \x01(\x04R'extraordinaryClaimVerifierMultiplierBps\x12Z\n" +
 	")research_programme_degeneration_threshold\x18\xc0\x01 \x01(\x04R&researchProgrammeDegenerationThreshold\x12J\n" +
 	"!defeater_opposition_threshold_bps\x18\xc1\x01 \x01(\x04R\x1edefeaterOppositionThresholdBps\x12E\n" +
-	"\x1fdefeater_per_count_discount_bps\x18\xc2\x01 \x01(\x04R\x1bdefeaterPerCountDiscountBps\x1aN\n" +
+	"\x1fdefeater_per_count_discount_bps\x18\xc2\x01 \x01(\x04R\x1bdefeaterPerCountDiscountBps\x12I\n" +
+	"!defeater_probe_priority_min_count\x18\xc3\x01 \x01(\x04R\x1ddefeaterProbePriorityMinCount\x12U\n" +
+	"'defeater_probe_reduced_threshold_blocks\x18\xc4\x01 \x01(\x04R#defeaterProbeReducedThresholdBlocks\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xb8\x0f\n" +
