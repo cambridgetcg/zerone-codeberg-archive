@@ -412,6 +412,8 @@ func DefaultParams() Params {
 		// Skepticism Gap 2: defeater-aware probe prioritization.
 		DefeaterProbePriorityMinCount:       0, // disabled — all facts use normal idle threshold
 		DefeaterProbeReducedThresholdBlocks: 0, // 0 = halve normal threshold when enabled
+		// Structured Deliberation Gap 4: Polis bridging.
+		BridgingMinOrgs: 0, // disabled — bridging_org_count computed but no event emitted
 	}
 }
 

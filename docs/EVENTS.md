@@ -2105,6 +2105,13 @@ A verifier's organizational affiliation was recorded or updated (Scientific Meth
 - `action` -- `"self_declared"` or `"authority_override"`
 - `sender` -- address that submitted the message
 
+### zerone.knowledge.bridging_claim_accepted
+*Keeper (rounds.go / panel_diversity.go).* Emitted when an accepted fact's cross-organizational consensus meets or exceeds `Params.BridgingMinOrgs`. Polis (pol.is) insight: claims accepted by verifiers from distinct organizational affiliations are epistemically stronger than within-cluster consensus. `bridging_org_count` is always computed and stored on `Fact.bridging_org_count`; this event fires only when the count clears the configured threshold. `BridgingMinOrgs = 0` disables event emission (default). (Structured Deliberation Gap 4.)
+- `fact_id` -- the newly accepted fact
+- `claim_id` -- the claim that produced the fact
+- `bridging_org_count` -- number of distinct organizations among ACCEPT voters
+- `accept_voter_count` -- total number of verifiers who voted "accept"
+
 ### zerone.knowledge.methodology_amended
 A registered methodology was amended by governance (Scientific Method Gap 2). Fired by `MsgUpdateMethodology`. Version is auto-incremented; the amendment rationale is stored on-chain.
 - `methodology_id` -- identifier of the amended methodology

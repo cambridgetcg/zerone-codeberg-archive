@@ -608,6 +608,34 @@ message Fact {
   // Governance param: defeater_per_count_discount_bps (default 0 = disabled).
   // When 0, effective_confidence_bps tracks confidence_bps exactly (no discount).
   uint64 effective_confidence_bps = 88;
+
+  // ── Structured Deliberation Gap 4: Polis Bridging ────────────────────────
+  //
+  // bridging_org_count: the number of distinct organizations represented among
+  // verifiers who voted ACCEPT on the round that produced this fact.
+  //
+  // Polis (pol.is, Audrey Tang): facts that achieve consensus across
+  // organizational divides are epistemically more robust than those accepted
+  // only within a single affiliation cluster. "Bridging statements" in Polis
+  // are those that achieve high agreement across ideologically distinct groups.
+  //
+  // Here: distinct accepting-voter organizations are the structural analog of
+  // Polis clusters. High bridging_org_count signals cross-organizational
+  // epistemic consensus — the claim was not merely rubber-stamped by a
+  // homogeneous panel.
+  //
+  // Computed at CompleteRound for ACCEPT verdicts. 0 when:
+  //   - No org data is declared (all singletons — each counted as 1 org each,
+  //     so count equals accept voter count)
+  //   - Only one accepting verifier participated
+  //
+  // Note: verifiers without a declared organization_id are each counted as a
+  // unique singleton, so bridging_org_count ≤ accept_voter_count always.
+  //
+  // Governance param: bridging_min_orgs (default 0 = disabled). When > 0, a
+  // zerone.knowledge.bridging_claim_accepted event is emitted when
+  // bridging_org_count >= bridging_min_orgs.
+  uint64 bridging_org_count = 89;
 }
 
 // CurriculumTier orders training examples by difficulty and foundational depth.

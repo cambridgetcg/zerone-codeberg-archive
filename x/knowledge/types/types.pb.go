@@ -2596,8 +2596,35 @@ type Fact struct {
 	// Governance param: defeater_per_count_discount_bps (default 0 = disabled).
 	// When 0, effective_confidence_bps tracks confidence_bps exactly (no discount).
 	EffectiveConfidenceBps uint64 `protobuf:"varint,88,opt,name=effective_confidence_bps,json=effectiveConfidenceBps,proto3" json:"effective_confidence_bps,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// ── Structured Deliberation Gap 4: Polis Bridging ────────────────────────
+	//
+	// bridging_org_count: the number of distinct organizations represented among
+	// verifiers who voted ACCEPT on the round that produced this fact.
+	//
+	// Polis (pol.is, Audrey Tang): facts that achieve consensus across
+	// organizational divides are epistemically more robust than those accepted
+	// only within a single affiliation cluster. "Bridging statements" in Polis
+	// are those that achieve high agreement across ideologically distinct groups.
+	//
+	// Here: distinct accepting-voter organizations are the structural analog of
+	// Polis clusters. High bridging_org_count signals cross-organizational
+	// epistemic consensus — the claim was not merely rubber-stamped by a
+	// homogeneous panel.
+	//
+	// Computed at CompleteRound for ACCEPT verdicts. 0 when:
+	//   - No org data is declared (all singletons — each counted as 1 org each,
+	//     so count equals accept voter count)
+	//   - Only one accepting verifier participated
+	//
+	// Note: verifiers without a declared organization_id are each counted as a
+	// unique singleton, so bridging_org_count ≤ accept_voter_count always.
+	//
+	// Governance param: bridging_min_orgs (default 0 = disabled). When > 0, a
+	// zerone.knowledge.bridging_claim_accepted event is emitted when
+	// bridging_org_count >= bridging_min_orgs.
+	BridgingOrgCount uint64 `protobuf:"varint,89,opt,name=bridging_org_count,json=bridgingOrgCount,proto3" json:"bridging_org_count,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Fact) Reset() {
@@ -3172,6 +3199,13 @@ func (x *Fact) GetDefeaterCount() uint64 {
 func (x *Fact) GetEffectiveConfidenceBps() uint64 {
 	if x != nil {
 		return x.EffectiveConfidenceBps
+	}
+	return 0
+}
+
+func (x *Fact) GetBridgingOrgCount() uint64 {
+	if x != nil {
+		return x.BridgingOrgCount
 	}
 	return 0
 }
@@ -10181,7 +10215,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x05scope\x18\x04 \x01(\tR\x05scope\x12%\n" +
 	"\x0etemporal_scope\x18\x05 \x01(\tR\rtemporalScope\x12\x1c\n" +
 	"\tnegatable\x18\x06 \x01(\bR\tnegatable\x12\x12\n" +
-	"\x04tags\x18\a \x03(\tR\x04tags\"\xf3\x1a\n" +
+	"\x04tags\x18\a \x03(\tR\x04tags\"\xa1\x1b\n" +
 	"\x04Fact\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12\x16\n" +
@@ -10271,7 +10305,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x10stated_prior_bps\x18U \x01(\x04R\x0estatedPriorBps\x123\n" +
 	"\x15mechanically_verified\x18V \x01(\bR\x14mechanicallyVerified\x12%\n" +
 	"\x0edefeater_count\x18W \x01(\x04R\rdefeaterCount\x128\n" +
-	"\x18effective_confidence_bps\x18X \x01(\x04R\x16effectiveConfidenceBps\"\xe0\x05\n" +
+	"\x18effective_confidence_bps\x18X \x01(\x04R\x16effectiveConfidenceBps\x12,\n" +
+	"\x12bridging_org_count\x18Y \x01(\x04R\x10bridgingOrgCount\"\xe0\x05\n" +
 	"\rTokenizerSpec\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x04R\aversion\x12*\n" +
 	"\x11ratified_at_block\x18\x02 \x01(\x04R\x0fratifiedAtBlock\x12.\n" +

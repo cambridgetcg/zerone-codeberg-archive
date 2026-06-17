@@ -717,6 +717,21 @@ message Params {
   //
   // Skepticism Brief Gap 2. Default: 0 (halve the normal threshold).
   uint64 defeater_probe_reduced_threshold_blocks = 196;
+
+  // ── Structured Deliberation Gap 4: Polis Bridging ────────────────────────
+  //
+  // bridging_min_orgs: minimum number of distinct organizations among ACCEPT
+  // voters required to emit a zerone.knowledge.bridging_claim_accepted event.
+  // 0 = disabled (default). 2 = at least two distinct orgs both voted ACCEPT.
+  //
+  // Polis's core insight: cross-organizational consensus is stronger signal
+  // than within-cluster agreement. This parameter gates when the chain
+  // flags a fact as a "bridging claim" in the Polis sense.
+  //
+  // Note: bridging_org_count is always computed and stored on every accepted
+  // fact, regardless of this parameter. The parameter only controls event
+  // emission threshold. Set to 0 to compute silently.
+  uint64 bridging_min_orgs = 197;
 }
 
 // GenesisState is the genesis state of the knowledge module.

@@ -673,8 +673,22 @@ type Params struct {
 	//
 	// Skepticism Brief Gap 2. Default: 0 (halve the normal threshold).
 	DefeaterProbeReducedThresholdBlocks uint64 `protobuf:"varint,196,opt,name=defeater_probe_reduced_threshold_blocks,json=defeaterProbeReducedThresholdBlocks,proto3" json:"defeater_probe_reduced_threshold_blocks,omitempty"`
-	unknownFields                       protoimpl.UnknownFields
-	sizeCache                           protoimpl.SizeCache
+	// ── Structured Deliberation Gap 4: Polis Bridging ────────────────────────
+	//
+	// bridging_min_orgs: minimum number of distinct organizations among ACCEPT
+	// voters required to emit a zerone.knowledge.bridging_claim_accepted event.
+	// 0 = disabled (default). 2 = at least two distinct orgs both voted ACCEPT.
+	//
+	// Polis's core insight: cross-organizational consensus is stronger signal
+	// than within-cluster agreement. This parameter gates when the chain
+	// flags a fact as a "bridging claim" in the Polis sense.
+	//
+	// Note: bridging_org_count is always computed and stored on every accepted
+	// fact, regardless of this parameter. The parameter only controls event
+	// emission threshold. Set to 0 to compute silently.
+	BridgingMinOrgs uint64 `protobuf:"varint,197,opt,name=bridging_min_orgs,json=bridgingMinOrgs,proto3" json:"bridging_min_orgs,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -2079,6 +2093,13 @@ func (x *Params) GetDefeaterProbeReducedThresholdBlocks() uint64 {
 	return 0
 }
 
+func (x *Params) GetBridgingMinOrgs() uint64 {
+	if x != nil {
+		return x.BridgingMinOrgs
+	}
+	return 0
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -2326,7 +2347,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xc0b\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xedb\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2524,7 +2545,8 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"!defeater_opposition_threshold_bps\x18\xc1\x01 \x01(\x04R\x1edefeaterOppositionThresholdBps\x12E\n" +
 	"\x1fdefeater_per_count_discount_bps\x18\xc2\x01 \x01(\x04R\x1bdefeaterPerCountDiscountBps\x12I\n" +
 	"!defeater_probe_priority_min_count\x18\xc3\x01 \x01(\x04R\x1ddefeaterProbePriorityMinCount\x12U\n" +
-	"'defeater_probe_reduced_threshold_blocks\x18\xc4\x01 \x01(\x04R#defeaterProbeReducedThresholdBlocks\x1aN\n" +
+	"'defeater_probe_reduced_threshold_blocks\x18\xc4\x01 \x01(\x04R#defeaterProbeReducedThresholdBlocks\x12+\n" +
+	"\x11bridging_min_orgs\x18\xc5\x01 \x01(\x04R\x0fbridgingMinOrgs\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xb8\x0f\n" +

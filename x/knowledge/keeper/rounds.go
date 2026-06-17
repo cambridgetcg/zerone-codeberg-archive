@@ -296,6 +296,16 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 	// the attack graph (ClaimRelation.relation == ATTACKS + FactRelation.attack_target).
 	claim.DungLabel = dungLabelForVerdict(result.Verdict)
 
+	// Structured Deliberation Gap 4: Polis bridging — cross-organizational consensus.
+	// For ACCEPT verdicts, compute the number of distinct organizations among
+	// verifiers who voted "accept" and store it on the new fact. Emits
+	// zerone.knowledge.bridging_claim_accepted when count >= Params.BridgingMinOrgs.
+	// Polis insight: claims that achieve cross-organizational consensus are
+	// epistemically more robust than within-cluster agreement alone.
+	if factId != "" {
+		k.recordBridgingOrgCount(ctx, factId, round)
+	}
+
 	if err := k.SetClaim(ctx, claim); err != nil {
 		return err
 	}

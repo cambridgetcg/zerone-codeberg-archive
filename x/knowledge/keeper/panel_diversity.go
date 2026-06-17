@@ -149,3 +149,92 @@ func (m *msgServer) SetVerifierOrganization(ctx context.Context, msg *types.MsgS
 		OrganizationId:  msg.OrganizationId,
 	}, nil
 }
+
+// ─── Structured Deliberation Gap 4: Polis Bridging ───────────────────────────
+//
+// Polis (pol.is, Audrey Tang / vTaiwan): cross-organizational consensus is
+// stronger epistemic signal than within-cluster agreement. "Bridging statements"
+// in Polis are those that achieve high agreement *across* ideologically distinct
+// groups — not merely among a homogeneous cohort.
+//
+// On-chain analog: verifier organizational affiliations are the structural
+// proxy for Polis clusters. A fact accepted by verifiers from N distinct
+// organizations has bridged N organizational perspectives.
+
+// RecordBridgingOrgCountForTest exports recordBridgingOrgCount for white-box unit tests.
+func RecordBridgingOrgCountForTest(k Keeper, ctx context.Context, factId string, round *types.VerificationRound) {
+	k.recordBridgingOrgCount(ctx, factId, round)
+}
+
+// ComputeBridgingOrgCount returns the number of distinct organizations among
+// verifiers who voted "accept" in the given round.
+//
+// Algorithm (mirrors ComputePanelDiversityScore but restricted to ACCEPT voters):
+//   - Skips reveals with Vote != "accept" or empty Verifier
+//   - Empty organization_id → treated as unique singleton (distinct from all)
+//   - Returns 0 when no verifiers voted "accept"
+func (k Keeper) ComputeBridgingOrgCount(ctx context.Context, round *types.VerificationRound) uint64 {
+	orgSeen := make(map[string]struct{})
+	singletonIdx := 0
+	for _, r := range round.Reveals {
+		if r.Verifier == "" || r.Vote != "accept" {
+			continue
+		}
+		cal, found := k.GetAgentCalibration(ctx, r.Verifier)
+		var orgKey string
+		if found && cal.OrganizationId != "" {
+			orgKey = "org:" + cal.OrganizationId
+		} else {
+			// Unknown affiliation: treat as unique singleton so no diversity penalty.
+			orgKey = fmt.Sprintf("singleton:%d:%s", singletonIdx, r.Verifier)
+			singletonIdx++
+		}
+		orgSeen[orgKey] = struct{}{}
+	}
+	return uint64(len(orgSeen))
+}
+
+// recordBridgingOrgCount computes and stores the bridging org count on the
+// accepted fact identified by factId. Emits zerone.knowledge.bridging_claim_accepted
+// when the count meets or exceeds Params.BridgingMinOrgs (if non-zero).
+//
+// Called from CompleteRound on ACCEPT verdicts only, after createFactFromClaim.
+// Fail-open: any error is silently absorbed to avoid blocking round completion.
+func (k Keeper) recordBridgingOrgCount(ctx context.Context, factId string, round *types.VerificationRound) {
+	if factId == "" {
+		return
+	}
+	fact, found := k.GetFact(ctx, factId)
+	if !found {
+		return
+	}
+
+	count := k.ComputeBridgingOrgCount(ctx, round)
+	fact.BridgingOrgCount = count
+	if err := k.SetFact(ctx, fact); err != nil {
+		return
+	}
+
+	// Threshold-gated event emission.
+	params, err := k.GetParams(ctx)
+	if err != nil || params.BridgingMinOrgs == 0 || count < params.BridgingMinOrgs {
+		return
+	}
+
+	// Count total accept voters for the event attribute.
+	acceptCount := uint64(0)
+	for _, r := range round.Reveals {
+		if r.Vote == "accept" {
+			acceptCount++
+		}
+	}
+
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+	sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
+		"zerone.knowledge.bridging_claim_accepted",
+		sdk.NewAttribute("fact_id", factId),
+		sdk.NewAttribute("claim_id", round.ClaimId),
+		sdk.NewAttribute("bridging_org_count", fmt.Sprintf("%d", count)),
+		sdk.NewAttribute("accept_voter_count", fmt.Sprintf("%d", acceptCount)),
+	))
+}
