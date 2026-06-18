@@ -736,8 +736,25 @@ type Params struct {
 	// Default: 0 (disabled). When 0, rebutting defeaters do not reduce
 	// effective_confidence_bps. Activate by governance proposal.
 	RebuttingDefeaterDiscountBps uint64 `protobuf:"varint,201,opt,name=rebutting_defeater_discount_bps,json=rebuttingDefeaterDiscountBps,proto3" json:"rebutting_defeater_discount_bps,omitempty"`
-	unknownFields                protoimpl.UnknownFields
-	sizeCache                    protoimpl.SizeCache
+	// ─── Phenomenology Gap: Reduction Steps ──────────────────────────────────
+	//
+	// min_phenomenological_reduction_steps: minimum number of explicit
+	// ReductionStep records required before an M-PHENOMENOLOGICAL claim can
+	// receive an ACCEPT verdict. When this param > 0 and the claim has fewer
+	// steps, CompleteRound returns INCONCLUSIVE instead of ACCEPT.
+	//
+	// Encodes Husserl's methodological requirement: phenomenology is a
+	// discipline of explicit reduction, not mere introspection. A claim
+	// without recorded reduction steps has no verifiable phenomenological
+	// provenance — the verifier panel cannot assess whether the practitioner
+	// actually performed the epoché, the eidetic reduction, and so forth.
+	//
+	// Default: 0 (disabled — all M-PHENOMENOLOGICAL claims pass unconditionally).
+	// Governance activates by setting to 1 or higher.
+	// Fail-open: non-M-PHENOMENOLOGICAL claims are never gated by this param.
+	MinPhenomenologicalReductionSteps uint64 `protobuf:"varint,202,opt,name=min_phenomenological_reduction_steps,json=minPhenomenologicalReductionSteps,proto3" json:"min_phenomenological_reduction_steps,omitempty"`
+	unknownFields                     protoimpl.UnknownFields
+	sizeCache                         protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -2177,6 +2194,13 @@ func (x *Params) GetRebuttingDefeaterDiscountBps() uint64 {
 	return 0
 }
 
+func (x *Params) GetMinPhenomenologicalReductionSteps() uint64 {
+	if x != nil {
+		return x.MinPhenomenologicalReductionSteps
+	}
+	return 0
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -2424,7 +2448,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xa6e\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xf8e\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2627,7 +2651,8 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\"high_bayesian_update_threshold_bps\x18\xc6\x01 \x01(\x04R\x1ehighBayesianUpdateThresholdBps\x12B\n" +
 	"\x1dregress_depth_probe_threshold\x18\xc7\x01 \x01(\x04R\x1aregressDepthProbeThreshold\x12^\n" +
 	",regress_depth_probe_reduced_threshold_blocks\x18\xc8\x01 \x01(\x04R'regressDepthProbeReducedThresholdBlocks\x12F\n" +
-	"\x1frebutting_defeater_discount_bps\x18\xc9\x01 \x01(\x04R\x1crebuttingDefeaterDiscountBps\x1aN\n" +
+	"\x1frebutting_defeater_discount_bps\x18\xc9\x01 \x01(\x04R\x1crebuttingDefeaterDiscountBps\x12P\n" +
+	"$min_phenomenological_reduction_steps\x18\xca\x01 \x01(\x04R!minPhenomenologicalReductionSteps\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xb8\x0f\n" +

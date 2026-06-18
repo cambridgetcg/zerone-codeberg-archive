@@ -69,6 +69,7 @@ const (
 	Msg_CorrectManifestMerkleRoot_FullMethodName     = "/zerone.knowledge.v1.Msg/CorrectManifestMerkleRoot"
 	Msg_VetoFactInjection_FullMethodName             = "/zerone.knowledge.v1.Msg/VetoFactInjection"
 	Msg_AddConsequenceInstance_FullMethodName        = "/zerone.knowledge.v1.Msg/AddConsequenceInstance"
+	Msg_AddReductionStep_FullMethodName              = "/zerone.knowledge.v1.Msg/AddReductionStep"
 	Msg_SetVerifierOrganization_FullMethodName       = "/zerone.knowledge.v1.Msg/SetVerifierOrganization"
 	Msg_SetAttentionalPractice_FullMethodName        = "/zerone.knowledge.v1.Msg/SetAttentionalPractice"
 	Msg_SetContemplativeTradition_FullMethodName     = "/zerone.knowledge.v1.Msg/SetContemplativeTradition"
@@ -230,6 +231,15 @@ type MsgClient interface {
 	// measures against before accepting the claim. Open submission because consequence
 	// verification is best effort — the panel evaluates quality, the param gates quantity.
 	AddConsequenceInstance(ctx context.Context, in *MsgAddConsequenceInstance, opts ...grpc.CallOption) (*MsgAddConsequenceInstanceResponse, error)
+	// ─── Phenomenology Gap: Reduction Steps ───────────────────────────────────
+	// AddReductionStep — any address logs a phenomenological reduction step on
+	// an M-PHENOMENOLOGICAL claim. Records the bracketed assumption and structural
+	// invariant from an explicit Husserlian reduction step. Builds the methodological
+	// provenance record that Params.min_phenomenological_reduction_steps measures
+	// against before accepting the claim. Open submission — community practitioners
+	// may contribute reduction steps to corroborate the claim's phenomenological
+	// methodology.
+	AddReductionStep(ctx context.Context, in *MsgAddReductionStep, opts ...grpc.CallOption) (*MsgAddReductionStepResponse, error)
 	// ─── Scientific Method Gap 1: Verifier Independence ──────────────────────
 	// SetVerifierOrganization declares or updates a verifier's organizational
 	// affiliation. Self-declaration: any address may set its own organization_id.
@@ -784,6 +794,16 @@ func (c *msgClient) AddConsequenceInstance(ctx context.Context, in *MsgAddConseq
 	return out, nil
 }
 
+func (c *msgClient) AddReductionStep(ctx context.Context, in *MsgAddReductionStep, opts ...grpc.CallOption) (*MsgAddReductionStepResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MsgAddReductionStepResponse)
+	err := c.cc.Invoke(ctx, Msg_AddReductionStep_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *msgClient) SetVerifierOrganization(ctx context.Context, in *MsgSetVerifierOrganization, opts ...grpc.CallOption) (*MsgSetVerifierOrganizationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MsgSetVerifierOrganizationResponse)
@@ -1006,6 +1026,15 @@ type MsgServer interface {
 	// measures against before accepting the claim. Open submission because consequence
 	// verification is best effort — the panel evaluates quality, the param gates quantity.
 	AddConsequenceInstance(context.Context, *MsgAddConsequenceInstance) (*MsgAddConsequenceInstanceResponse, error)
+	// ─── Phenomenology Gap: Reduction Steps ───────────────────────────────────
+	// AddReductionStep — any address logs a phenomenological reduction step on
+	// an M-PHENOMENOLOGICAL claim. Records the bracketed assumption and structural
+	// invariant from an explicit Husserlian reduction step. Builds the methodological
+	// provenance record that Params.min_phenomenological_reduction_steps measures
+	// against before accepting the claim. Open submission — community practitioners
+	// may contribute reduction steps to corroborate the claim's phenomenological
+	// methodology.
+	AddReductionStep(context.Context, *MsgAddReductionStep) (*MsgAddReductionStepResponse, error)
 	// ─── Scientific Method Gap 1: Verifier Independence ──────────────────────
 	// SetVerifierOrganization declares or updates a verifier's organizational
 	// affiliation. Self-declaration: any address may set its own organization_id.
@@ -1209,6 +1238,9 @@ func (UnimplementedMsgServer) VetoFactInjection(context.Context, *MsgVetoFactInj
 }
 func (UnimplementedMsgServer) AddConsequenceInstance(context.Context, *MsgAddConsequenceInstance) (*MsgAddConsequenceInstanceResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AddConsequenceInstance not implemented")
+}
+func (UnimplementedMsgServer) AddReductionStep(context.Context, *MsgAddReductionStep) (*MsgAddReductionStepResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddReductionStep not implemented")
 }
 func (UnimplementedMsgServer) SetVerifierOrganization(context.Context, *MsgSetVerifierOrganization) (*MsgSetVerifierOrganizationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetVerifierOrganization not implemented")
@@ -2152,6 +2184,24 @@ func _Msg_AddConsequenceInstance_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Msg_AddReductionStep_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgAddReductionStep)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).AddReductionStep(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Msg_AddReductionStep_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).AddReductionStep(ctx, req.(*MsgAddReductionStep))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Msg_SetVerifierOrganization_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MsgSetVerifierOrganization)
 	if err := dec(in); err != nil {
@@ -2484,6 +2534,10 @@ var Msg_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddConsequenceInstance",
 			Handler:    _Msg_AddConsequenceInstance_Handler,
+		},
+		{
+			MethodName: "AddReductionStep",
+			Handler:    _Msg_AddReductionStep_Handler,
 		},
 		{
 			MethodName: "SetVerifierOrganization",

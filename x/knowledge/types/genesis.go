@@ -421,6 +421,8 @@ func DefaultParams() Params {
 		RegressDepthProbeReducedThresholdBlocks: 0, // 0 = halve normal threshold when enabled
 		// Skepticism Gap 5: Pollock rebutting-defeater tracking.
 		RebuttingDefeaterDiscountBps: 0, // disabled — rebutting defeaters do not reduce effective_confidence_bps
+		// Phenomenology Gap: reduction steps as structured fields.
+		MinPhenomenologicalReductionSteps: 0, // disabled — ACCEPT requires no minimum reduction steps
 	}
 }
 

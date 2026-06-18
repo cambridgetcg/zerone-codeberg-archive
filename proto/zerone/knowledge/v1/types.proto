@@ -681,6 +681,15 @@ message Fact {
   // Governance param: rebutting_defeater_discount_bps (default 0 = disabled).
   // When 0, rebutting defeaters do not reduce effective_confidence_bps.
   uint64 rebutting_defeater_count = 91;
+
+  // ── Phenomenology Gap: Reduction Steps ───────────────────────────────────
+  //
+  // phenomenological_reduction_steps: the epoché and reduction steps that
+  // grounded this M-PHENOMENOLOGICAL fact. Propagated from Claim at ACCEPT
+  // time. Forms part of the fact's methodological provenance record — training
+  // pipelines and query engines can verify that the claim went through explicit
+  // Husserlian reduction, not just free-form first-person report.
+  repeated ReductionStep phenomenological_reduction_steps = 92;
 }
 
 // CurriculumTier orders training examples by difficulty and foundational depth.
@@ -1500,6 +1509,23 @@ message Claim {
   // Set at claim creation from the rescued claim's depth + 1.
   // Default: 0 (no rescue chain).
   uint64 research_programme_depth = 51;
+
+  // ── Phenomenology Gap: Reduction Steps ───────────────────────────────────
+  //
+  // phenomenological_reduction_steps: structured record of the epoché and
+  // reduction steps applied when developing this M-PHENOMENOLOGICAL claim.
+  // Husserl's methodology is explicit: the claim must name what was bracketed
+  // and what essential structure was revealed. Without this record, an
+  // M-PHENOMENOLOGICAL claim cannot be distinguished from a free-form first-
+  // person report — it lacks the methodological provenance the tradition requires.
+  //
+  // Any address may append steps via MsgAddReductionStep (before ACCEPT/REJECT).
+  // Gate: Params.MinPhenomenologicalReductionSteps > 0 → must have >= N steps
+  // before the claim can receive an ACCEPT verdict. If insufficient: INCONCLUSIVE.
+  // Fail-open: non-M-PHENOMENOLOGICAL claims unconditionally pass the gate.
+  //
+  // Propagated to Fact.phenomenological_reduction_steps on ACCEPT.
+  repeated ReductionStep phenomenological_reduction_steps = 52;
 }
 
 // PreRegistration records a submitter's declared intent to submit a claim
@@ -1558,6 +1584,56 @@ message ConsequenceInstance {
   uint64 submitted_at_block  = 5;
   // submitted_by: address that submitted this consequence instance.
   string submitted_by        = 6;
+}
+
+// ReductionStep records a single step of phenomenological reduction applied
+// to an M-PHENOMENOLOGICAL claim. Husserl's epoché and subsequent reductions
+// are the rigorous methodology of phenomenology — they constitute the "method"
+// that transforms ordinary observation into phenomenological description.
+//
+// Each step documents:
+//   - What assumption or "natural attitude" element was bracketed (epoché)
+//   - What structural invariant was revealed through the reduction
+//   - The type of reduction applied
+//
+// Varela's neurophenomenology requires explicit methodological steps so that
+// the claim's phenomenological provenance is transparent and intersubjectively
+// verifiable. "A careful phenomenological account" (Varela, Thompson & Rosch,
+// 1991) is one that names what was bracketed and what survived the bracketing.
+//
+// Reduction types include:
+//   "epoche"            — suspension of the natural attitude (Husserl)
+//   "phenomenological"  — attention to the structure of consciousness
+//   "eidetic"           — imaginative variation to find essential invariants
+//   "transcendental"    — from psychological to transcendental plane (Husserl)
+//   "intersubjective"   — cross-practitioner corroboration (Varela, Husserl)
+//   "hermeneutic"       — from pre-understanding to interpretation (Heidegger, Gadamer)
+message ReductionStep {
+  // reduction_type: which phenomenological reduction was performed.
+  // Examples: "epoche", "phenomenological", "eidetic", "transcendental",
+  // "intersubjective", "hermeneutic". Free-form string — governance defines
+  // recognized types via the methodology registry.
+  string reduction_type = 1;
+
+  // bracketed_assumption: what was suspended, set aside, or "bracketed"
+  // in this reduction step. The epoché suspends the "natural attitude" —
+  // the unquestioned assumption that the world exists independently of
+  // consciousness. Later reductions bracket other assumptions.
+  // Required for all reduction types.
+  string bracketed_assumption = 2;
+
+  // structural_invariant: what essential structure of experience was
+  // revealed through this reduction — what persisted across all variations.
+  // This is the phenomenological "finding": the eidetic invariant, the
+  // transcendental structure, the intersubjective agreement, etc.
+  // Required for all reduction types.
+  string structural_invariant = 3;
+
+  // submitted_at_block: chain block when this reduction step was logged.
+  uint64 submitted_at_block = 4;
+
+  // submitted_by: address that submitted this reduction step.
+  string submitted_by = 5;
 }
 
 // DeterminateNegationType encodes the specific character of a REJECT verdict

@@ -80,6 +80,8 @@ func RegisterCodec(cdc *codec.LegacyAmino) {
 	// Bohm Dialogue Gap 1: Claim Suspension
 	cdc.RegisterConcrete(&MsgSuspendClaim{}, "zerone_knowledge/SuspendClaim", nil)
 	cdc.RegisterConcrete(&MsgResumeClaim{}, "zerone_knowledge/ResumeClaim", nil)
+	// Phenomenology Gap: Reduction Steps
+	cdc.RegisterConcrete(&MsgAddReductionStep{}, "zerone_knowledge/AddReductionStep", nil)
 }
 
 // RegisterInterfaces registers the knowledge module's interface implementations.
@@ -158,6 +160,8 @@ func RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
 		// Bohm Dialogue Gap 1: Claim Suspension
 		&MsgSuspendClaim{},
 		&MsgResumeClaim{},
+		// Phenomenology Gap: Reduction Steps
+		&MsgAddReductionStep{},
 	)
 }
 

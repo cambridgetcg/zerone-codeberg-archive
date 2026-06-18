@@ -208,6 +208,16 @@ service Msg {
   // verification is best effort — the panel evaluates quality, the param gates quantity.
   rpc AddConsequenceInstance(MsgAddConsequenceInstance) returns (MsgAddConsequenceInstanceResponse);
 
+  // ─── Phenomenology Gap: Reduction Steps ───────────────────────────────────
+  // AddReductionStep — any address logs a phenomenological reduction step on
+  // an M-PHENOMENOLOGICAL claim. Records the bracketed assumption and structural
+  // invariant from an explicit Husserlian reduction step. Builds the methodological
+  // provenance record that Params.min_phenomenological_reduction_steps measures
+  // against before accepting the claim. Open submission — community practitioners
+  // may contribute reduction steps to corroborate the claim's phenomenological
+  // methodology.
+  rpc AddReductionStep(MsgAddReductionStep) returns (MsgAddReductionStepResponse);
+
   // ─── Scientific Method Gap 1: Verifier Independence ──────────────────────
   // SetVerifierOrganization declares or updates a verifier's organizational
   // affiliation. Self-declaration: any address may set its own organization_id.
@@ -1023,6 +1033,30 @@ message MsgAddConsequenceInstance {
 }
 message MsgAddConsequenceInstanceResponse {
   uint64 instance_count = 1;  // total consequence instances after addition
+}
+
+// ─── Phenomenology Gap: Reduction Steps ──────────────────────────────────────
+//
+// MsgAddReductionStep — attaches a phenomenological reduction step to an
+// M-PHENOMENOLOGICAL claim. Any address may submit. The claim must exist and
+// must not be in CLAIM_STATUS_REJECTED status. The reduction_type,
+// bracketed_assumption, and structural_invariant fields are required.
+//
+// Operationalizes Husserl's methodological requirement: phenomenology is a
+// discipline of explicit reduction. The epoché brackets the natural attitude;
+// subsequent reductions reveal essential structure. Without these steps, an
+// M-PHENOMENOLOGICAL claim lacks verifiable methodological provenance.
+message MsgAddReductionStep {
+  option (cosmos.msg.v1.signer) = "submitter";
+
+  string submitter            = 1;  // address submitting this step
+  string claim_id             = 2;  // target M-PHENOMENOLOGICAL claim
+  string reduction_type       = 3;  // required: "epoche", "phenomenological", "eidetic", etc.
+  string bracketed_assumption = 4;  // required: what was suspended/bracketed
+  string structural_invariant = 5;  // required: what essential structure was revealed
+}
+message MsgAddReductionStepResponse {
+  uint64 step_count = 1;  // total reduction steps after addition
 }
 
 // ─── Scientific Method Gap 1: Verifier Independence ──────────────────────────

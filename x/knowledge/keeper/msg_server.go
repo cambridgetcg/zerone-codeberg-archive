@@ -881,6 +881,30 @@ func (m *msgServer) AddConsequenceInstance(
 	return &types.MsgAddConsequenceInstanceResponse{InstanceCount: count}, nil
 }
 
+// AddReductionStep — Phenomenology Gap. Any address logs a phenomenological
+// reduction step on an M-PHENOMENOLOGICAL claim. Builds the explicit reduction
+// record measured by Params.min_phenomenological_reduction_steps before an
+// ACCEPT verdict is issued.
+func (m *msgServer) AddReductionStep(
+	ctx context.Context,
+	msg *types.MsgAddReductionStep,
+) (*types.MsgAddReductionStepResponse, error) {
+	if msg.ClaimId == "" {
+		return nil, fmt.Errorf("claim_id is required")
+	}
+	step := &types.ReductionStep{
+		ReductionType:       msg.ReductionType,
+		BracketedAssumption: msg.BracketedAssumption,
+		StructuralInvariant: msg.StructuralInvariant,
+		SubmittedBy:         msg.Submitter,
+	}
+	count, err := m.keeper.AddReductionStep(ctx, msg.ClaimId, step)
+	if err != nil {
+		return nil, err
+	}
+	return &types.MsgAddReductionStepResponse{StepCount: count}, nil
+}
+
 // ─── Param update handlers ──────────────────────────────────────────────────
 
 func (m *msgServer) UpdateParams(ctx context.Context, msg *types.MsgUpdateParams) (*types.MsgUpdateParamsResponse, error) {

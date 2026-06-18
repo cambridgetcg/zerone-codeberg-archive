@@ -164,6 +164,14 @@ func (k Keeper) CompleteRound(ctx context.Context, round *types.VerificationRoun
 				result.Verdict = types.Verdict_VERDICT_INCONCLUSIVE
 			}
 		}
+		// Phenomenology Gap: reduction steps gate.
+		// M-PHENOMENOLOGICAL claims must carry at least Params.MinPhenomenologicalReductionSteps
+		// explicit reduction steps (epoché records) before an ACCEPT verdict is issued.
+		if result.Verdict == types.Verdict_VERDICT_ACCEPT {
+			if gateErr := k.CheckPhenomenologicalReductionGate(ctx, *claim, *methodologyGateParams); gateErr != nil {
+				result.Verdict = types.Verdict_VERDICT_INCONCLUSIVE
+			}
+		}
 	}
 
 	// Always compute and store the panel diversity scores so governance can audit
@@ -775,6 +783,10 @@ func (k Keeper) createFactFromClaim(ctx context.Context, claim *types.Claim, rou
 		// flows through so Fact corpus can be queried by specific method
 		// (e.g. "which neurophenomenological facts have cross-modal support?").
 		PhenomenologicalMethod: claim.PhenomenologicalMethod,
+		// Phenomenology Gap: reduction steps flow through to the accepted Fact
+		// as methodological provenance — showing how the claim was developed,
+		// what assumptions were bracketed, and what essential structure survived.
+		PhenomenologicalReductionSteps: claim.PhenomenologicalReductionSteps,
 		// Structured Deliberation Gap 1: Toulmin argument structure flows
 		// through to the accepted Fact for argument-graph queries and
 		// Dung-style attack targeting at the warrant layer.

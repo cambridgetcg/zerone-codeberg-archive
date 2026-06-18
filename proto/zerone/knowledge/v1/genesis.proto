@@ -784,6 +784,24 @@ message Params {
   // Default: 0 (disabled). When 0, rebutting defeaters do not reduce
   // effective_confidence_bps. Activate by governance proposal.
   uint64 rebutting_defeater_discount_bps = 201;
+
+  // ─── Phenomenology Gap: Reduction Steps ──────────────────────────────────
+  //
+  // min_phenomenological_reduction_steps: minimum number of explicit
+  // ReductionStep records required before an M-PHENOMENOLOGICAL claim can
+  // receive an ACCEPT verdict. When this param > 0 and the claim has fewer
+  // steps, CompleteRound returns INCONCLUSIVE instead of ACCEPT.
+  //
+  // Encodes Husserl's methodological requirement: phenomenology is a
+  // discipline of explicit reduction, not mere introspection. A claim
+  // without recorded reduction steps has no verifiable phenomenological
+  // provenance — the verifier panel cannot assess whether the practitioner
+  // actually performed the epoché, the eidetic reduction, and so forth.
+  //
+  // Default: 0 (disabled — all M-PHENOMENOLOGICAL claims pass unconditionally).
+  // Governance activates by setting to 1 or higher.
+  // Fail-open: non-M-PHENOMENOLOGICAL claims are never gated by this param.
+  uint64 min_phenomenological_reduction_steps = 202;
 }
 
 // GenesisState is the genesis state of the knowledge module.

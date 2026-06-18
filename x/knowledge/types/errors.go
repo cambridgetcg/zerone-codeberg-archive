@@ -128,4 +128,12 @@ var (
 	// A stated prior must be a genuine probability: not zero (undefined) and not
 	// one (dogmatic certainty that no evidence could update). Valid: [1, 999_999].
 	ErrInvalidPriorProbability = errors.Register(ModuleName, 97, "prior_probability_bps must be in [1, 999_999] when stated (0 = no prior)")
+
+	// ─── Phenomenological reduction steps (98–100) — Phenomenology Gap ───────
+	// 98: MsgAddReductionStep targets a claim that is not M-PHENOMENOLOGICAL.
+	ErrReductionStepWrongMethodology = errors.Register(ModuleName, 98, "reduction steps are only valid on M-PHENOMENOLOGICAL claims")
+	// 99: MsgAddReductionStep targets a claim that has been rejected.
+	ErrReductionStepRejectedClaim = errors.Register(ModuleName, 99, "cannot add a reduction step to a rejected claim")
+	// 100: ACCEPT verdict gate — M-PHENOMENOLOGICAL claim lacks required reduction steps.
+	ErrInsufficientReductionSteps = errors.Register(ModuleName, 100, "M-PHENOMENOLOGICAL claim has insufficient phenomenological reduction steps for ACCEPT verdict")
 )
