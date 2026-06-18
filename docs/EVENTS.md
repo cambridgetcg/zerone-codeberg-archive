@@ -2140,6 +2140,14 @@ A verifier's organizational affiliation was recorded or updated (Scientific Meth
 - `bridging_org_count` -- number of distinct organizations among ACCEPT voters
 - `accept_voter_count` -- total number of verifiers who voted "accept"
 
+### zerone.knowledge.high_confidence_bridging_cap_applied
+*Keeper (panel_diversity.go).* Emitted when a fact's confidence is capped due to insufficient cross-organizational consensus. Habermas Machine / Fishkin deliberative polling insight: single-cluster agreement cannot certify high epistemic confidence. When `Params.HighConfidenceBridgingMinOrgs > 0`, facts whose confidence reaches or exceeds `HighConfidenceBridgingThresholdBps` have their confidence capped to `(threshold - 1)` if `bridging_org_count < min_orgs`. The cap enforces: "you cannot be 90%-confident in something that only one organizational cluster agreed on." (Structured Deliberation Gap 5.)
+- `fact_id` -- the accepted fact whose confidence was capped
+- `claim_id` -- the claim that produced the fact
+- `bridging_org_count` -- number of distinct organizations among ACCEPT voters
+- `required_bridging_orgs` -- the minimum bridging orgs required to avoid the cap
+- `capped_confidence_bps` -- the confidence after capping (= threshold - 1)
+
 ### zerone.knowledge.methodology_amended
 A registered methodology was amended by governance (Scientific Method Gap 2). Fired by `MsgUpdateMethodology`. Version is auto-incremented; the amendment rationale is stored on-chain.
 - `methodology_id` -- identifier of the amended methodology

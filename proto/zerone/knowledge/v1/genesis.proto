@@ -802,6 +802,28 @@ message Params {
   // Governance activates by setting to 1 or higher.
   // Fail-open: non-M-PHENOMENOLOGICAL claims are never gated by this param.
   uint64 min_phenomenological_reduction_steps = 202;
+
+  // ─── Structured Deliberation Gap 5: High-Confidence Bridging Requirement ──
+  //
+  // Habermas Machine / Fishkin deliberative polling insight: single-cluster
+  // agreement cannot certify high confidence. Genuine broad epistemic consensus
+  // requires cross-organizational convergence (Polis bridging).
+  //
+  // When high_confidence_bridging_min_orgs > 0, facts whose confidence is at
+  // or above high_confidence_bridging_threshold_bps will have their confidence
+  // capped to (threshold − 1) unless their bridging_org_count ≥ min_orgs.
+  //
+  // The chain enforces: "you cannot be 90%-confident in something that only
+  // one organizational cluster agreed on."
+  //
+  // Default: 0 (disabled). Governance sets to reflect their epistemic standards.
+  uint64 high_confidence_bridging_min_orgs = 203;
+
+  // high_confidence_bridging_threshold_bps: confidence level (BPS, 0-1_000_000)
+  // at or above which bridging_org_count must meet high_confidence_bridging_min_orgs.
+  //
+  // Default: 900_000 (90%). Only relevant when high_confidence_bridging_min_orgs > 0.
+  uint64 high_confidence_bridging_threshold_bps = 204;
 }
 
 // GenesisState is the genesis state of the knowledge module.

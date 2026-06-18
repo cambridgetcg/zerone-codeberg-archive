@@ -423,6 +423,9 @@ func DefaultParams() Params {
 		RebuttingDefeaterDiscountBps: 0, // disabled — rebutting defeaters do not reduce effective_confidence_bps
 		// Phenomenology Gap: reduction steps as structured fields.
 		MinPhenomenologicalReductionSteps: 0, // disabled — ACCEPT requires no minimum reduction steps
+		// Structured Deliberation Gap 5: high-confidence bridging requirement.
+		HighConfidenceBridgingMinOrgs:        0,       // disabled — no bridging requirement for high-confidence facts
+		HighConfidenceBridgingThresholdBps:   900_000, // 90% — only relevant when min_orgs > 0
 	}
 }
 
@@ -965,6 +968,24 @@ func (p *Params) Validate() error {
 	for i, v := range p.TransitiveRelationVerbs {
 		if v == "" {
 			return fmt.Errorf("transitive_relation_verbs[%d] must not be empty", i)
+		}
+	}
+
+	// ─── Structured Deliberation Gap 5: high-confidence bridging requirement ───
+	// When enabled (min_orgs > 0), the threshold must be a valid BPS value in
+	// (0, 1_000_000]. It must also be ≤ MaxConfidence — otherwise the gate can
+	// never fire (all verdicts are capped below the threshold).
+	if p.HighConfidenceBridgingMinOrgs > 0 {
+		if p.HighConfidenceBridgingThresholdBps == 0 {
+			return fmt.Errorf(
+				"high_confidence_bridging_threshold_bps must be > 0 when high_confidence_bridging_min_orgs > 0",
+			)
+		}
+		if p.HighConfidenceBridgingThresholdBps > 1_000_000 {
+			return fmt.Errorf(
+				"high_confidence_bridging_threshold_bps must be ≤ 1000000; got %d",
+				p.HighConfidenceBridgingThresholdBps,
+			)
 		}
 	}
 

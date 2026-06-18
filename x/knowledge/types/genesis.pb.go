@@ -753,8 +753,28 @@ type Params struct {
 	// Governance activates by setting to 1 or higher.
 	// Fail-open: non-M-PHENOMENOLOGICAL claims are never gated by this param.
 	MinPhenomenologicalReductionSteps uint64 `protobuf:"varint,202,opt,name=min_phenomenological_reduction_steps,json=minPhenomenologicalReductionSteps,proto3" json:"min_phenomenological_reduction_steps,omitempty"`
-	unknownFields                     protoimpl.UnknownFields
-	sizeCache                         protoimpl.SizeCache
+	// ─── Structured Deliberation Gap 5: High-Confidence Bridging Requirement ──
+	//
+	// Habermas Machine / Fishkin deliberative polling insight: single-cluster
+	// agreement cannot certify high confidence. Genuine broad epistemic consensus
+	// requires cross-organizational convergence (Polis bridging).
+	//
+	// When high_confidence_bridging_min_orgs > 0, facts whose confidence is at
+	// or above high_confidence_bridging_threshold_bps will have their confidence
+	// capped to (threshold − 1) unless their bridging_org_count ≥ min_orgs.
+	//
+	// The chain enforces: "you cannot be 90%-confident in something that only
+	// one organizational cluster agreed on."
+	//
+	// Default: 0 (disabled). Governance sets to reflect their epistemic standards.
+	HighConfidenceBridgingMinOrgs uint64 `protobuf:"varint,203,opt,name=high_confidence_bridging_min_orgs,json=highConfidenceBridgingMinOrgs,proto3" json:"high_confidence_bridging_min_orgs,omitempty"`
+	// high_confidence_bridging_threshold_bps: confidence level (BPS, 0-1_000_000)
+	// at or above which bridging_org_count must meet high_confidence_bridging_min_orgs.
+	//
+	// Default: 900_000 (90%). Only relevant when high_confidence_bridging_min_orgs > 0.
+	HighConfidenceBridgingThresholdBps uint64 `protobuf:"varint,204,opt,name=high_confidence_bridging_threshold_bps,json=highConfidenceBridgingThresholdBps,proto3" json:"high_confidence_bridging_threshold_bps,omitempty"`
+	unknownFields                      protoimpl.UnknownFields
+	sizeCache                          protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -2201,6 +2221,20 @@ func (x *Params) GetMinPhenomenologicalReductionSteps() uint64 {
 	return 0
 }
 
+func (x *Params) GetHighConfidenceBridgingMinOrgs() uint64 {
+	if x != nil {
+		return x.HighConfidenceBridgingMinOrgs
+	}
+	return 0
+}
+
+func (x *Params) GetHighConfidenceBridgingThresholdBps() uint64 {
+	if x != nil {
+		return x.HighConfidenceBridgingThresholdBps
+	}
+	return 0
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -2448,7 +2482,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xf8e\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\x98g\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2652,7 +2686,9 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\x1dregress_depth_probe_threshold\x18\xc7\x01 \x01(\x04R\x1aregressDepthProbeThreshold\x12^\n" +
 	",regress_depth_probe_reduced_threshold_blocks\x18\xc8\x01 \x01(\x04R'regressDepthProbeReducedThresholdBlocks\x12F\n" +
 	"\x1frebutting_defeater_discount_bps\x18\xc9\x01 \x01(\x04R\x1crebuttingDefeaterDiscountBps\x12P\n" +
-	"$min_phenomenological_reduction_steps\x18\xca\x01 \x01(\x04R!minPhenomenologicalReductionSteps\x1aN\n" +
+	"$min_phenomenological_reduction_steps\x18\xca\x01 \x01(\x04R!minPhenomenologicalReductionSteps\x12I\n" +
+	"!high_confidence_bridging_min_orgs\x18\xcb\x01 \x01(\x04R\x1dhighConfidenceBridgingMinOrgs\x12S\n" +
+	"&high_confidence_bridging_threshold_bps\x18\xcc\x01 \x01(\x04R\"highConfidenceBridgingThresholdBps\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xb8\x0f\n" +

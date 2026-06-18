@@ -198,6 +198,12 @@ func (k Keeper) ComputeBridgingOrgCount(ctx context.Context, round *types.Verifi
 // accepted fact identified by factId. Emits zerone.knowledge.bridging_claim_accepted
 // when the count meets or exceeds Params.BridgingMinOrgs (if non-zero).
 //
+// Structured Deliberation Gap 5 (Habermas Machine / Fishkin deliberative polling):
+// When high_confidence_bridging_min_orgs > 0, facts whose confidence is at or
+// above high_confidence_bridging_threshold_bps are confidence-capped if their
+// bridging_org_count is insufficient. Single-cluster agreement cannot certify
+// high epistemic confidence — cross-organizational consensus is required.
+//
 // Called from CompleteRound on ACCEPT verdicts only, after createFactFromClaim.
 // Fail-open: any error is silently absorbed to avoid blocking round completion.
 func (k Keeper) recordBridgingOrgCount(ctx context.Context, factId string, round *types.VerificationRound) {
@@ -211,13 +217,38 @@ func (k Keeper) recordBridgingOrgCount(ctx context.Context, factId string, round
 
 	count := k.ComputeBridgingOrgCount(ctx, round)
 	fact.BridgingOrgCount = count
+
+	// ─── Gap 5: High-Confidence Bridging Requirement ─────────────────────────
+	// If the fact's confidence is at or above the high-confidence threshold but
+	// its bridging org count is insufficient, cap confidence to (threshold - 1).
+	// This enforces: "you cannot be 90%-confident in something that only one
+	// organizational cluster agreed on."
+	params, _ := k.GetParams(ctx)
+	var capApplied bool
+	if params != nil {
+		capApplied = maybeCapHighConfidenceBridging(fact, count, *params)
+	}
+
 	if err := k.SetFact(ctx, fact); err != nil {
 		return
 	}
 
-	// Threshold-gated event emission.
-	params, err := k.GetParams(ctx)
-	if err != nil || params.BridgingMinOrgs == 0 || count < params.BridgingMinOrgs {
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+
+	// Emit Gap 5 cap event if confidence was reduced.
+	if capApplied {
+		sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
+			"zerone.knowledge.high_confidence_bridging_cap_applied",
+			sdk.NewAttribute("fact_id", factId),
+			sdk.NewAttribute("claim_id", round.ClaimId),
+			sdk.NewAttribute("bridging_org_count", fmt.Sprintf("%d", count)),
+			sdk.NewAttribute("required_bridging_orgs", fmt.Sprintf("%d", params.GetHighConfidenceBridgingMinOrgs())),
+			sdk.NewAttribute("capped_confidence_bps", fmt.Sprintf("%d", fact.Confidence)),
+		))
+	}
+
+	// Gap 4 threshold-gated bridging event emission.
+	if params == nil || params.BridgingMinOrgs == 0 || count < params.BridgingMinOrgs {
 		return
 	}
 
@@ -229,7 +260,6 @@ func (k Keeper) recordBridgingOrgCount(ctx context.Context, factId string, round
 		}
 	}
 
-	sdkCtx := sdk.UnwrapSDKContext(ctx)
 	sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
 		"zerone.knowledge.bridging_claim_accepted",
 		sdk.NewAttribute("fact_id", factId),
@@ -237,4 +267,39 @@ func (k Keeper) recordBridgingOrgCount(ctx context.Context, factId string, round
 		sdk.NewAttribute("bridging_org_count", fmt.Sprintf("%d", count)),
 		sdk.NewAttribute("accept_voter_count", fmt.Sprintf("%d", acceptCount)),
 	))
+}
+
+// maybeCapHighConfidenceBridging applies the Structured Deliberation Gap 5
+// confidence cap to fact in-place. Returns true if the cap was applied.
+//
+// Preconditions: fact.BridgingOrgCount has already been set to count.
+// The fact is modified in-place; the caller is responsible for SetFact.
+//
+// Gate:
+//   - disabled when params.HighConfidenceBridgingMinOrgs == 0
+//   - disabled when params.HighConfidenceBridgingThresholdBps == 0
+//   - fires when fact.Confidence >= threshold AND count < min_orgs
+//   - result: confidence capped to (threshold - 1)
+func maybeCapHighConfidenceBridging(fact *types.Fact, count uint64, params types.Params) bool {
+	minOrgs := params.HighConfidenceBridgingMinOrgs
+	threshold := params.HighConfidenceBridgingThresholdBps
+	if minOrgs == 0 || threshold == 0 {
+		return false // disabled
+	}
+	if fact.Confidence < threshold {
+		return false // below threshold — no restriction
+	}
+	if count >= minOrgs {
+		return false // sufficient bridging — fact earned its confidence
+	}
+
+	// Cap confidence to one BPS below the threshold.
+	// The fact almost-reached high confidence — it just didn't bridge enough.
+	fact.Confidence = threshold - 1
+	return true
+}
+
+// MaybeCapHighConfidenceBridgingForTest exports maybeCapHighConfidenceBridging for white-box tests.
+func MaybeCapHighConfidenceBridgingForTest(fact *types.Fact, count uint64, params types.Params) bool {
+	return maybeCapHighConfidenceBridging(fact, count, params)
 }
