@@ -416,6 +416,9 @@ func DefaultParams() Params {
 		BridgingMinOrgs: 0, // disabled — bridging_org_count computed but no event emitted
 		// Bayesian Gap 3: update magnitude surprise threshold.
 		HighBayesianUpdateThresholdBps: 0, // disabled — magnitude computed but no event emitted
+		// Skepticism Gap 4: regress-depth probe prioritization.
+		RegressDepthProbeThreshold:             0, // disabled — all facts use normal idle threshold
+		RegressDepthProbeReducedThresholdBlocks: 0, // 0 = halve normal threshold when enabled
 	}
 }
 

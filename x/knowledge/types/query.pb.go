@@ -7238,8 +7238,10 @@ type IdleFact struct {
 	// Skepticism Gap 2: Pollock epistemic-stress signals for prober prioritization.
 	DefeaterCount          uint64 `protobuf:"varint,7,opt,name=defeater_count,json=defeaterCount,proto3" json:"defeater_count,omitempty"`                              // number of undercutting defeaters recorded (0 = pristine)
 	EffectiveConfidenceBps uint64 `protobuf:"varint,8,opt,name=effective_confidence_bps,json=effectiveConfidenceBps,proto3" json:"effective_confidence_bps,omitempty"` // Pollock-adjusted confidence (may be lower than confidence)
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// Skepticism Gap 4: regress-depth signals for prober prioritization.
+	AxiomDistance uint32 `protobuf:"varint,9,opt,name=axiom_distance,json=axiomDistance,proto3" json:"axiom_distance,omitempty"` // hops from axioms (0 = axiom itself; 1 = cites only axioms; etc.)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *IdleFact) Reset() {
@@ -7324,6 +7326,13 @@ func (x *IdleFact) GetDefeaterCount() uint64 {
 func (x *IdleFact) GetEffectiveConfidenceBps() uint64 {
 	if x != nil {
 		return x.EffectiveConfidenceBps
+	}
+	return 0
+}
+
+func (x *IdleFact) GetAxiomDistance() uint32 {
+	if x != nil {
+		return x.AxiomDistance
 	}
 	return 0
 }
@@ -11397,7 +11406,7 @@ const file_zerone_knowledge_v1_query_proto_rawDesc = "" +
 	"\x0fagent_bonus_bps\x18\x06 \x01(\x04R\ragentBonusBps\x12&\n" +
 	"\x0fhuman_bonus_bps\x18\a \x01(\x04R\rhumanBonusBps\x12,\n" +
 	"\x12agent_accuracy_bps\x18\b \x01(\x04R\x10agentAccuracyBps\x12,\n" +
-	"\x12human_accuracy_bps\x18\t \x01(\x04R\x10humanAccuracyBps\"\xcb\x02\n" +
+	"\x12human_accuracy_bps\x18\t \x01(\x04R\x10humanAccuracyBps\"\xf2\x02\n" +
 	"\bIdleFact\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06domain\x18\x02 \x01(\tR\x06domain\x12\x1e\n" +
@@ -11408,7 +11417,8 @@ const file_zerone_knowledge_v1_query_proto_rawDesc = "" +
 	"\x16probe_invited_at_block\x18\x05 \x01(\x04R\x13probeInvitedAtBlock\x120\n" +
 	"\x14blocks_since_invited\x18\x06 \x01(\x04R\x12blocksSinceInvited\x12%\n" +
 	"\x0edefeater_count\x18\a \x01(\x04R\rdefeaterCount\x128\n" +
-	"\x18effective_confidence_bps\x18\b \x01(\x04R\x16effectiveConfidenceBps\"E\n" +
+	"\x18effective_confidence_bps\x18\b \x01(\x04R\x16effectiveConfidenceBps\x12%\n" +
+	"\x0eaxiom_distance\x18\t \x01(\rR\raxiomDistance\"E\n" +
 	"\x15QueryIdleFactsRequest\x12\x16\n" +
 	"\x06domain\x18\x01 \x01(\tR\x06domain\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\rR\x05limit\"M\n" +

@@ -742,6 +742,27 @@ message Params {
   // accepted fact that had a stated prior, regardless of this threshold.
   // This parameter only gates the event emission.
   uint64 high_bayesian_update_threshold_bps = 198;
+
+  // regress_depth_probe_threshold: minimum AxiomDistance for a fact to be
+  // treated as "deep-lineage" and receive accelerated probe invitations.
+  // 0 = disabled (default) — all facts use the same idle threshold regardless
+  // of how far they sit from axioms.
+  //
+  // When > 0, facts with AxiomDistance >= this value use
+  // regress_depth_probe_reduced_threshold_blocks (or half the normal idle
+  // threshold when that param is 0) as their effective idle threshold.
+  // Epistemological rationale: deeper derivation chains have more potential
+  // failure points (Doubt Provenance / Regress Tracking, Skepticism Brief §5.4).
+  // Facts far from axioms should be stress-tested more frequently than axiom-
+  // proximal facts.
+  uint64 regress_depth_probe_threshold = 199;
+
+  // regress_depth_probe_reduced_threshold_blocks: the reduced idle threshold
+  // applied to deep-lineage facts (AxiomDistance >= regress_depth_probe_threshold).
+  // 0 = halve the normal ProbeInvitationIdleThresholdBlocks (default).
+  // Set explicitly to override the halving with a governance-controlled value.
+  // Only meaningful when regress_depth_probe_threshold > 0.
+  uint64 regress_depth_probe_reduced_threshold_blocks = 200;
 }
 
 // GenesisState is the genesis state of the knowledge module.

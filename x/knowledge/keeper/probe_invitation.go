@@ -65,12 +65,30 @@ func (k Keeper) InviteIdleFactsForProbing(ctx context.Context, height uint64, pa
 		}
 	}
 
+	// Skepticism Gap 4: regress-depth probe prioritization.
+	// Facts far from axioms have more potential failure points in their
+	// derivation chain (Regress Tracking / Doubt Provenance, §5.4 of the
+	// skepticism brief). Deep-lineage facts surface sooner in the probe queue.
+	regressDepthThreshold := params.RegressDepthProbeThreshold
+	regressReducedThreshold := params.RegressDepthProbeReducedThresholdBlocks
+	if regressDepthThreshold > 0 && regressReducedThreshold == 0 {
+		// Default: halve the normal threshold (governance can set an explicit
+		// value via RegressDepthProbeReducedThresholdBlocks).
+		regressReducedThreshold = threshold / 2
+		if regressReducedThreshold == 0 {
+			regressReducedThreshold = 1
+		}
+	}
+
 	// Early-exit guard: skip the scan if height is below the smallest
-	// possible effective threshold. When priority is enabled, the effective
-	// minimum is the reduced threshold (it is always ≤ normal threshold).
+	// possible effective threshold. Accounts for both Gap 2 (defeater) and
+	// Gap 4 (regress depth) reduced thresholds.
 	earliestPossible := threshold
 	if priorityMinCount > 0 && reducedThreshold < earliestPossible {
 		earliestPossible = reducedThreshold
+	}
+	if regressDepthThreshold > 0 && regressReducedThreshold < earliestPossible {
+		earliestPossible = regressReducedThreshold
 	}
 	if height < earliestPossible {
 		// Chain hasn't been running long enough for any fact to be "idle"
@@ -114,12 +132,28 @@ func (k Keeper) InviteIdleFactsForProbing(ctx context.Context, height uint64, pa
 			lastProbe = f.VerifiedAtBlock
 		}
 
-		// Effective idle threshold: stressed facts get the reduced threshold.
+		// Effective idle threshold: stressed / deep-lineage facts get a shorter
+		// idle threshold so they surface in the probe queue sooner.
+		//
+		// Priority is determined by two orthogonal axes:
+		//   - Gap 2 (defeater priority): facts with DefeaterCount ≥ priorityMinCount
+		//   - Gap 4 (regress depth priority): facts with AxiomDistance ≥ regressDepthThreshold
+		// When both are active, the fact's threshold is min(defeaterReduced, regressReduced)
+		// — the chain uses whichever signals a higher urgency.
 		effectiveThreshold := threshold
-		isPriority := priorityMinCount > 0 && f.DefeaterCount >= priorityMinCount
-		if isPriority {
-			effectiveThreshold = reducedThreshold
+		isPriorityDefeater := priorityMinCount > 0 && f.DefeaterCount >= priorityMinCount
+		isPriorityRegress := regressDepthThreshold > 0 && uint64(f.AxiomDistance) >= regressDepthThreshold
+		if isPriorityDefeater {
+			if reducedThreshold < effectiveThreshold {
+				effectiveThreshold = reducedThreshold
+			}
 		}
+		if isPriorityRegress {
+			if regressReducedThreshold < effectiveThreshold {
+				effectiveThreshold = regressReducedThreshold
+			}
+		}
+		isPriority := isPriorityDefeater || isPriorityRegress
 
 		if height < lastProbe+effectiveThreshold {
 			return false // not idle enough yet
@@ -140,8 +174,8 @@ func (k Keeper) InviteIdleFactsForProbing(ctx context.Context, height uint64, pa
 		// announcement: "this high-confidence fact has gone idle and
 		// I am inviting you to challenge it." See TRUTH_SEEKING.md
 		// commitment 5.
-		// Skepticism Gap 2: include Pollock epistemic-stress signals so that
-		// prober agents can triage invitations by stress level.
+		// Skepticism Gap 2: Pollock epistemic-stress signals.
+		// Skepticism Gap 4: regress-depth signals.
 		priorityStr := "false"
 		if isPriority {
 			priorityStr = "true"
@@ -157,6 +191,7 @@ func (k Keeper) InviteIdleFactsForProbing(ctx context.Context, height uint64, pa
 			sdk.NewAttribute("creed_commitment", "5"),
 			sdk.NewAttribute("defeater_count", fmt.Sprintf("%d", f.DefeaterCount)),
 			sdk.NewAttribute("effective_confidence_bps", fmt.Sprintf("%d", f.EffectiveConfidenceBps)),
+			sdk.NewAttribute("axiom_distance", fmt.Sprintf("%d", f.AxiomDistance)),
 			sdk.NewAttribute("priority_probe", priorityStr),
 		))
 		invited++
@@ -200,6 +235,8 @@ func (k Keeper) IdleFactsForProbing(ctx context.Context, domain string, limit ui
 			ProbeInvitedAtBlock:   f.ProbeInvitedAtBlock,
 			DefeaterCount:         f.DefeaterCount,
 			EffectiveConfidenceBps: f.EffectiveConfidenceBps,
+			// Skepticism Gap 4: regress-depth signal for prober prioritization.
+			AxiomDistance: f.AxiomDistance,
 		}
 		if height >= f.ProbeInvitedAtBlock {
 			idle.BlocksSinceInvited = height - f.ProbeInvitedAtBlock

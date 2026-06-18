@@ -696,8 +696,27 @@ type Params struct {
 	// accepted fact that had a stated prior, regardless of this threshold.
 	// This parameter only gates the event emission.
 	HighBayesianUpdateThresholdBps uint64 `protobuf:"varint,198,opt,name=high_bayesian_update_threshold_bps,json=highBayesianUpdateThresholdBps,proto3" json:"high_bayesian_update_threshold_bps,omitempty"`
-	unknownFields                  protoimpl.UnknownFields
-	sizeCache                      protoimpl.SizeCache
+	// regress_depth_probe_threshold: minimum AxiomDistance for a fact to be
+	// treated as "deep-lineage" and receive accelerated probe invitations.
+	// 0 = disabled (default) — all facts use the same idle threshold regardless
+	// of how far they sit from axioms.
+	//
+	// When > 0, facts with AxiomDistance >= this value use
+	// regress_depth_probe_reduced_threshold_blocks (or half the normal idle
+	// threshold when that param is 0) as their effective idle threshold.
+	// Epistemological rationale: deeper derivation chains have more potential
+	// failure points (Doubt Provenance / Regress Tracking, Skepticism Brief §5.4).
+	// Facts far from axioms should be stress-tested more frequently than axiom-
+	// proximal facts.
+	RegressDepthProbeThreshold uint64 `protobuf:"varint,199,opt,name=regress_depth_probe_threshold,json=regressDepthProbeThreshold,proto3" json:"regress_depth_probe_threshold,omitempty"`
+	// regress_depth_probe_reduced_threshold_blocks: the reduced idle threshold
+	// applied to deep-lineage facts (AxiomDistance >= regress_depth_probe_threshold).
+	// 0 = halve the normal ProbeInvitationIdleThresholdBlocks (default).
+	// Set explicitly to override the halving with a governance-controlled value.
+	// Only meaningful when regress_depth_probe_threshold > 0.
+	RegressDepthProbeReducedThresholdBlocks uint64 `protobuf:"varint,200,opt,name=regress_depth_probe_reduced_threshold_blocks,json=regressDepthProbeReducedThresholdBlocks,proto3" json:"regress_depth_probe_reduced_threshold_blocks,omitempty"`
+	unknownFields                           protoimpl.UnknownFields
+	sizeCache                               protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -2116,6 +2135,20 @@ func (x *Params) GetHighBayesianUpdateThresholdBps() uint64 {
 	return 0
 }
 
+func (x *Params) GetRegressDepthProbeThreshold() uint64 {
+	if x != nil {
+		return x.RegressDepthProbeThreshold
+	}
+	return 0
+}
+
+func (x *Params) GetRegressDepthProbeReducedThresholdBlocks() uint64 {
+	if x != nil {
+		return x.RegressDepthProbeReducedThresholdBlocks
+	}
+	return 0
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -2363,7 +2396,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xbac\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xded\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2563,7 +2596,9 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"!defeater_probe_priority_min_count\x18\xc3\x01 \x01(\x04R\x1ddefeaterProbePriorityMinCount\x12U\n" +
 	"'defeater_probe_reduced_threshold_blocks\x18\xc4\x01 \x01(\x04R#defeaterProbeReducedThresholdBlocks\x12+\n" +
 	"\x11bridging_min_orgs\x18\xc5\x01 \x01(\x04R\x0fbridgingMinOrgs\x12K\n" +
-	"\"high_bayesian_update_threshold_bps\x18\xc6\x01 \x01(\x04R\x1ehighBayesianUpdateThresholdBps\x1aN\n" +
+	"\"high_bayesian_update_threshold_bps\x18\xc6\x01 \x01(\x04R\x1ehighBayesianUpdateThresholdBps\x12B\n" +
+	"\x1dregress_depth_probe_threshold\x18\xc7\x01 \x01(\x04R\x1aregressDepthProbeThreshold\x12^\n" +
+	",regress_depth_probe_reduced_threshold_blocks\x18\xc8\x01 \x01(\x04R'regressDepthProbeReducedThresholdBlocks\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xb8\x0f\n" +

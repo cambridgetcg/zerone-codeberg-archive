@@ -1280,6 +1280,8 @@ message IdleFact {
   // Skepticism Gap 2: Pollock epistemic-stress signals for prober prioritization.
   uint64 defeater_count           = 7; // number of undercutting defeaters recorded (0 = pristine)
   uint64 effective_confidence_bps = 8; // Pollock-adjusted confidence (may be lower than confidence)
+  // Skepticism Gap 4: regress-depth signals for prober prioritization.
+  uint32 axiom_distance = 9; // hops from axioms (0 = axiom itself; 1 = cites only axioms; etc.)
 }
 
 message QueryIdleFactsRequest {
