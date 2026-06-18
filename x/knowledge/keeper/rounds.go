@@ -710,6 +710,14 @@ func (k Keeper) forwardWithheldToDevelopmentFund(ctx context.Context, amount uin
 	_ = k.bankKeeper.SendCoinsFromModuleToModule(ctx, types.ModuleName, developmentFundModule, coins)
 }
 
+// CreateFactFromClaimForTest is an exported thin wrapper for use in unit tests.
+// It calls createFactFromClaim directly so tests can verify Bayesian update
+// magnitude computation, event emission, and other per-fact logic without
+// spinning up a full PoT round.
+func (k Keeper) CreateFactFromClaimForTest(ctx context.Context, claim *types.Claim, round *types.VerificationRound, confidence uint64) (string, error) {
+	return k.createFactFromClaim(ctx, claim, round, confidence)
+}
+
 // createFactFromClaim creates a new Fact from an accepted claim.
 // Returns the generated factID and any error.
 func (k Keeper) createFactFromClaim(ctx context.Context, claim *types.Claim, round *types.VerificationRound, confidence uint64) (string, error) {
@@ -850,6 +858,17 @@ func (k Keeper) createFactFromClaim(ctx context.Context, claim *types.Claim, rou
 			sdk.NewAttribute("dependency_floor_bps", fmt.Sprintf("%d", floor)),
 			sdk.NewAttribute("axiom_distance", fmt.Sprintf("%d", dist)),
 		))
+	}
+
+	// ─── Bayesian Gap 3: Update Magnitude ────────────────────────────────────
+	// Compute |final_confidence − stated_prior| to measure epistemic surprise.
+	// Only meaningful when the submitter declared a prior; otherwise leave as 0.
+	if fact.StatedPriorBps > 0 {
+		if fact.Confidence >= fact.StatedPriorBps {
+			fact.BayesianUpdateMagnitudeBps = fact.Confidence - fact.StatedPriorBps
+		} else {
+			fact.BayesianUpdateMagnitudeBps = fact.StatedPriorBps - fact.Confidence
+		}
 	}
 
 	if err := k.SetFact(ctx, fact); err != nil {
@@ -1029,7 +1048,26 @@ func (k Keeper) createFactFromClaim(ctx context.Context, claim *types.Claim, rou
 		sdk.NewAttribute("domain", claim.Domain),
 		sdk.NewAttribute("confidence", fmt.Sprintf("%d", fact.Confidence)),
 		sdk.NewAttribute("stated_prior_bps", fmt.Sprintf("%d", fact.StatedPriorBps)),
+		sdk.NewAttribute("bayesian_update_magnitude_bps", fmt.Sprintf("%d", fact.BayesianUpdateMagnitudeBps)),
 	))
+
+	// Bayesian Gap 3: emit high-surprise event when magnitude meets governance
+	// threshold. Allows monitoring tools and agents to surface claims where the
+	// evidence dramatically revised the prior — the most epistemically
+	// interesting acceptances on-chain.
+	threshold := params.HighBayesianUpdateThresholdBps
+	if threshold > 0 && fact.BayesianUpdateMagnitudeBps >= threshold {
+		sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
+			"zerone.knowledge.high_bayesian_update",
+			sdk.NewAttribute("fact_id", factID),
+			sdk.NewAttribute("claim_id", claim.Id),
+			sdk.NewAttribute("domain", claim.Domain),
+			sdk.NewAttribute("stated_prior_bps", fmt.Sprintf("%d", fact.StatedPriorBps)),
+			sdk.NewAttribute("final_confidence_bps", fmt.Sprintf("%d", fact.Confidence)),
+			sdk.NewAttribute("bayesian_update_magnitude_bps", fmt.Sprintf("%d", fact.BayesianUpdateMagnitudeBps)),
+			sdk.NewAttribute("threshold_bps", fmt.Sprintf("%d", threshold)),
+		))
+	}
 
 	return factID, nil
 }

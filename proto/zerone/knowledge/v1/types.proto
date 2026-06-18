@@ -636,6 +636,25 @@ message Fact {
   // zerone.knowledge.bridging_claim_accepted event is emitted when
   // bridging_org_count >= bridging_min_orgs.
   uint64 bridging_org_count = 89;
+
+  // bayesian_update_magnitude_bps: the absolute difference between the
+  // community's final verdict confidence and the submitter's stated prior,
+  // expressed in basis-points (0–1_000_000).
+  //
+  //   bayesian_update_magnitude_bps = |confidence_bps − stated_prior_bps|
+  //
+  // A value near 1_000_000 means the evidence completely overturned the
+  // prior (maximum surprise). A value near 0 means the evidence merely
+  // confirmed what was already believed.
+  //
+  // Stored only when the submitter declared a prior (stated_prior_bps > 0);
+  // otherwise 0 (unknown). Set at ACCEPT time in createFactFromClaim.
+  //
+  // Governance param: high_bayesian_update_threshold_bps (default 0 =
+  // disabled). When > 0, a zerone.knowledge.high_bayesian_update event is
+  // emitted whenever this field meets or exceeds the threshold — surfacing
+  // claims where the evidence delivered a significant epistemic surprise.
+  uint64 bayesian_update_magnitude_bps = 90;
 }
 
 // CurriculumTier orders training examples by difficulty and foundational depth.

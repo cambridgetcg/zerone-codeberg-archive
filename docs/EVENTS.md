@@ -1382,6 +1382,17 @@ Research fund proposal executed.
 - `domain` -- knowledge domain
 - `confidence` -- confidence score (BPS)
 - `stated_prior_bps` -- submitter's stated prior (BPS); `"0"` when no prior was declared. Bayesian Gap 1 — enables update-magnitude analysis: `|confidence − stated_prior_bps|`
+- `bayesian_update_magnitude_bps` -- `|final_confidence − stated_prior_bps|`; `"0"` when no prior declared. Bayesian Gap 3.
+
+### zerone.knowledge.high_bayesian_update
+*BeginBlock.* Fired when `bayesian_update_magnitude_bps ≥ high_bayesian_update_threshold_bps` (param field 198, default 0 = disabled). Surfaces claims where evidence delivered significant epistemic surprise — the community's belief was substantially revised by the data.
+- `fact_id` -- newly created fact
+- `claim_id` -- source claim
+- `domain` -- knowledge domain
+- `stated_prior_bps` -- submitter's declared prior (BPS)
+- `final_confidence_bps` -- post-verdict panel confidence (BPS)
+- `bayesian_update_magnitude_bps` -- `|final_confidence − stated_prior|` (BPS)
+- `threshold_bps` -- governance threshold that triggered this event
 
 ### zerone.knowledge.round_phase_changed
 *BeginBlock.* Verification round phase transitioned.

@@ -687,8 +687,17 @@ type Params struct {
 	// fact, regardless of this parameter. The parameter only controls event
 	// emission threshold. Set to 0 to compute silently.
 	BridgingMinOrgs uint64 `protobuf:"varint,197,opt,name=bridging_min_orgs,json=bridgingMinOrgs,proto3" json:"bridging_min_orgs,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// high_bayesian_update_threshold_bps: minimum bayesian_update_magnitude_bps
+	// that triggers a zerone.knowledge.high_bayesian_update event.
+	// 0 = disabled (default). 500_000 = flag facts where evidence moved the
+	// needle by ≥ 50% of the BPS range (a significant epistemic surprise).
+	//
+	// bayesian_update_magnitude_bps is always computed and stored on every
+	// accepted fact that had a stated prior, regardless of this threshold.
+	// This parameter only gates the event emission.
+	HighBayesianUpdateThresholdBps uint64 `protobuf:"varint,198,opt,name=high_bayesian_update_threshold_bps,json=highBayesianUpdateThresholdBps,proto3" json:"high_bayesian_update_threshold_bps,omitempty"`
+	unknownFields                  protoimpl.UnknownFields
+	sizeCache                      protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -2100,6 +2109,13 @@ func (x *Params) GetBridgingMinOrgs() uint64 {
 	return 0
 }
 
+func (x *Params) GetHighBayesianUpdateThresholdBps() uint64 {
+	if x != nil {
+		return x.HighBayesianUpdateThresholdBps
+	}
+	return 0
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -2347,7 +2363,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xedb\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xbac\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2546,7 +2562,8 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\x1fdefeater_per_count_discount_bps\x18\xc2\x01 \x01(\x04R\x1bdefeaterPerCountDiscountBps\x12I\n" +
 	"!defeater_probe_priority_min_count\x18\xc3\x01 \x01(\x04R\x1ddefeaterProbePriorityMinCount\x12U\n" +
 	"'defeater_probe_reduced_threshold_blocks\x18\xc4\x01 \x01(\x04R#defeaterProbeReducedThresholdBlocks\x12+\n" +
-	"\x11bridging_min_orgs\x18\xc5\x01 \x01(\x04R\x0fbridgingMinOrgs\x1aN\n" +
+	"\x11bridging_min_orgs\x18\xc5\x01 \x01(\x04R\x0fbridgingMinOrgs\x12K\n" +
+	"\"high_bayesian_update_threshold_bps\x18\xc6\x01 \x01(\x04R\x1ehighBayesianUpdateThresholdBps\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xb8\x0f\n" +

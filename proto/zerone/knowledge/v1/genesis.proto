@@ -732,6 +732,16 @@ message Params {
   // fact, regardless of this parameter. The parameter only controls event
   // emission threshold. Set to 0 to compute silently.
   uint64 bridging_min_orgs = 197;
+
+  // high_bayesian_update_threshold_bps: minimum bayesian_update_magnitude_bps
+  // that triggers a zerone.knowledge.high_bayesian_update event.
+  // 0 = disabled (default). 500_000 = flag facts where evidence moved the
+  // needle by ≥ 50% of the BPS range (a significant epistemic surprise).
+  //
+  // bayesian_update_magnitude_bps is always computed and stored on every
+  // accepted fact that had a stated prior, regardless of this threshold.
+  // This parameter only gates the event emission.
+  uint64 high_bayesian_update_threshold_bps = 198;
 }
 
 // GenesisState is the genesis state of the knowledge module.

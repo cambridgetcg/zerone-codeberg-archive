@@ -2623,8 +2623,26 @@ type Fact struct {
 	// zerone.knowledge.bridging_claim_accepted event is emitted when
 	// bridging_org_count >= bridging_min_orgs.
 	BridgingOrgCount uint64 `protobuf:"varint,89,opt,name=bridging_org_count,json=bridgingOrgCount,proto3" json:"bridging_org_count,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// bayesian_update_magnitude_bps: the absolute difference between the
+	// community's final verdict confidence and the submitter's stated prior,
+	// expressed in basis-points (0–1_000_000).
+	//
+	//	bayesian_update_magnitude_bps = |confidence_bps − stated_prior_bps|
+	//
+	// A value near 1_000_000 means the evidence completely overturned the
+	// prior (maximum surprise). A value near 0 means the evidence merely
+	// confirmed what was already believed.
+	//
+	// Stored only when the submitter declared a prior (stated_prior_bps > 0);
+	// otherwise 0 (unknown). Set at ACCEPT time in createFactFromClaim.
+	//
+	// Governance param: high_bayesian_update_threshold_bps (default 0 =
+	// disabled). When > 0, a zerone.knowledge.high_bayesian_update event is
+	// emitted whenever this field meets or exceeds the threshold — surfacing
+	// claims where the evidence delivered a significant epistemic surprise.
+	BayesianUpdateMagnitudeBps uint64 `protobuf:"varint,90,opt,name=bayesian_update_magnitude_bps,json=bayesianUpdateMagnitudeBps,proto3" json:"bayesian_update_magnitude_bps,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *Fact) Reset() {
@@ -3206,6 +3224,13 @@ func (x *Fact) GetEffectiveConfidenceBps() uint64 {
 func (x *Fact) GetBridgingOrgCount() uint64 {
 	if x != nil {
 		return x.BridgingOrgCount
+	}
+	return 0
+}
+
+func (x *Fact) GetBayesianUpdateMagnitudeBps() uint64 {
+	if x != nil {
+		return x.BayesianUpdateMagnitudeBps
 	}
 	return 0
 }
@@ -10215,7 +10240,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x05scope\x18\x04 \x01(\tR\x05scope\x12%\n" +
 	"\x0etemporal_scope\x18\x05 \x01(\tR\rtemporalScope\x12\x1c\n" +
 	"\tnegatable\x18\x06 \x01(\bR\tnegatable\x12\x12\n" +
-	"\x04tags\x18\a \x03(\tR\x04tags\"\xa1\x1b\n" +
+	"\x04tags\x18\a \x03(\tR\x04tags\"\xe4\x1b\n" +
 	"\x04Fact\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12\x16\n" +
@@ -10306,7 +10331,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x15mechanically_verified\x18V \x01(\bR\x14mechanicallyVerified\x12%\n" +
 	"\x0edefeater_count\x18W \x01(\x04R\rdefeaterCount\x128\n" +
 	"\x18effective_confidence_bps\x18X \x01(\x04R\x16effectiveConfidenceBps\x12,\n" +
-	"\x12bridging_org_count\x18Y \x01(\x04R\x10bridgingOrgCount\"\xe0\x05\n" +
+	"\x12bridging_org_count\x18Y \x01(\x04R\x10bridgingOrgCount\x12A\n" +
+	"\x1dbayesian_update_magnitude_bps\x18Z \x01(\x04R\x1abayesianUpdateMagnitudeBps\"\xe0\x05\n" +
 	"\rTokenizerSpec\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x04R\aversion\x12*\n" +
 	"\x11ratified_at_block\x18\x02 \x01(\x04R\x0fratifiedAtBlock\x12.\n" +
