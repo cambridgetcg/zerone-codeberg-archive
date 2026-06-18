@@ -763,6 +763,27 @@ message Params {
   // Set explicitly to override the halving with a governance-controlled value.
   // Only meaningful when regress_depth_probe_threshold > 0.
   uint64 regress_depth_probe_reduced_threshold_blocks = 200;
+
+  // ─── Skepticism Gap 5: Rebutting Defeater Tracking ───────────────────────
+  //
+  // rebutting_defeater_discount_bps: per-rebutting-defeater discount applied to
+  // a fact's EffectiveConfidenceBps when a direct on-chain contradiction is
+  // accepted by the verification panel.
+  //
+  // A rebutting defeater (Pollock, 1986) DIRECTLY CONTRADICTS a belief, as
+  // opposed to an undercutting defeater which attacks evidential support.
+  // When a contradicting claim (RELATION_TYPE_CONTRADICTS → target fact) is
+  // ACCEPTED, the target fact's epistemic standing should be reduced more
+  // aggressively than from an undercutting defeater.
+  //
+  // EffectiveConfidenceBps formula (combined undercutting + rebutting):
+  //   total_discount = (defeater_count × defeater_per_count_discount_bps
+  //                   + rebutting_defeater_count × rebutting_defeater_discount_bps)
+  //   effective = confidence × max(0, BPS − total_discount) / BPS
+  //
+  // Default: 0 (disabled). When 0, rebutting defeaters do not reduce
+  // effective_confidence_bps. Activate by governance proposal.
+  uint64 rebutting_defeater_discount_bps = 201;
 }
 
 // GenesisState is the genesis state of the knowledge module.

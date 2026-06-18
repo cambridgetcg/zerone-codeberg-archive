@@ -1,6 +1,6 @@
 package keeper
 
-// defeater.go — Skepticism Gap 1: Pollock Undercutting Defeater Tracking.
+// defeater.go — Skepticism Gaps 1 + 5: Pollock Defeater Tracking.
 //
 // John Pollock (1986) distinguished two kinds of defeaters for a belief B
 // inferred from evidence E:
@@ -10,6 +10,7 @@ package keeper
 //     evidential connection between E and B. It says "E is not good
 //     evidence for B in this situation" without asserting ¬B.
 //
+// ─── Skepticism Gap 1: Undercutting Defeater ─────────────────────────────
 // On-chain analogue:
 //   When a challenge claim is REJECTED (the original fact survives), the
 //   rejection verdict is evidence FOR the fact. But the strength of that
@@ -30,16 +31,28 @@ package keeper
 //   - Emits zerone.knowledge.defeater_recorded.
 //   - Disabled by default (threshold=0 means all survivals are corroborations).
 //
-// EffectiveConfidenceBps formula:
+// ─── Skepticism Gap 5: Rebutting Defeater ────────────────────────────────
+// On-chain analogue:
+//   When a claim carrying RELATION_TYPE_CONTRADICTS pointing to an existing
+//   fact is ACCEPTED, the accepted contradicting fact is a rebutting defeater.
+//   The chain now holds two directly contradictory accepted facts; the older
+//   fact's epistemic standing must be reduced.
 //
-//	effective = base_confidence × (1 − defeater_count × discount_bps / 1_000_000)
-//	clamped to [0, base_confidence].
+// Implementation:
+//   - Triggered from createFactFromClaim for each CONTRADICTS relation in the
+//     newly accepted fact.
+//   - Increments Fact.RebuttingDefeaterCount and recomputes EffectiveConfidenceBps.
+//   - Emits zerone.knowledge.rebutting_defeater_recorded.
+//   - Disabled by default (rebutting_defeater_discount_bps=0).
 //
-// The base_confidence is the fact's stored Confidence field (the PoT panel
-// confidence at acceptance time, potentially raised by corroboration events
-// via confidence growth). EffectiveConfidenceBps is NOT used to mutate
-// Confidence — it is a separate epistemic readout for query engines, training
-// pipelines, and analytics that want Pollock-adjusted scores.
+// ─── Combined EffectiveConfidenceBps formula ─────────────────────────────
+//
+//	total_discount = (defeater_count × defeater_per_count_discount_bps
+//	               + rebutting_defeater_count × rebutting_defeater_discount_bps)
+//	effective = base_confidence × max(0, BPS − total_discount) / BPS
+//
+// The base_confidence is the fact's stored Confidence field. EffectiveConfidenceBps
+// is a separate epistemic readout — it does NOT mutate Confidence.
 
 import (
 	"context"
@@ -83,9 +96,13 @@ func (k Keeper) recordDefeaterIfApplicable(ctx context.Context, factID string, r
 	// Record the undercutting defeater.
 	fact.DefeaterCount++
 
-	// Recompute effective confidence.
-	discountBps := params.DefeaterPerCountDiscountBps
-	fact.EffectiveConfidenceBps = computeEffectiveConfidence(fact.Confidence, fact.DefeaterCount, discountBps)
+	// Recompute effective confidence accounting for both undercutting and
+	// any existing rebutting defeaters (Gap 5).
+	fact.EffectiveConfidenceBps = computeCombinedEffectiveConfidence(
+		fact.Confidence,
+		fact.DefeaterCount, params.DefeaterPerCountDiscountBps,
+		fact.RebuttingDefeaterCount, params.RebuttingDefeaterDiscountBps,
+	)
 
 	if err := k.SetFact(ctx, fact); err != nil {
 		return
@@ -103,24 +120,94 @@ func (k Keeper) recordDefeaterIfApplicable(ctx context.Context, factID string, r
 	))
 }
 
-// computeEffectiveConfidence applies the defeater discount formula:
+// recordRebuttingDefeater records a rebutting defeater (Skepticism Gap 5)
+// on targetFactID when an accepted fact directly contradicts it.
+//
+// A rebutting defeater (Pollock, 1986) asserts the negation of a belief B —
+// it directly contradicts rather than merely attacking evidential support.
+// When the verification panel accepts a claim with RELATION_TYPE_CONTRADICTS
+// pointing to an existing fact, that fact now has an on-chain accepted
+// contradiction: its epistemic standing must be reduced.
+//
+// The function is a no-op when:
+//   - RebuttingDefeaterDiscountBps == 0 (feature disabled)
+//   - targetFactID is not found in state
+func (k Keeper) recordRebuttingDefeater(ctx context.Context, targetFactID, contradictingFactID string) {
+	params, err := k.GetParams(ctx)
+	if err != nil {
+		return
+	}
+	discountBps := params.RebuttingDefeaterDiscountBps
+	if discountBps == 0 {
+		// Feature disabled — rebutting defeaters do not reduce effective confidence.
+		return
+	}
+
+	fact, found := k.GetFact(ctx, targetFactID)
+	if !found {
+		return
+	}
+
+	// Record the rebutting defeater.
+	fact.RebuttingDefeaterCount++
+
+	// Recompute effective confidence accounting for both undercutting (Gap 1)
+	// and rebutting (Gap 5) defeaters.
+	fact.EffectiveConfidenceBps = computeCombinedEffectiveConfidence(
+		fact.Confidence,
+		fact.DefeaterCount, params.DefeaterPerCountDiscountBps,
+		fact.RebuttingDefeaterCount, discountBps,
+	)
+
+	if err := k.SetFact(ctx, fact); err != nil {
+		return
+	}
+
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+	sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
+		"zerone.knowledge.rebutting_defeater_recorded",
+		sdk.NewAttribute("fact_id", targetFactID),
+		sdk.NewAttribute("contradicting_fact_id", contradictingFactID),
+		sdk.NewAttribute("rebutting_defeater_count", fmt.Sprintf("%d", fact.RebuttingDefeaterCount)),
+		sdk.NewAttribute("effective_confidence_bps", fmt.Sprintf("%d", fact.EffectiveConfidenceBps)),
+		sdk.NewAttribute("pollock_criterion", "rebutting defeater: accepted fact directly contradicts target"),
+	))
+}
+
+// computeCombinedEffectiveConfidence applies both undercutting and rebutting
+// defeater discounts to a fact's base confidence.
+//
+//	total_discount = (undercuttingCount × undercuttingDiscountBps
+//	               + rebuttingCount    × rebuttingDiscountBps)
+//	effective = confidence × max(0, BPS − total_discount) / BPS
+//
+// Either discount component is 0 when the corresponding feature is disabled.
+func computeCombinedEffectiveConfidence(
+	confidenceBps,
+	undercuttingCount, undercuttingDiscountBps,
+	rebuttingCount, rebuttingDiscountBps uint64,
+) uint64 {
+	undercuttingTotal := undercuttingCount * undercuttingDiscountBps
+	rebuttingTotal := rebuttingCount * rebuttingDiscountBps
+	totalDiscount := undercuttingTotal + rebuttingTotal
+	if totalDiscount == 0 {
+		return confidenceBps
+	}
+	if totalDiscount >= BPS {
+		return 0
+	}
+	return confidenceBps * (BPS - totalDiscount) / BPS
+}
+
+// computeEffectiveConfidence applies the undercutting-only defeater discount:
 //
 //	effective = confidence × (1 − defeaterCount × discountBps / 1_000_000)
 //	clamped to [0, confidence].
 //
-// When discountBps == 0, effective == confidence (no discount).
+// Preserved for backward compatibility with existing callers and tests.
+// New code should prefer computeCombinedEffectiveConfidence.
 func computeEffectiveConfidence(confidenceBps, defeaterCount, discountBps uint64) uint64 {
-	if discountBps == 0 || defeaterCount == 0 {
-		return confidenceBps
-	}
-	// Total discount fraction = defeaterCount × discountBps (in BPS units).
-	totalDiscountBps := defeaterCount * discountBps
-	if totalDiscountBps >= BPS {
-		// Fully discounted — effective confidence is zero.
-		return 0
-	}
-	// effective = confidence × (BPS − totalDiscount) / BPS
-	return confidenceBps * (BPS - totalDiscountBps) / BPS
+	return computeCombinedEffectiveConfidence(confidenceBps, defeaterCount, discountBps, 0, 0)
 }
 
 // RecordDefeaterIfApplicableForTest exports recordDefeaterIfApplicable
@@ -129,8 +216,28 @@ func (k Keeper) RecordDefeaterIfApplicableForTest(ctx context.Context, factID st
 	k.recordDefeaterIfApplicable(ctx, factID, rejectionConfidenceBps)
 }
 
+// RecordRebuttingDefeaterForTest exports recordRebuttingDefeater
+// for use in unit tests outside the keeper package.
+func (k Keeper) RecordRebuttingDefeaterForTest(ctx context.Context, targetFactID, contradictingFactID string) {
+	k.recordRebuttingDefeater(ctx, targetFactID, contradictingFactID)
+}
+
 // ComputeEffectiveConfidenceForTest exports computeEffectiveConfidence
 // for direct unit testing of the formula.
 func ComputeEffectiveConfidenceForTest(confidenceBps, defeaterCount, discountBps uint64) uint64 {
 	return computeEffectiveConfidence(confidenceBps, defeaterCount, discountBps)
+}
+
+// ComputeCombinedEffectiveConfidenceForTest exports computeCombinedEffectiveConfidence
+// for direct unit testing of the combined formula.
+func ComputeCombinedEffectiveConfidenceForTest(
+	confidenceBps,
+	undercuttingCount, undercuttingDiscountBps,
+	rebuttingCount, rebuttingDiscountBps uint64,
+) uint64 {
+	return computeCombinedEffectiveConfidence(
+		confidenceBps,
+		undercuttingCount, undercuttingDiscountBps,
+		rebuttingCount, rebuttingDiscountBps,
+	)
 }

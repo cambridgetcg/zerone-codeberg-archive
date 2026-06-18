@@ -941,6 +941,15 @@ func (k Keeper) createFactFromClaim(ctx context.Context, claim *types.Claim, rou
 		// epistemically stronger than facts that nothing builds on.
 		k.IncrementIncomingCitationCount(ctx, claimRel.TargetFactId)
 
+		// Skepticism Gap 5 (Pollock Rebutting Defeater): when the accepted fact
+		// directly contradicts an existing fact, that existing fact receives a
+		// rebutting defeater — a direct on-chain negation from an accepted claim.
+		// This is epistemically stronger than an undercutting defeater: rather than
+		// merely weakening the evidential link, it asserts the opposite belief.
+		if claimRel.Relation == types.RelationType_RELATION_TYPE_CONTRADICTS && claimRel.TargetFactId != "" {
+			k.recordRebuttingDefeater(ctx, claimRel.TargetFactId, factID)
+		}
+
 		sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
 			"zerone.knowledge.fact_relation_created",
 			sdk.NewAttribute("source", factRel.SourceFactId),

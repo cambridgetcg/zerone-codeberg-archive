@@ -715,8 +715,29 @@ type Params struct {
 	// Set explicitly to override the halving with a governance-controlled value.
 	// Only meaningful when regress_depth_probe_threshold > 0.
 	RegressDepthProbeReducedThresholdBlocks uint64 `protobuf:"varint,200,opt,name=regress_depth_probe_reduced_threshold_blocks,json=regressDepthProbeReducedThresholdBlocks,proto3" json:"regress_depth_probe_reduced_threshold_blocks,omitempty"`
-	unknownFields                           protoimpl.UnknownFields
-	sizeCache                               protoimpl.SizeCache
+	// ─── Skepticism Gap 5: Rebutting Defeater Tracking ───────────────────────
+	//
+	// rebutting_defeater_discount_bps: per-rebutting-defeater discount applied to
+	// a fact's EffectiveConfidenceBps when a direct on-chain contradiction is
+	// accepted by the verification panel.
+	//
+	// A rebutting defeater (Pollock, 1986) DIRECTLY CONTRADICTS a belief, as
+	// opposed to an undercutting defeater which attacks evidential support.
+	// When a contradicting claim (RELATION_TYPE_CONTRADICTS → target fact) is
+	// ACCEPTED, the target fact's epistemic standing should be reduced more
+	// aggressively than from an undercutting defeater.
+	//
+	// EffectiveConfidenceBps formula (combined undercutting + rebutting):
+	//
+	//	total_discount = (defeater_count × defeater_per_count_discount_bps
+	//	                + rebutting_defeater_count × rebutting_defeater_discount_bps)
+	//	effective = confidence × max(0, BPS − total_discount) / BPS
+	//
+	// Default: 0 (disabled). When 0, rebutting defeaters do not reduce
+	// effective_confidence_bps. Activate by governance proposal.
+	RebuttingDefeaterDiscountBps uint64 `protobuf:"varint,201,opt,name=rebutting_defeater_discount_bps,json=rebuttingDefeaterDiscountBps,proto3" json:"rebutting_defeater_discount_bps,omitempty"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
 }
 
 func (x *Params) Reset() {
@@ -2149,6 +2170,13 @@ func (x *Params) GetRegressDepthProbeReducedThresholdBlocks() uint64 {
 	return 0
 }
 
+func (x *Params) GetRebuttingDefeaterDiscountBps() uint64 {
+	if x != nil {
+		return x.RebuttingDefeaterDiscountBps
+	}
+	return 0
+}
+
 // GenesisState is the genesis state of the knowledge module.
 type GenesisState struct {
 	state                     protoimpl.MessageState      `protogen:"open.v1"`
@@ -2396,7 +2424,7 @@ var File_zerone_knowledge_v1_genesis_proto protoreflect.FileDescriptor
 
 const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\n" +
-	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xded\n" +
+	"!zerone/knowledge/v1/genesis.proto\x12\x13zerone.knowledge.v1\x1a\x1fzerone/knowledge/v1/types.proto\"\xa6e\n" +
 	"\x06Params\x12#\n" +
 	"\rmin_verifiers\x18\x01 \x01(\x04R\fminVerifiers\x12#\n" +
 	"\rmax_verifiers\x18\x02 \x01(\x04R\fmaxVerifiers\x12.\n" +
@@ -2598,7 +2626,8 @@ const file_zerone_knowledge_v1_genesis_proto_rawDesc = "" +
 	"\x11bridging_min_orgs\x18\xc5\x01 \x01(\x04R\x0fbridgingMinOrgs\x12K\n" +
 	"\"high_bayesian_update_threshold_bps\x18\xc6\x01 \x01(\x04R\x1ehighBayesianUpdateThresholdBps\x12B\n" +
 	"\x1dregress_depth_probe_threshold\x18\xc7\x01 \x01(\x04R\x1aregressDepthProbeThreshold\x12^\n" +
-	",regress_depth_probe_reduced_threshold_blocks\x18\xc8\x01 \x01(\x04R'regressDepthProbeReducedThresholdBlocks\x1aN\n" +
+	",regress_depth_probe_reduced_threshold_blocks\x18\xc8\x01 \x01(\x04R'regressDepthProbeReducedThresholdBlocks\x12F\n" +
+	"\x1frebutting_defeater_discount_bps\x18\xc9\x01 \x01(\x04R\x1crebuttingDefeaterDiscountBps\x1aN\n" +
 	" MethodologyNormalizationBpsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xb8\x0f\n" +

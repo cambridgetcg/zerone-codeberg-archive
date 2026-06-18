@@ -655,6 +655,32 @@ message Fact {
   // emitted whenever this field meets or exceeds the threshold — surfacing
   // claims where the evidence delivered a significant epistemic surprise.
   uint64 bayesian_update_magnitude_bps = 90;
+
+  // ── Skepticism Gap 5 — Pollock Rebutting Defeater Tracking ───────────────
+  //
+  // rebutting_defeater_count: number of rebutting defeaters recorded on this fact.
+  // A rebutting defeater (Pollock, 1986) DIRECTLY CONTRADICTS a belief — it
+  // asserts the negation of the target belief, unlike an undercutting defeater
+  // which only attacks the evidential link.
+  //
+  // On-chain encoding: when a claim carrying a RELATION_TYPE_CONTRADICTS edge
+  // pointing to this fact is ACCEPTED by the verification panel, the accepted
+  // contradicting fact is a rebutting defeater. The chain now holds two directly
+  // contradictory accepted facts, and the older fact's evidential standing must
+  // be downgraded accordingly.
+  //
+  // Pollock's epistemic hierarchy applies: a rebutting defeater is epistemically
+  // stronger than an undercutting defeater — it directly contradicts rather than
+  // merely weakening evidence. For this reason, rebutting defeaters warrant a
+  // separate counter and discount path from undercutting defeaters.
+  //
+  // Initialised to 0 on fact creation. Incremented by recordRebuttingDefeater
+  // called from createFactFromClaim when a new fact's CONTRADICTS relation
+  // points to this fact. Never decremented (accepted contradictions persist).
+  //
+  // Governance param: rebutting_defeater_discount_bps (default 0 = disabled).
+  // When 0, rebutting defeaters do not reduce effective_confidence_bps.
+  uint64 rebutting_defeater_count = 91;
 }
 
 // CurriculumTier orders training examples by difficulty and foundational depth.

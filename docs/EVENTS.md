@@ -1472,17 +1472,33 @@ been recorded on a surviving fact after a challenge claim was REJECTED with low
 panel confidence. Encodes John Pollock's (1986) epistemology: when a challenge
 fails by a slim margin, the rejection is weak evidence — the evidential connection
 between fact and truth is attacked, even though the fact survived. The fact's
-`DefeaterCount` is incremented and `EffectiveConfidenceBps` is recomputed as
-`confidence × (1 − defeater_count × discount_bps / 1_000_000)`. Nominal
-`Confidence` is unchanged — only the Pollock-adjusted epistemic readout is
-affected. Emitted only when `defeater_opposition_threshold_bps > 0` and
+`DefeaterCount` is incremented and `EffectiveConfidenceBps` is recomputed using
+the combined formula (accounting for both undercutting and any existing rebutting
+defeaters). Nominal `Confidence` is unchanged — only the Pollock-adjusted epistemic
+readout is affected. Emitted only when `defeater_opposition_threshold_bps > 0` and
 `rejection_confidence_bps < threshold`. (Skepticism Gap 1.)
 - `fact_id` -- the surviving fact that received the defeater
-- `defeater_count` -- total accumulated defeaters on this fact after this event
+- `defeater_count` -- total accumulated undercutting defeaters on this fact after this event
 - `rejection_confidence_bps` -- the panel's confidence in the REJECT verdict (the slim margin)
 - `threshold_bps` -- the governance-configured opposition threshold
-- `effective_confidence_bps` -- the recomputed Pollock-adjusted confidence
+- `effective_confidence_bps` -- the recomputed Pollock-adjusted confidence (combined undercutting + rebutting)
 - `pollock_criterion` -- human-readable: "undercutting defeater: rejection confidence below opposition threshold"
+
+### zerone.knowledge.rebutting_defeater_recorded
+*Keeper (defeater.go / createFactFromClaim).* A rebutting defeater (Pollock, 1986)
+has been recorded on an existing accepted fact when a newly accepted fact directly
+contradicts it via a `RELATION_TYPE_CONTRADICTS` edge. A rebutting defeater asserts
+the negation of the target belief — it is epistemically stronger than an undercutting
+defeater, which only attacks evidential support without asserting the opposite.
+The target fact's `RebuttingDefeaterCount` is incremented and `EffectiveConfidenceBps`
+is recomputed using the combined formula:
+`confidence × max(0, BPS − undercutting_count × undercutting_discount − rebutting_count × rebutting_discount) / BPS`.
+Emitted only when `rebutting_defeater_discount_bps > 0`. (Skepticism Gap 5.)
+- `fact_id` -- the existing fact that received the rebutting defeater (the contradicted fact)
+- `contradicting_fact_id` -- the newly accepted fact that directly contradicts this fact
+- `rebutting_defeater_count` -- total accumulated rebutting defeaters on this fact after this event
+- `effective_confidence_bps` -- the recomputed Pollock-adjusted confidence (combined undercutting + rebutting)
+- `pollock_criterion` -- human-readable: "rebutting defeater: accepted fact directly contradicts target"
 
 ### zerone.knowledge.degenerating_research_programme
 *Tx (MsgSubmitClaim).* A claim that rescues a prior rejected claim has pushed

@@ -419,6 +419,8 @@ func DefaultParams() Params {
 		// Skepticism Gap 4: regress-depth probe prioritization.
 		RegressDepthProbeThreshold:             0, // disabled — all facts use normal idle threshold
 		RegressDepthProbeReducedThresholdBlocks: 0, // 0 = halve normal threshold when enabled
+		// Skepticism Gap 5: Pollock rebutting-defeater tracking.
+		RebuttingDefeaterDiscountBps: 0, // disabled — rebutting defeaters do not reduce effective_confidence_bps
 	}
 }
 

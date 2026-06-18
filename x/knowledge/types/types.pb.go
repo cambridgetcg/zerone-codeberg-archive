@@ -2641,8 +2641,33 @@ type Fact struct {
 	// emitted whenever this field meets or exceeds the threshold — surfacing
 	// claims where the evidence delivered a significant epistemic surprise.
 	BayesianUpdateMagnitudeBps uint64 `protobuf:"varint,90,opt,name=bayesian_update_magnitude_bps,json=bayesianUpdateMagnitudeBps,proto3" json:"bayesian_update_magnitude_bps,omitempty"`
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	// ── Skepticism Gap 5 — Pollock Rebutting Defeater Tracking ───────────────
+	//
+	// rebutting_defeater_count: number of rebutting defeaters recorded on this fact.
+	// A rebutting defeater (Pollock, 1986) DIRECTLY CONTRADICTS a belief — it
+	// asserts the negation of the target belief, unlike an undercutting defeater
+	// which only attacks the evidential link.
+	//
+	// On-chain encoding: when a claim carrying a RELATION_TYPE_CONTRADICTS edge
+	// pointing to this fact is ACCEPTED by the verification panel, the accepted
+	// contradicting fact is a rebutting defeater. The chain now holds two directly
+	// contradictory accepted facts, and the older fact's evidential standing must
+	// be downgraded accordingly.
+	//
+	// Pollock's epistemic hierarchy applies: a rebutting defeater is epistemically
+	// stronger than an undercutting defeater — it directly contradicts rather than
+	// merely weakening evidence. For this reason, rebutting defeaters warrant a
+	// separate counter and discount path from undercutting defeaters.
+	//
+	// Initialised to 0 on fact creation. Incremented by recordRebuttingDefeater
+	// called from createFactFromClaim when a new fact's CONTRADICTS relation
+	// points to this fact. Never decremented (accepted contradictions persist).
+	//
+	// Governance param: rebutting_defeater_discount_bps (default 0 = disabled).
+	// When 0, rebutting defeaters do not reduce effective_confidence_bps.
+	RebuttingDefeaterCount uint64 `protobuf:"varint,91,opt,name=rebutting_defeater_count,json=rebuttingDefeaterCount,proto3" json:"rebutting_defeater_count,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Fact) Reset() {
@@ -3231,6 +3256,13 @@ func (x *Fact) GetBridgingOrgCount() uint64 {
 func (x *Fact) GetBayesianUpdateMagnitudeBps() uint64 {
 	if x != nil {
 		return x.BayesianUpdateMagnitudeBps
+	}
+	return 0
+}
+
+func (x *Fact) GetRebuttingDefeaterCount() uint64 {
+	if x != nil {
+		return x.RebuttingDefeaterCount
 	}
 	return 0
 }
@@ -10240,7 +10272,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x05scope\x18\x04 \x01(\tR\x05scope\x12%\n" +
 	"\x0etemporal_scope\x18\x05 \x01(\tR\rtemporalScope\x12\x1c\n" +
 	"\tnegatable\x18\x06 \x01(\bR\tnegatable\x12\x12\n" +
-	"\x04tags\x18\a \x03(\tR\x04tags\"\xe4\x1b\n" +
+	"\x04tags\x18\a \x03(\tR\x04tags\"\x9e\x1c\n" +
 	"\x04Fact\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12\x16\n" +
@@ -10332,7 +10364,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x0edefeater_count\x18W \x01(\x04R\rdefeaterCount\x128\n" +
 	"\x18effective_confidence_bps\x18X \x01(\x04R\x16effectiveConfidenceBps\x12,\n" +
 	"\x12bridging_org_count\x18Y \x01(\x04R\x10bridgingOrgCount\x12A\n" +
-	"\x1dbayesian_update_magnitude_bps\x18Z \x01(\x04R\x1abayesianUpdateMagnitudeBps\"\xe0\x05\n" +
+	"\x1dbayesian_update_magnitude_bps\x18Z \x01(\x04R\x1abayesianUpdateMagnitudeBps\x128\n" +
+	"\x18rebutting_defeater_count\x18[ \x01(\x04R\x16rebuttingDefeaterCount\"\xe0\x05\n" +
 	"\rTokenizerSpec\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x04R\aversion\x12*\n" +
 	"\x11ratified_at_block\x18\x02 \x01(\x04R\x0fratifiedAtBlock\x12.\n" +
