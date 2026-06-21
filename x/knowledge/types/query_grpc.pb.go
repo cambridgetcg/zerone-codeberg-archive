@@ -109,6 +109,7 @@ const (
 	Query_IdleFacts_FullMethodName                    = "/zerone.knowledge.v1.Query/IdleFacts"
 	Query_NetworkCapacity_FullMethodName              = "/zerone.knowledge.v1.Query/NetworkCapacity"
 	Query_DerivedConsequences_FullMethodName          = "/zerone.knowledge.v1.Query/DerivedConsequences"
+	Query_DegeneratingProgrammes_FullMethodName       = "/zerone.knowledge.v1.Query/DegeneratingProgrammes"
 )
 
 // QueryClient is the client API for Query service.
@@ -362,6 +363,11 @@ type QueryClient interface {
 	// submitting as M-COMPUTATIONAL facts citing the source.
 	// Formal Logic Brief Gap 4.
 	DerivedConsequences(ctx context.Context, in *QueryDerivedConsequencesRequest, opts ...grpc.CallOption) (*QueryDerivedConsequencesResponse, error)
+	// DegeneratingProgrammes returns claims whose rescue-chain depth signals
+	// Lakatosian programme degeneration. Results are sorted deepest-first so
+	// governance tooling can prioritise the most-degenerated research lines.
+	// Falsificationism Brief Gap 3 — query surface.
+	DegeneratingProgrammes(ctx context.Context, in *QueryDegeneratingProgrammesRequest, opts ...grpc.CallOption) (*QueryDegeneratingProgrammesResponse, error)
 }
 
 type queryClient struct {
@@ -1272,6 +1278,16 @@ func (c *queryClient) DerivedConsequences(ctx context.Context, in *QueryDerivedC
 	return out, nil
 }
 
+func (c *queryClient) DegeneratingProgrammes(ctx context.Context, in *QueryDegeneratingProgrammesRequest, opts ...grpc.CallOption) (*QueryDegeneratingProgrammesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(QueryDegeneratingProgrammesResponse)
+	err := c.cc.Invoke(ctx, Query_DegeneratingProgrammes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // QueryServer is the server API for Query service.
 // All implementations must embed UnimplementedQueryServer
 // for forward compatibility.
@@ -1523,6 +1539,11 @@ type QueryServer interface {
 	// submitting as M-COMPUTATIONAL facts citing the source.
 	// Formal Logic Brief Gap 4.
 	DerivedConsequences(context.Context, *QueryDerivedConsequencesRequest) (*QueryDerivedConsequencesResponse, error)
+	// DegeneratingProgrammes returns claims whose rescue-chain depth signals
+	// Lakatosian programme degeneration. Results are sorted deepest-first so
+	// governance tooling can prioritise the most-degenerated research lines.
+	// Falsificationism Brief Gap 3 — query surface.
+	DegeneratingProgrammes(context.Context, *QueryDegeneratingProgrammesRequest) (*QueryDegeneratingProgrammesResponse, error)
 	mustEmbedUnimplementedQueryServer()
 }
 
@@ -1802,6 +1823,9 @@ func (UnimplementedQueryServer) NetworkCapacity(context.Context, *QueryNetworkCa
 }
 func (UnimplementedQueryServer) DerivedConsequences(context.Context, *QueryDerivedConsequencesRequest) (*QueryDerivedConsequencesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DerivedConsequences not implemented")
+}
+func (UnimplementedQueryServer) DegeneratingProgrammes(context.Context, *QueryDegeneratingProgrammesRequest) (*QueryDegeneratingProgrammesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DegeneratingProgrammes not implemented")
 }
 func (UnimplementedQueryServer) mustEmbedUnimplementedQueryServer() {}
 func (UnimplementedQueryServer) testEmbeddedByValue()               {}
@@ -3444,6 +3468,24 @@ func _Query_DerivedConsequences_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Query_DegeneratingProgrammes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryDegeneratingProgrammesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).DegeneratingProgrammes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Query_DegeneratingProgrammes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).DegeneratingProgrammes(ctx, req.(*QueryDegeneratingProgrammesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Query_ServiceDesc is the grpc.ServiceDesc for Query service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -3810,6 +3852,10 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DerivedConsequences",
 			Handler:    _Query_DerivedConsequences_Handler,
+		},
+		{
+			MethodName: "DegeneratingProgrammes",
+			Handler:    _Query_DegeneratingProgrammes_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -2603,3 +2603,85 @@ func (q *queryServer) DerivedConsequences(ctx context.Context, req *types.QueryD
 		SourceFactId: req.FactId,
 	}, nil
 }
+
+// DegeneratingProgrammes implements the QueryServer interface.
+// Falsificationism Brief Gap 3 — query surface: returns claims whose
+// rescue-chain depth (ResearchProgrammeDepth) meets or exceeds the configured
+// degeneration threshold, sorted deepest-first so governance tooling can
+// prioritise the most-degenerated lines of inquiry.
+func (q *queryServer) DegeneratingProgrammes(ctx context.Context, req *types.QueryDegeneratingProgrammesRequest) (*types.QueryDegeneratingProgrammesResponse, error) {
+	if req == nil {
+		req = &types.QueryDegeneratingProgrammesRequest{}
+	}
+
+	// Resolve the effective depth floor.
+	params, err := q.keeper.GetParams(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to load params: %v", err)
+	}
+	effectiveThreshold := req.MinDepthOverride
+	if effectiveThreshold == 0 {
+		effectiveThreshold = params.ResearchProgrammeDegenerationThreshold
+	}
+
+	// Resolve the result cap: 0 → default 100, hard max 500.
+	const defaultLimit = 100
+	const maxLimit = 500
+	limit := int(req.Limit)
+	if limit == 0 {
+		limit = defaultLimit
+	} else if limit > maxLimit {
+		limit = maxLimit
+	}
+
+	// Scan all claims and collect those meeting the depth floor.
+	var results []*types.DegeneratingProgrammeSummary
+	q.keeper.IterateClaims(ctx, func(claim *types.Claim) bool {
+		if claim.ResearchProgrammeDepth == 0 {
+			return false // depth=0 means no rescue parent — never degenerated
+		}
+		// If effectiveThreshold > 0, require depth >= threshold.
+		// If effectiveThreshold == 0, include all claims with depth > 0.
+		if effectiveThreshold > 0 && claim.ResearchProgrammeDepth < effectiveThreshold {
+			return false
+		}
+		// Apply optional domain filter.
+		if req.DomainFilter != "" && claim.Domain != req.DomainFilter {
+			return false
+		}
+		// Build preview: first 256 chars of fact content.
+		preview := claim.FactContent
+		if len(preview) > 256 {
+			preview = preview[:256]
+		}
+		results = append(results, &types.DegeneratingProgrammeSummary{
+			ClaimId:               claim.Id,
+			ResearchProgrammeDepth: claim.ResearchProgrammeDepth,
+			RescuesClaimId:        claim.RescuesClaimId,
+			Domain:                claim.Domain,
+			Submitter:             claim.Submitter,
+			FactContentPreview:    preview,
+			Status:                claim.Status,
+		})
+		return false
+	})
+
+	// Sort deepest first (insertion sort is fine for governance-scale results).
+	for i := 1; i < len(results); i++ {
+		for j := i; j > 0 && results[j].ResearchProgrammeDepth > results[j-1].ResearchProgrammeDepth; j-- {
+			results[j], results[j-1] = results[j-1], results[j]
+		}
+	}
+
+	// Apply limit.
+	if len(results) > limit {
+		results = results[:limit]
+	}
+
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+	return &types.QueryDegeneratingProgrammesResponse{
+		Programmes:           results,
+		DegenerationThreshold: effectiveThreshold,
+		SnapshotBlockHeight:  uint64(sdkCtx.BlockHeight()),
+	}, nil
+}

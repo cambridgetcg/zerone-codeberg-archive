@@ -503,6 +503,14 @@ service Query {
   rpc DerivedConsequences(QueryDerivedConsequencesRequest) returns (QueryDerivedConsequencesResponse) {
     option (google.api.http).get = "/zerone/knowledge/v1/facts/{fact_id}/derived_consequences";
   }
+
+  // DegeneratingProgrammes returns claims whose rescue-chain depth signals
+  // Lakatosian programme degeneration. Results are sorted deepest-first so
+  // governance tooling can prioritise the most-degenerated research lines.
+  // Falsificationism Brief Gap 3 — query surface.
+  rpc DegeneratingProgrammes(QueryDegeneratingProgrammesRequest) returns (QueryDegeneratingProgrammesResponse) {
+    option (google.api.http).get = "/zerone/knowledge/v1/degenerating_programmes";
+  }
 }
 
 // ─── Request / Response messages ─────────────────────────────────────────────
@@ -1641,4 +1649,66 @@ message QueryDerivedConsequencesResponse {
 
   // source_fact_id echoes the input for easy correlation.
   string source_fact_id = 2;
+}
+
+// ─── Falsificationism Gap 3: Degenerating Programme Query ────────────────────
+
+// QueryDegeneratingProgrammesRequest filters claims whose rescue-chain depth
+// has accumulated to signal Lakatosian programme degeneration.
+message QueryDegeneratingProgrammesRequest {
+  // min_depth_override sets the minimum ResearchProgrammeDepth to include.
+  // When 0 the chain's Params.ResearchProgrammeDegenerationThreshold is used
+  // as the effective floor. When that param is also 0, all claims with
+  // depth > 0 are returned (every rescue claim in the corpus).
+  uint64 min_depth_override = 1;
+
+  // domain_filter restricts results to one epistemic domain. Empty = all.
+  string domain_filter = 2;
+
+  // limit caps the result count. 0 = default cap (100). Maximum 500.
+  uint32 limit = 3;
+}
+
+// DegeneratingProgrammeSummary is a lightweight projection of a Claim used
+// to surface its Lakatosian degeneration signal without returning the full
+// claim proto.
+message DegeneratingProgrammeSummary {
+  // claim_id identifies the claim.
+  string claim_id = 1;
+
+  // research_programme_depth is the rescue-chain depth of this claim.
+  // Higher = deeper = stronger degeneration signal.
+  uint64 research_programme_depth = 2;
+
+  // rescues_claim_id is the direct rescue parent (empty if this claim is the
+  // root of its programme).
+  string rescues_claim_id = 3;
+
+  // domain is the epistemic domain of the claim.
+  string domain = 4;
+
+  // submitter is the bech32 address that submitted the claim.
+  string submitter = 5;
+
+  // fact_content_preview is the first 256 characters of fact_content for
+  // display in governance tooling.
+  string fact_content_preview = 6;
+
+  // status is the current verification status of the claim.
+  ClaimStatus status = 7;
+}
+
+// QueryDegeneratingProgrammesResponse returns matching claims sorted by
+// ResearchProgrammeDepth descending (deepest / most-degenerated first).
+message QueryDegeneratingProgrammesResponse {
+  // programmes is the list of matching claims, deepest first.
+  repeated DegeneratingProgrammeSummary programmes = 1;
+
+  // degeneration_threshold is the effective depth floor used (either the
+  // override from the request or Params.ResearchProgrammeDegenerationThreshold).
+  // Included so callers can interpret results without a separate Params query.
+  uint64 degeneration_threshold = 2;
+
+  // snapshot_block_height is the block at which this query was evaluated.
+  uint64 snapshot_block_height = 3;
 }
