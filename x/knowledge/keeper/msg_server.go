@@ -393,16 +393,44 @@ func (m *msgServer) SubmitClaim(ctx context.Context, msg *types.MsgSubmitClaim) 
 		}
 	}
 
-	// Contradiction detection: auto-mark target facts as CONTESTED
+	// Contradiction detection: auto-mark target facts as CONTESTED.
+	// Falsificationism Gap 4: track bold_conjecture_score on the new claim
+	// and challenge_breadth_count on each targeted fact.
+	//
+	// Gate: VERIFIED | ACTIVE | CONTESTED — all three represent established
+	// knowledge (CONTESTED = previously verified, currently under challenge).
+	// Contradicting any of them is a bold act; breadth tracks every distinct
+	// challenger regardless of whether an earlier claim already initiated a
+	// challenge (CONTESTED is idempotent on status but not on breadth).
+	var boldScore uint64
 	for _, rel := range msg.Relations {
 		if rel.Relation == types.RelationType_RELATION_TYPE_CONTRADICTS {
 			targetFact, found := m.keeper.GetFact(ctx, rel.TargetFactId)
 			if found && (targetFact.Status == types.FactStatus_FACT_STATUS_VERIFIED ||
-				targetFact.Status == types.FactStatus_FACT_STATUS_ACTIVE) {
+				targetFact.Status == types.FactStatus_FACT_STATUS_ACTIVE ||
+				targetFact.Status == types.FactStatus_FACT_STATUS_CONTESTED) {
 				targetFact.Status = types.FactStatus_FACT_STATUS_CONTESTED
+				// Gap 4: each distinct challenge broadens the fact's test history.
+				targetFact.ChallengeBreadthCount++
 				_ = m.keeper.SetFact(ctx, targetFact)
+				// Gap 4: this claim contradicts established knowledge — it is bold.
+				boldScore++
 			}
 		}
+	}
+
+	// Gap 4: persist bold_conjecture_score and emit event if non-zero.
+	if boldScore > 0 {
+		claim.BoldConjectureScore = boldScore
+		if err := m.keeper.SetClaim(ctx, claim); err != nil {
+			return nil, fmt.Errorf("bold conjecture score update: %w", err)
+		}
+		sdkCtx.EventManager().EmitEvent(sdk.NewEvent(
+			"zerone.knowledge.bold_conjecture_submitted",
+			sdk.NewAttribute("claim_id", claimID),
+			sdk.NewAttribute("bold_conjecture_score", fmt.Sprintf("%d", boldScore)),
+			sdk.NewAttribute("submitter", msg.Submitter),
+		))
 	}
 
 	// Tier 0 bypass: if the claim carries a verified proof certificate AND

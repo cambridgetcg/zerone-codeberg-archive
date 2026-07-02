@@ -2674,8 +2674,25 @@ type Fact struct {
 	// pipelines and query engines can verify that the claim went through explicit
 	// Husserlian reduction, not just free-form first-person report.
 	PhenomenologicalReductionSteps []*ReductionStep `protobuf:"bytes,92,rep,name=phenomenological_reduction_steps,json=phenomenologicalReductionSteps,proto3" json:"phenomenological_reduction_steps,omitempty"`
-	unknownFields                  protoimpl.UnknownFields
-	sizeCache                      protoimpl.SizeCache
+	// ── Falsificationism Gap 4: Challenge Breadth ────────────────────────────
+	//
+	// challenge_breadth_count: count of distinct claims that have submitted a
+	// CONTRADICTS relation targeting this fact. Incremented once per challenging
+	// claim at SubmitClaim time, gated on this fact being VERIFIED or ACTIVE at
+	// the time of challenge.
+	//
+	// Combines with corroboration_severity_score_bps (severity of surviving
+	// challenges) to give a full Popperian picture:
+	//   - challenge_breadth_count:          how many distinct challengers
+	//   - corroboration_severity_score_bps: severity-weighted survival score
+	//   - corroboration_count:              how many challenges were rejected
+	//
+	// A fact with high breadth + high severity score has faced many challengers
+	// across many confidence levels and survived them all — the most robustly
+	// earned knowledge in the system.
+	ChallengeBreadthCount uint64 `protobuf:"varint,93,opt,name=challenge_breadth_count,json=challengeBreadthCount,proto3" json:"challenge_breadth_count,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *Fact) Reset() {
@@ -3280,6 +3297,13 @@ func (x *Fact) GetPhenomenologicalReductionSteps() []*ReductionStep {
 		return x.PhenomenologicalReductionSteps
 	}
 	return nil
+}
+
+func (x *Fact) GetChallengeBreadthCount() uint64 {
+	if x != nil {
+		return x.ChallengeBreadthCount
+	}
+	return 0
 }
 
 // TokenizerSpec is the governance-ratified contract that names the special
@@ -5657,8 +5681,25 @@ type Claim struct {
 	//
 	// Propagated to Fact.phenomenological_reduction_steps on ACCEPT.
 	PhenomenologicalReductionSteps []*ReductionStep `protobuf:"bytes,52,rep,name=phenomenological_reduction_steps,json=phenomenologicalReductionSteps,proto3" json:"phenomenological_reduction_steps,omitempty"`
-	unknownFields                  protoimpl.UnknownFields
-	sizeCache                      protoimpl.SizeCache
+	// ── Falsificationism Gap 4: Bold Conjecture Score ────────────────────────
+	//
+	// bold_conjecture_score: count of currently-verified or active facts that
+	// this claim directly contradicts at submission time. Popper's insight:
+	// a "bold conjecture" is one that contradicts prevailing expectations —
+	// it takes genuine risk. A claim that challenges many established facts
+	// has high empirical content; its survival under scrutiny is more
+	// epistemically significant than the survival of a timid claim that
+	// contradicts nothing.
+	//
+	// Computed once at SubmitClaim from the Relations field. Zero if no
+	// CONTRADICTS relations target verified/active facts. Non-zero triggers
+	// the `zerone.knowledge.bold_conjecture_submitted` event.
+	//
+	// Does not change after submission — it captures the state of knowledge
+	// at the moment the claim entered the system, not retrospectively.
+	BoldConjectureScore uint64 `protobuf:"varint,53,opt,name=bold_conjecture_score,json=boldConjectureScore,proto3" json:"bold_conjecture_score,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *Claim) Reset() {
@@ -6053,6 +6094,13 @@ func (x *Claim) GetPhenomenologicalReductionSteps() []*ReductionStep {
 		return x.PhenomenologicalReductionSteps
 	}
 	return nil
+}
+
+func (x *Claim) GetBoldConjectureScore() uint64 {
+	if x != nil {
+		return x.BoldConjectureScore
+	}
+	return 0
 }
 
 // PreRegistration records a submitter's declared intent to submit a claim
@@ -10425,7 +10473,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x05scope\x18\x04 \x01(\tR\x05scope\x12%\n" +
 	"\x0etemporal_scope\x18\x05 \x01(\tR\rtemporalScope\x12\x1c\n" +
 	"\tnegatable\x18\x06 \x01(\bR\tnegatable\x12\x12\n" +
-	"\x04tags\x18\a \x03(\tR\x04tags\"\x8c\x1d\n" +
+	"\x04tags\x18\a \x03(\tR\x04tags\"\xc4\x1d\n" +
 	"\x04Fact\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12\x16\n" +
@@ -10519,7 +10567,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x12bridging_org_count\x18Y \x01(\x04R\x10bridgingOrgCount\x12A\n" +
 	"\x1dbayesian_update_magnitude_bps\x18Z \x01(\x04R\x1abayesianUpdateMagnitudeBps\x128\n" +
 	"\x18rebutting_defeater_count\x18[ \x01(\x04R\x16rebuttingDefeaterCount\x12l\n" +
-	" phenomenological_reduction_steps\x18\\ \x03(\v2\".zerone.knowledge.v1.ReductionStepR\x1ephenomenologicalReductionSteps\"\xe0\x05\n" +
+	" phenomenological_reduction_steps\x18\\ \x03(\v2\".zerone.knowledge.v1.ReductionStepR\x1ephenomenologicalReductionSteps\x126\n" +
+	"\x17challenge_breadth_count\x18] \x01(\x04R\x15challengeBreadthCount\"\xe0\x05\n" +
 	"\rTokenizerSpec\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x04R\aversion\x12*\n" +
 	"\x11ratified_at_block\x18\x02 \x01(\x04R\x0fratifiedAtBlock\x12.\n" +
@@ -10721,7 +10770,7 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"\x06format\x18\x01 \x01(\x0e2 .zerone.knowledge.v1.ProofFormatR\x06format\x12+\n" +
 	"\x11certificate_bytes\x18\x02 \x01(\fR\x10certificateBytes\x12#\n" +
 	"\rformal_system\x18\x03 \x01(\tR\fformalSystem\x12(\n" +
-	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\xd2\x13\n" +
+	"\x10premise_fact_ids\x18\x04 \x03(\tR\x0epremiseFactIds\"\x86\x14\n" +
 	"\x05Claim\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\ffact_content\x18\x02 \x01(\tR\vfactContent\x12\x16\n" +
@@ -10779,7 +10828,8 @@ const file_zerone_knowledge_v1_types_proto_rawDesc = "" +
 	"dung_label\x181 \x01(\x0e2\x1e.zerone.knowledge.v1.DungLabelR\tdungLabel\x122\n" +
 	"\x15prior_probability_bps\x182 \x01(\x04R\x13priorProbabilityBps\x128\n" +
 	"\x18research_programme_depth\x183 \x01(\x04R\x16researchProgrammeDepth\x12l\n" +
-	" phenomenological_reduction_steps\x184 \x03(\v2\".zerone.knowledge.v1.ReductionStepR\x1ephenomenologicalReductionSteps\"\xf5\x02\n" +
+	" phenomenological_reduction_steps\x184 \x03(\v2\".zerone.knowledge.v1.ReductionStepR\x1ephenomenologicalReductionSteps\x122\n" +
+	"\x15bold_conjecture_score\x185 \x01(\x04R\x13boldConjectureScore\"\xf5\x02\n" +
 	"\x0fPreRegistration\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
 	"\tsubmitter\x18\x02 \x01(\tR\tsubmitter\x12!\n" +

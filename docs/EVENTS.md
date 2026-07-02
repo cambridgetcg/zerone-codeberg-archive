@@ -1541,6 +1541,16 @@ and the new conditions fail the superset test. Detection is informational —
 - `new_refutation_conditions` -- count of conditions on the new claim
 - `popper_criterion` -- human-readable description of the criterion
 
+### zerone.knowledge.bold_conjecture_submitted
+*Tx (MsgSubmitClaim).* Emitted when a new claim contradicts one or more
+currently-established facts (VERIFIED, ACTIVE, or CONTESTED status). A "bold
+conjecture" in the Popperian sense: the claim takes genuine epistemic risk by
+contradicting prevailing knowledge. Zero-score claims (no established-fact
+contradictions) do not emit this event. Part of Falsificationism Gap 4.
+- `claim_id` -- the bold new claim's ID
+- `bold_conjecture_score` -- count of established facts this claim contradicts
+- `submitter` -- address of the bold claim's submitter
+
 ### zerone.knowledge.bootstrap_sponsored
 Claim sponsored via bootstrap fund (gas-free).
 - `address_claims_used` -- number of claims used by this address

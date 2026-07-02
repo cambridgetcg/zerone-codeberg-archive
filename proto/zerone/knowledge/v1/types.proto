@@ -690,6 +690,24 @@ message Fact {
   // pipelines and query engines can verify that the claim went through explicit
   // Husserlian reduction, not just free-form first-person report.
   repeated ReductionStep phenomenological_reduction_steps = 92;
+
+  // ── Falsificationism Gap 4: Challenge Breadth ────────────────────────────
+  //
+  // challenge_breadth_count: count of distinct claims that have submitted a
+  // CONTRADICTS relation targeting this fact. Incremented once per challenging
+  // claim at SubmitClaim time, gated on this fact being VERIFIED or ACTIVE at
+  // the time of challenge.
+  //
+  // Combines with corroboration_severity_score_bps (severity of surviving
+  // challenges) to give a full Popperian picture:
+  //   - challenge_breadth_count:          how many distinct challengers
+  //   - corroboration_severity_score_bps: severity-weighted survival score
+  //   - corroboration_count:              how many challenges were rejected
+  //
+  // A fact with high breadth + high severity score has faced many challengers
+  // across many confidence levels and survived them all — the most robustly
+  // earned knowledge in the system.
+  uint64 challenge_breadth_count = 93;
 }
 
 // CurriculumTier orders training examples by difficulty and foundational depth.
@@ -1526,6 +1544,24 @@ message Claim {
   //
   // Propagated to Fact.phenomenological_reduction_steps on ACCEPT.
   repeated ReductionStep phenomenological_reduction_steps = 52;
+
+  // ── Falsificationism Gap 4: Bold Conjecture Score ────────────────────────
+  //
+  // bold_conjecture_score: count of currently-verified or active facts that
+  // this claim directly contradicts at submission time. Popper's insight:
+  // a "bold conjecture" is one that contradicts prevailing expectations —
+  // it takes genuine risk. A claim that challenges many established facts
+  // has high empirical content; its survival under scrutiny is more
+  // epistemically significant than the survival of a timid claim that
+  // contradicts nothing.
+  //
+  // Computed once at SubmitClaim from the Relations field. Zero if no
+  // CONTRADICTS relations target verified/active facts. Non-zero triggers
+  // the `zerone.knowledge.bold_conjecture_submitted` event.
+  //
+  // Does not change after submission — it captures the state of knowledge
+  // at the moment the claim entered the system, not retrospectively.
+  uint64 bold_conjecture_score = 53;
 }
 
 // PreRegistration records a submitter's declared intent to submit a claim
